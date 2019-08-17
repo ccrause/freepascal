@@ -1076,7 +1076,22 @@ Implementation
                           GetNextInstruction(hp1,hp1);
                           if not assigned(hp1) then
                             break;
-                        end;
+                        end
+                    {
+                      This removes the mov from
+                      mov rX,...
+                      ldi/s rX,...
+                    }
+                    else if GetNextInstruction(p,hp1) and
+                       (MatchInstruction(hp1,A_LDI) or MatchInstruction(hp1,A_LDS)) and
+                       (taicpu(p).oper[0]^.typ = top_reg) and
+                       (taicpu(hp1).oper[0]^.typ = top_reg) and
+                       (taicpu(p).oper[0]^.reg = taicpu(hp1).oper[0]^.reg) then
+                      begin
+                        DebugMsg('Peephole MovLDx2LDx performed', p);
+
+                        result:=RemoveCurrentP(p);
+                      end;
                   end;
                 A_SBIC,
                 A_SBIS:
