@@ -2077,6 +2077,8 @@ implementation
 
     procedure Tcg.a_op_const_reg_reg(list:TAsmList;op:Topcg;size:Tcgsize;
                                      a:tcgint;src,dst:Tregister);
+    var
+      tmpSrc, tmpDst: TRegister;
     begin
       optimize_op_const(size, op, a);
       case op of
@@ -2102,6 +2104,24 @@ implementation
                     a_load_const_reg(list,OS_8,0,dst);
                     exit;
                   end;
+                OS_S32,OS_32:
+                  begin
+                    // src[1] => dst[0]
+                    tmpSrc := GetNextReg(src);
+                    a_load_reg_reg(list,OS_8,OS_8,tmpSrc,dst);
+                    // src[2] => dst[1]
+                    tmpSrc := GetNextReg(tmpSrc);
+                    tmpDst := GetNextReg(dst);
+                    a_load_reg_reg(list,OS_8,OS_8,tmpSrc,tmpDst);
+                    // src[3] => dst[2]
+                    tmpSrc := GetNextReg(tmpSrc);
+                    tmpDst := GetNextReg(tmpDst);
+                    a_load_reg_reg(list,OS_8,OS_8,tmpSrc,tmpDst);
+                    // 0 => dst[3]
+                    tmpDst := GetNextReg(tmpDst);
+                    a_load_const_reg(list,OS_8,0,tmpDst);
+                    exit;
+                  end;
               end;
           end;
         OP_SHR:
@@ -2114,7 +2134,7 @@ implementation
                     a_load_const_reg(list,OS_8,0,GetNextReg(dst));
                     exit;
                   end;
-              end;
+              end
           end;
 {$endif cpu8bitalu}
 {$ifdef cpu16bitalu}
