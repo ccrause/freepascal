@@ -1234,6 +1234,7 @@ Procedure HandleErrorAddrFrame (Errno : longint;addr : CodePointer; frame : Poin
 begin
   If codepointer(ErrorProc)<>Nil then
     ErrorProc(Errno,addr,frame);
+{$ifndef CPUAVR}
   errorcode:=word(Errno);
   erroraddr:=addr;
   errorbase:=frame;
@@ -1241,6 +1242,7 @@ begin
   if ExceptAddrStack <> nil then
     raise TObject(nil) at addr,frame;
 {$endif FPC_HAS_FEATURE_EXCEPTIONS}
+{$endif CPUAVR}
   Halt(errorcode);
 end;
 
@@ -1249,7 +1251,9 @@ end;
   HandleErrorFrame function was used internally. }
 Procedure HandleErrorAddrFrameInd (Errno : longint;addr : CodePointer; frame : Pointer);
 begin
+{$ifndef CPUAVR}
   get_caller_stackinfo (frame, addr);
+{$endif CPUAVR}
   HandleErrorAddrFrame (Errno,addr,frame);
 end;
 
