@@ -140,6 +140,10 @@ ifeq ($(SUBARCH),avr6)
 CPU_UNITS=atmega2561 atmega2560 avrsim
 CPU_UNITS_DEFINED=1
 endif
+ifeq ($(SUBARCH),avrxmega3)
+CPU_UNITS=atmega3208 atmega3209 atmega4808 atmega4809
+CPU_UNITS_DEFINED=1
+endif
 ifeq ($(CPU_UNITS_DEFINED),)
 $(error No CPUs enabled for given SUBARCH, pass either a SUBARCH or set CPU_UNITS_DEFINED=1 if you know what you are doing)
 endif
