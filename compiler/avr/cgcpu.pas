@@ -438,6 +438,9 @@ unit cgcpu;
 
 
      procedure tcgavr.a_op_const_reg_reg(list: TAsmList; op: TOpCg; size: tcgsize; a: tcgint; src, dst: tregister);
+       var
+         tmpSrc, tmpDst: TRegister;
+         b, i, j: byte;
        begin
          if (op in [OP_MUL,OP_IMUL]) and (size in [OS_16,OS_S16]) and (a in [2,4,8]) then
            begin
@@ -450,6 +453,43 @@ unit cgcpu;
                  list.concat(taicpu.op_reg(A_ROL,GetNextReg(dst)));
                  a:=a shr 1;
                end;
+           end
+         // Word size wins up to remainder = 3
+         // Dword size wins up to remainder = 2
+         else if (op = OP_SHL) and (a > 0) // a = 0 get eliminated later by tcg.optimize_op_const
+              and ((a mod 8) * tcgsize2size[size] <= 8) then // remaining shifts short enough for unrolled loop
+           begin
+             b := a div 8;  // number of bytes to shift
+             // first fill LSB with 0
+             tmpSrc := src;
+             tmpDst := dst;
+             for i := 1 to b do
+             begin
+               a_load_const_reg(list,OS_8,0,tmpDst);
+               tmpDst := GetNextReg(tmpDst);
+             end;
+
+             for i := b+1 to tcgsize2size[size] do
+             begin
+               a_load_reg_reg(list,OS_8,OS_8,tmpSrc,tmpDst);
+               if i < tcgsize2size[size] then // don't retrieve next reg if on last iteration
+               begin
+                 tmpSrc := GetNextReg(tmpSrc);
+                 tmpDst := GetNextReg(tmpDst);
+               end;
+             end;
+
+             b := a mod 8;
+             if b > 0 then
+             begin
+               for j := 1 to b do
+               begin
+                 list.concat(taicpu.op_reg(A_LSL, dst));
+                 if not(size in [OS_8, OS_S8]) then
+                   for i := 2 to tcgsize2size[size] do
+                     list.concat(taicpu.op_reg(A_ROL,GetOffsetReg64(dst, NR_NO, i-1)));
+               end;
+             end;
            end
          else
            inherited a_op_const_reg_reg(list,op,size,a,src,dst);

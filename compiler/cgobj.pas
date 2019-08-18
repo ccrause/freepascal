@@ -2099,31 +2099,15 @@ implementation
 {$ifdef cpu8bitalu}
         OP_SHL:
           begin
-            // check if shift can be done at byte level only
-            if (a mod 8 = 0) then
-            begin
-              b := a div 8;  // number of bytes to shift
-              // first fill LSB with 0
-              tmpSrc := src;
-              tmpDst := dst;
-              for i := 1 to b do
-              begin
-                a_load_const_reg(list,OS_8,0,tmpDst);
-                tmpDst := GetNextReg(tmpDst);
+            if a=8 then
+              case size of
+                OS_S16,OS_16:
+                  begin
+                    a_load_reg_reg(list,OS_8,OS_8,src,GetNextReg(dst));
+                    a_load_const_reg(list,OS_8,0,dst);
+                    exit;
+                  end;
               end;
-
-              for i := b+1 to tcgsize2size[size] do
-              begin
-                a_load_reg_reg(list,OS_8,OS_8,tmpSrc,tmpDst);
-                if i < tcgsize2size[size] then // don't retrieve next reg if on last iteration
-                begin
-                  tmpSrc := GetNextReg(tmpSrc);
-                  tmpDst := GetNextReg(tmpDst);
-                end;
-              end;
-
-              exit; // no further code generation required
-            end;
           end;
         OP_SHR:
           begin
