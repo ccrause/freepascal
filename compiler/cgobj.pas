@@ -2077,8 +2077,11 @@ implementation
 
     procedure Tcg.a_op_const_reg_reg(list:TAsmList;op:Topcg;size:Tcgsize;
                                      a:tcgint;src,dst:Tregister);
+    {$ifdef cpu8bitalu}
     var
       tmpSrc, tmpDst: TRegister;
+      b, i: byte;
+    {$endif cpu8bitalu}
     begin
       optimize_op_const(size, op, a);
       case op of
@@ -2096,33 +2099,31 @@ implementation
 {$ifdef cpu8bitalu}
         OP_SHL:
           begin
-            if a=8 then
-              case size of
-                OS_S16,OS_16:
-                  begin
-                    a_load_reg_reg(list,OS_8,OS_8,src,GetNextReg(dst));
-                    a_load_const_reg(list,OS_8,0,dst);
-                    exit;
-                  end;
-                OS_S32,OS_32:
-                  begin
-                    // src[1] => dst[0]
-                    tmpSrc := GetNextReg(src);
-                    a_load_reg_reg(list,OS_8,OS_8,tmpSrc,dst);
-                    // src[2] => dst[1]
-                    tmpSrc := GetNextReg(tmpSrc);
-                    tmpDst := GetNextReg(dst);
-                    a_load_reg_reg(list,OS_8,OS_8,tmpSrc,tmpDst);
-                    // src[3] => dst[2]
-                    tmpSrc := GetNextReg(tmpSrc);
-                    tmpDst := GetNextReg(tmpDst);
-                    a_load_reg_reg(list,OS_8,OS_8,tmpSrc,tmpDst);
-                    // 0 => dst[3]
-                    tmpDst := GetNextReg(tmpDst);
-                    a_load_const_reg(list,OS_8,0,tmpDst);
-                    exit;
-                  end;
+            // check if shift can be done at byte level only
+            if (a mod 8 = 0) then
+            begin
+              b := a div 8;  // number of bytes to shift
+              // first fill LSB with 0
+              tmpSrc := src;
+              tmpDst := dst;
+              for i := 1 to b do
+              begin
+                a_load_const_reg(list,OS_8,0,tmpDst);
+                tmpDst := GetNextReg(tmpDst);
               end;
+
+              for i := b+1 to tcgsize2size[size] do
+              begin
+                a_load_reg_reg(list,OS_8,OS_8,tmpSrc,tmpDst);
+                if i < tcgsize2size[size] then // don't retrieve next reg if on last iteration
+                begin
+                  tmpSrc := GetNextReg(tmpSrc);
+                  tmpDst := GetNextReg(tmpDst);
+                end;
+              end;
+
+              exit; // no further code generation required
+            end;
           end;
         OP_SHR:
           begin
