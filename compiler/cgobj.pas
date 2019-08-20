@@ -2077,11 +2077,6 @@ implementation
 
     procedure Tcg.a_op_const_reg_reg(list:TAsmList;op:Topcg;size:Tcgsize;
                                      a:tcgint;src,dst:Tregister);
-    {$ifdef cpu8bitalu}
-    var
-      tmpSrc, tmpDst: TRegister;
-      b, i: byte;
-    {$endif cpu8bitalu}
     begin
       optimize_op_const(size, op, a);
       case op of
