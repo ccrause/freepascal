@@ -460,34 +460,31 @@ unit cgcpu;
               and ((a mod 8) * tcgsize2size[size] <= 8) then // remaining shifts short enough for unrolled loop
            begin
              b := a div 8;  // number of bytes to shift
-             // first fill LSB with 0
-             tmpSrc := src;
-             tmpDst := dst;
+
+             // copy from src to dst+offset
+             for i := 0 to (tcgsize2size[size]-b-1) do
+             begin
+               a_load_reg_reg(list, OS_8, OS_8,
+                 GetOffsetReg64(src, NR_NO, i),
+                 GetOffsetReg64(dst, NR_NO, i+b));
+             end;
+
+             // fill LSBs with 0
              for i := 1 to b do
-             begin
-               a_load_const_reg(list,OS_8,0,tmpDst);
-               tmpDst := GetNextReg(tmpDst);
-             end;
+               emit_mov(list, GetOffsetReg64(dst, NR_NO, i-1), NR_R1);
 
-             for i := b+1 to tcgsize2size[size] do
+             b2 := a mod 8; // remaining bit shifts
+             if b2 > 0 then
              begin
-               a_load_reg_reg(list,OS_8,OS_8,tmpSrc,tmpDst);
-               if i < tcgsize2size[size] then // don't retrieve next reg if on last iteration
+               for j := 1 to b2 do
                begin
-                 tmpSrc := GetNextReg(tmpSrc);
-                 tmpDst := GetNextReg(tmpDst);
-               end;
-             end;
+                 list.concat(taicpu.op_reg(A_LSL,
+                 GetOffsetReg64(dst, NR_NO, b)));
 
-             b := a mod 8;
-             if b > 0 then
-             begin
-               for j := 1 to b do
-               begin
-                 list.concat(taicpu.op_reg(A_LSL, dst));
                  if not(size in [OS_8, OS_S8]) then
-                   for i := 2 to tcgsize2size[size] do
-                     list.concat(taicpu.op_reg(A_ROL,GetOffsetReg64(dst, NR_NO, i-1)));
+                   for i := 2 to tcgsize2size[size]-b do
+                     list.concat(taicpu.op_reg(A_ROL,
+                       GetOffsetReg64(dst, NR_NO, b+i-1)));
                end;
              end;
            end
