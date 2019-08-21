@@ -453,6 +453,7 @@ type
     Procedure TestProc_ImplicitCalls;
     Procedure TestProc_Absolute;
     Procedure TestProc_LocalInit;
+    Procedure TestProc_ExtNamePropertyFail;
 
     // anonymous procs
     Procedure TestAnonymousProc_Assign;
@@ -7503,6 +7504,16 @@ begin
   ParseProgram;
 end;
 
+procedure TTestResolver.TestProc_ExtNamePropertyFail;
+begin
+  StartProgram(false);
+  Add([
+  'procedure Foo; external name ''});'' property;',
+  'begin']);
+  CheckParserException('Expected ";" at token "property" in file afile.pp at line 2 column 36',
+    nParserExpectTokenError);
+end;
+
 procedure TTestResolver.TestAnonymousProc_Assign;
 begin
   StartProgram(false);
@@ -9149,7 +9160,7 @@ begin
   Add('begin');
   Add('end;');
   Add('begin');
-  CheckResolverException('identifier not found "TClassA"',nIdentifierNotFound);
+  CheckResolverException('class "TClassA" not found in this module',nClassXNotFoundInThisModule);
 end;
 
 procedure TTestResolver.TestClass_MethodInOtherUnitFail;
@@ -9170,7 +9181,8 @@ begin
   'begin',
   'end;',
   'begin']);
-  CheckResolverException('method class "TObject" in other unit "unit1"',nMethodClassXInOtherUnitY);
+  CheckResolverException('class "TObject" not found in this module',
+    nClassXNotFoundInThisModule);
 end;
 
 procedure TTestResolver.TestClass_MethodWithParams;

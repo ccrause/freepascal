@@ -248,11 +248,38 @@ type
 
   TRttiFloatType = class(TRttiType)
   private
-    function GetFloatType: TFloatType;
+    function GetFloatType: TFloatType; inline;
+  protected
+    function GetTypeSize: integer; override;
   public
     property FloatType: TFloatType read GetFloatType;
   end;
 
+  TRttiOrdinalType = class(TRttiType)
+  private
+    function GetMaxValue: LongInt; inline;
+    function GetMinValue: LongInt; inline;
+    function GetOrdType: TOrdType; inline;
+  protected
+    function GetTypeSize: Integer; override;
+  public
+    property OrdType: TOrdType read GetOrdType;
+    property MinValue: LongInt read GetMinValue;
+    property MaxValue: LongInt read GetMaxValue;
+  end;
+
+  TRttiInt64Type = class(TRttiType)
+  private
+    function GetMaxValue: Int64; inline;
+    function GetMinValue: Int64; inline;
+    function GetUnsigned: Boolean; inline;
+  protected
+    function GetTypeSize: integer; override;
+  public
+    property MinValue: Int64 read GetMinValue;
+    property MaxValue: Int64 read GetMaxValue;
+    property Unsigned: Boolean read GetUnsigned;
+  end;
 
   TRttiStringKind = (skShortString, skAnsiString, skWideString, skUnicodeString);
 
@@ -804,9 +831,6 @@ end;
 label
   RawThunkEnd;
 
-const
-  RawThunkEndPtr: Pointer = @RawThunkEnd;
-
 {$if defined(cpui386)}
 const
   RawThunkPlaceholderBytesToPop = $12341234;
@@ -832,16 +856,47 @@ asm
     aBytesToPop is the size of the stack to the Self argument }
 
   movl RawThunkPlaceholderBytesToPop, %eax
-  movl %sp, %ecx
+  movl %esp, %ecx
   lea (%ecx,%eax), %eax
   movl RawThunkPlaceholderContext, (%eax)
   movl RawThunkPlaceholderProc, %eax
   jmp %eax
 RawThunkEnd:
 end;
+{$elseif defined(cpux86_64)}
+const
+  RawThunkPlaceholderProc = PtrUInt($8765876587658765);
+  RawThunkPlaceholderContext = PtrUInt($4321432143214321);
+
+type
+  TRawThunkProc = PtrUInt;
+  TRawThunkContext = PtrUInt;
+
+{$ifdef win64}
+procedure RawThunk; assembler; nostackframe;
+asm
+  { Self is always in register RCX }
+  movq RawThunkPlaceholderContext, %rcx
+  movq RawThunkPlaceholderProc, %rax
+  jmp %rax
+RawThunkEnd:
+end;
+{$else}
+procedure RawThunk; assembler; nostackframe;
+asm
+  { Self is always in register RDI }
+  movq RawThunkPlaceholderContext, %rdi
+  movq RawThunkPlaceholderProc, %rax
+  jmp %rax
+RawThunkEnd:
+end;
+{$endif}
 {$endif}
 
 {$if declared(RawThunk)}
+const
+  RawThunkEndPtr: Pointer = @RawThunkEnd;
+
 type
 {$if declared(TRawThunkBytesToPop)}
   PRawThunkBytesToPop = ^TRawThunkBytesToPop;
@@ -852,7 +907,7 @@ type
 
 { Delphi has these as part of TRawVirtualClass.TVTable; until we have that we
   simply leave that here in the implementation }
-function AllocateRawThunk(aProc: CodePointer; aContext: Pointer; aBytesToPop: SizeInt): Pointer;
+function AllocateRawThunk(aProc: CodePointer; aContext: Pointer; aBytesToPop: SizeInt): CodePointer;
 {$if declared(RawThunk)}
 var
   size, i: SizeInt;
@@ -918,7 +973,7 @@ begin
 {$endif}
 end;
 
-procedure FreeRawThunk(aThunk: Pointer);
+procedure FreeRawThunk(aThunk: CodePointer);
 begin
 {$if declared(RawThunk)}
   FreeMemory(aThunk, PtrUInt(RawThunkEndPtr) - PtrUInt(@RawThunk));
@@ -1049,7 +1104,6 @@ begin
   for cc := Low(TCallConv) to High(TCallConv) do
     FuncCallMgr[cc] := NoFunctionCallManager;
 end;
-
 { TRttiPool }
 
 function TRttiPool.GetTypes: specialize TArray<TRttiType>;
@@ -1092,6 +1146,11 @@ begin
           tkClass   : Result := TRttiInstanceType.Create(ATypeInfo);
           tkInterface: Result := TRttiRefCountedInterfaceType.Create(ATypeInfo);
           tkInterfaceRaw: Result := TRttiRawInterfaceType.Create(ATypeInfo);
+          tkInt64,
+          tkQWord: Result := TRttiInt64Type.Create(ATypeInfo);
+          tkInteger,
+          tkChar,
+          tkWChar: Result := TRttiOrdinalType.Create(ATypeInfo);
           tkSString,
           tkLString,
           tkAString,
@@ -2641,11 +2700,84 @@ begin
     Result := FParams;
 end;
 
+{ TRttiInt64Type }
+
+function TRttiInt64Type.GetMaxValue: Int64;
+begin
+  Result := FTypeData^.MaxInt64Value;
+end;
+
+function TRttiInt64Type.GetMinValue: Int64;
+begin
+  Result := FTypeData^.MinInt64Value;
+end;
+
+function TRttiInt64Type.GetUnsigned: Boolean;
+begin
+  Result := FTypeData^.OrdType = otUQWord;
+end;
+
+function TRttiInt64Type.GetTypeSize: integer;
+begin
+  Result := SizeOf(QWord);
+end;
+
+{ TRttiOrdinalType }
+
+function TRttiOrdinalType.GetMaxValue: LongInt;
+begin
+  Result := FTypeData^.MaxValue;
+end;
+
+function TRttiOrdinalType.GetMinValue: LongInt;
+begin
+  Result := FTypeData^.MinValue;
+end;
+
+function TRttiOrdinalType.GetOrdType: TOrdType;
+begin
+  Result := FTypeData^.OrdType;
+end;
+
+function TRttiOrdinalType.GetTypeSize: Integer;
+begin
+  case OrdType of
+    otSByte,
+    otUByte:
+      Result := SizeOf(Byte);
+    otSWord,
+    otUWord:
+      Result := SizeOf(Word);
+    otSLong,
+    otULong:
+      Result := SizeOf(LongWord);
+    otSQWord,
+    otUQWord:
+      Result := SizeOf(QWord);
+  end;
+end;
+
 { TRttiFloatType }
 
 function TRttiFloatType.GetFloatType: TFloatType;
 begin
   result := FTypeData^.FloatType;
+end;
+
+function TRttiFloatType.GetTypeSize: integer;
+begin
+  case FloatType of
+    ftSingle:
+      Result := SizeOf(Single);
+    ftDouble:
+      Result := SizeOf(Double);
+    ftExtended:
+      Result := SizeOf(Extended);
+    ftComp:
+      Result := SizeOf(Comp);
+    ftCurr:
+      Result := SizeOf(Currency);
+  end;
 end;
 
 { TRttiParameter }
