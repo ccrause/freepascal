@@ -460,18 +460,28 @@ unit cgcpu;
            begin
              b := a div 8;  // number of bytes to shift
 
-             // copy from src to dst accounting for shift offset
-             for i := 0 to (tcgsize2size[size]-b-1) do
-               if op = OP_SHL then
-                 a_load_reg_reg(list, OS_8, OS_8,
-                   GetOffsetReg64(src, NR_NO, i),
-                   GetOffsetReg64(dst, NR_NO, i+b))
-               else
-                 a_load_reg_reg(list, OS_8, OS_8,
-                   GetOffsetReg64(src, NR_NO, i+b),
-                   GetOffsetReg64(dst, NR_NO, i));
+             // Ensure that b is never larger than base type
+             if b > tcgsize2size[size] then
+               begin
+                 b := tcgsize2size[size];
+                 b2 := a mod 8;
+               end
+             else
+               b2 := 0;
 
-             b2 := a mod 8; // remaining bit shifts
+             if b < tcgsize2size[size] then
+               // copy from src to dst accounting for shift offset
+               for i := 0 to (tcgsize2size[size]-b-1) do
+                 if op = OP_SHL then
+                   a_load_reg_reg(list, OS_8, OS_8,
+                     GetOffsetReg64(src, NR_NO, i),
+                     GetOffsetReg64(dst, NR_NO, i+b))
+                 else
+                   a_load_reg_reg(list, OS_8, OS_8,
+                     GetOffsetReg64(src, NR_NO, i+b),
+                     GetOffsetReg64(dst, NR_NO, i));
+
+             // remaining bit shifts
              if b2 > 0 then
                begin
                  // Cost of loop
