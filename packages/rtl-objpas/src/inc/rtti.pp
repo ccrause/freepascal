@@ -227,6 +227,7 @@ type
     function GetBaseType: TRttiType; virtual;
   public
     constructor Create(ATypeInfo : PTypeInfo);
+    destructor Destroy; override;
     function GetAttributes: specialize TArray<TCustomAttribute>; override;
     function GetProperties: specialize TArray<TRttiProperty>; virtual;
     function GetProperty(const AName: string): TRttiProperty; virtual;
@@ -530,13 +531,9 @@ type
     fThunks: array[0..2] of CodePointer;
     fImpls: array of TMethodImplementation;
     fVmt: PCodePointer;
-    fQueryInterfaceType: TRttiType;
-    fAddRefType: TRttiType;
-    fReleaseType: TRttiType;
   protected
     function QueryInterface(constref aIID: TGuid; out aObj): LongInt;{$IFNDEF WINDOWS}cdecl{$ELSE}stdcall{$ENDIF};
 
-    procedure HandleIInterfaceCallback(aInvokable: TRttiInvokableType; const aArgs: TValueArray; out aResult: TValue);
     procedure HandleUserCallback(aUserData: Pointer; const aArgs: TValueArray; out aResult: TValue);
   public
     constructor Create(aPIID: PTypeInfo);
@@ -617,6 +614,19 @@ uses
   BaseUnix,
 {$endif}
   fgl;
+
+function AlignToPtr(aPtr: Pointer): Pointer; inline;
+begin
+{$ifdef CPUM68K}
+  Result := AlignTypeData(aPtr);
+{$else}
+{$ifdef FPC_REQUIRES_PROPER_ALIGNMENT}
+  Result := Align(aPtr, SizeOf(Pointer));
+{$else}
+  Result := aPtr;
+{$endif}
+{$endif}
+end;
 
 type
 
@@ -891,6 +901,51 @@ asm
 RawThunkEnd:
 end;
 {$endif}
+{$elseif defined(cpuarm)}
+const
+  RawThunkPlaceholderProc = $87658765;
+  RawThunkPlaceholderContext = $43214321;
+
+type
+  TRawThunkProc = PtrUInt;
+  TRawThunkContext = PtrUInt;
+
+procedure RawThunk; assembler; nostackframe;
+asm
+  (* To be compatible with Thumb we first load the function pointer into R0,
+    then move that to R12 which is volatile and then we load the new Self into
+    R0 *)
+  ldr r0, .LProc
+  mov r12, r0
+  ldr r0, .LContext
+{$ifdef CPUARM_HAS_BX}
+  bx r12
+{$else}
+  mov pc, r12
+{$endif}
+.LProc:
+  .long RawThunkPlaceholderProc
+.LContext:
+  .long RawThunkPlaceholderContext
+RawThunkEnd:
+end;
+{$elseif defined(cpum68k)}
+const
+  RawThunkPlaceholderProc = $87658765;
+  RawThunkPlaceholderContext = $43214321;
+
+type
+  TRawThunkProc = PtrUInt;
+  TRawThunkContext = PtrUInt;
+
+procedure RawThunk; assembler; nostackframe;
+asm
+  lea 4(sp), a0
+  move.l #RawThunkPlaceholderContext, (a0)
+  move.l #RawThunkPlaceholderProc, a0
+  jmp (a0)
+RawThunkEnd:
+end;
 {$endif}
 
 {$if declared(RawThunk)}
@@ -1474,15 +1529,9 @@ end;
 
 class procedure TValue.Make(ABuffer: pointer; ATypeInfo: PTypeInfo; out result: TValue);
 type
-  PBoolean16 = ^Boolean16;
-  PBoolean32 = ^Boolean32;
-  PBoolean64 = ^Boolean64;
-  PByteBool = ^ByteBool;
-  PQWordBool = ^QWordBool;
   PMethod = ^TMethod;
 var
   td: PTypeData;
-  size: SizeInt;
 begin
   result.FData.FTypeInfo:=ATypeInfo;
   { resets the whole variant part; FValueData is already Nil }
@@ -1649,12 +1698,36 @@ end;
 {$endif}
 
 class function TValue.FromOrdinal(aTypeInfo: PTypeInfo; aValue: Int64): TValue;
+{$ifdef ENDIAN_BIG}
+var
+  p: PByte;
+  td: PTypeData;
+{$endif}
 begin
   if not Assigned(aTypeInfo) or
       not (aTypeInfo^.Kind in [tkInteger, tkInt64, tkQWord, tkEnumeration, tkBool, tkChar, tkWChar, tkUChar]) then
     raise EInvalidCast.Create(SErrInvalidTypecast);
 
+{$ifdef ENDIAN_BIG}
+  td := GetTypeData(aTypeInfo);
+  p := @aValue;
+  case td^.OrdType of
+    otSByte,
+    otUByte:
+      p := p + 7;
+    otSWord,
+    otUWord:
+      p := p + 6;
+    otSLong,
+    otULong:
+      p := p + 4;
+    otSQWord,
+    otUQWord: ;
+  end;
+  TValue.Make(p, aTypeInfo, Result);
+{$else}
   TValue.Make(@aValue, aTypeInfo, Result);
+{$endif}
 end;
 
 function TValue.GetIsEmpty: boolean;
@@ -2220,7 +2293,7 @@ end;
 
 function Invoke(const aName: String; aCodeAddress: CodePointer; aCallConv: TCallConv; aStatic: Boolean; aInstance: TValue; constref aArgs: array of TValue; const aParams: specialize TArray<TRttiParameter>; aReturnType: TRttiType): TValue;
 var
-  arrparam, param: TRttiParameter;
+  param: TRttiParameter;
   unhidden, highs, i: SizeInt;
   args: TFunctionCallParameterArray;
   highargs: array of SizeInt;
@@ -3225,7 +3298,7 @@ begin
   if not aWithHidden and (Length(FParams) > 0) then
     Exit(FParams);
 
-  ptr := AlignTParamFlags(@FTypeData^.ParamList[0]);
+  ptr := @FTypeData^.ParamList[0];
 
   visible := 0;
   total := 0;
@@ -3234,6 +3307,8 @@ begin
     SetLength(infos, FTypeData^.ParamCount);
 
     while total < FTypeData^.ParamCount do begin
+      { align }
+      ptr := AlignTParamFlags(ptr);
       infos[total].Handle := ptr;
       infos[total].Flags := PParamFlags(ptr)^;
       Inc(ptr, SizeOf(TParamFlags));
@@ -3242,8 +3317,6 @@ begin
       Inc(ptr, ptr^ + SizeOf(Byte));
       { skip type name }
       Inc(ptr, ptr^ + SizeOf(Byte));
-      { align }
-      ptr := AlignTParamFlags(ptr);
 
       if not (pfHidden in infos[total].Flags) then
         Inc(visible);
@@ -3253,7 +3326,7 @@ begin
 
   if FTypeData^.MethodKind in [mkFunction, mkClassFunction] then begin
     { skip return type name }
-    ptr := AlignTypeData(PByte(ptr) + ptr^ + SizeOf(Byte));
+    ptr := AlignToPtr(PByte(ptr) + ptr^ + SizeOf(Byte));
     { handle return type }
     FReturnType := GRttiPool.GetType(PPPTypeInfo(ptr)^^);
     Inc(ptr, SizeOf(PPTypeInfo));
@@ -3269,7 +3342,7 @@ begin
   if FTypeData^.ParamCount > 0 then begin
     context := TRttiContext.Create;
     try
-      paramtypes := PPPTypeInfo(ptr);
+      paramtypes := PPPTypeInfo(AlignTypeData(ptr));
       visible := 0;
       for i := 0 to FTypeData^.ParamCount - 1 do begin
         obj := context.GetByHandle(infos[i].Handle);
@@ -3362,7 +3435,7 @@ begin
 
   context := TRttiContext.Create;
   try
-    param := AlignTypeData(PProcedureParam(@FTypeData^.ProcSig.ParamCount + SizeOf(FTypeData^.ProcSig.ParamCount)));
+    param := AlignToPtr(PProcedureParam(@FTypeData^.ProcSig.ParamCount + SizeOf(FTypeData^.ProcSig.ParamCount)));
     visible := 0;
     for i := 0 to FTypeData^.ProcSig.ParamCount - 1 do begin
       obj := context.GetByHandle(param);
@@ -3378,7 +3451,7 @@ begin
         Inc(visible);
       end;
 
-      param := PProcedureParam(AlignTypeData(PByte(@param^.Name) + Length(param^.Name) + SizeOf(param^.Name[0])));
+      param := PProcedureParam(AlignToPtr(PByte(@param^.Name) + Length(param^.Name) + SizeOf(param^.Name[0])));
     end;
 
     SetLength(FParams, visible);
@@ -3887,6 +3960,15 @@ begin
     FTypeData:=GetTypeData(ATypeInfo);
 end;
 
+destructor TRttiType.Destroy;
+var
+  attr: TCustomAttribute;
+begin
+  for attr in FAttributes do
+    attr.Free;
+  inherited;
+end;
+
 function TRttiType.GetAttributes: specialize TArray<TCustomAttribute>;
 var
   i: Integer;
@@ -4020,28 +4102,11 @@ begin
   result := (FContextToken as IPooltoken).RttiPool.GetTypes;
 end;}
 
-type
-  TQueryInterface = function(constref aIID: TGUID; out aObj): LongInt of object;{$IFNDEF WINDOWS}cdecl{$ELSE}stdcall{$ENDIF};
-  TAddRef = function: LongInt of object;{$IFNDEF WINDOWS}cdecl{$ELSE}stdcall{$ENDIF};
-  TRelease = function: LongInt of object;{$IFNDEF WINDOWS}cdecl{$ELSE}stdcall{$ENDIF};
-
 { TVirtualInterface }
 
 {.$define DEBUG_VIRTINTF}
 
 constructor TVirtualInterface.Create(aPIID: PTypeInfo);
-
-  function GetIInterfaceMethod(aTypeInfo: PTypeInfo; const aName: String; out aType: TRttiType): TMethodImplementation;
-  begin
-    aType := fContext.GetType(aTypeInfo);
-    if not (aType is TRttiMethodType) then
-      raise EInsufficientRtti.Create(SErrVirtIntfIInterface) at get_caller_addr(get_frame), get_caller_frame(get_frame);
-
-    Result := TRttiMethodType(aType).CreateImplementation(@HandleIInterfaceCallback);
-    if not Assigned(Result) then
-      raise ERtti.CreateFmt(SErrVirtIntfCreateImpl, [aPIID^.Name, aName]) at get_caller_addr(get_frame), get_caller_frame(get_frame);
-  end;
-
 const
   BytesToPopQueryInterface =
 {$ifdef cpui386}
@@ -4178,28 +4243,6 @@ begin
     Result := S_OK;
   end else
     Result := inherited QueryInterface(aIID, aObj);
-end;
-
-procedure TVirtualInterface.HandleIInterfaceCallback(aInvokable: TRttiInvokableType; const aArgs: TValueArray; out aResult: TValue);
-var
-  res: LongInt;
-  guid: TGuid;
-begin
-  {$IFDEF DEBUG_VIRTINTF}Writeln(aInvokable.Name);{$ENDIF}
-  if aInvokable = fQueryInterfaceType then begin
-    {$IFDEF DEBUG_VIRTINTF}Writeln('Call for QueryInterface');{$ENDIF}
-    Move(aArgs[1].GetReferenceToRawData^, guid, SizeOf(guid));
-    res := QueryInterface(guid, PPointer(aArgs[2].GetReferenceToRawData)^);
-    TValue.Make(@res, TypeInfo(LongInt), aResult);
-  end else if aInvokable = fAddRefType then begin
-    {$IFDEF DEBUG_VIRTINTF}Writeln('Call for AddRef');{$ENDIF}
-    res := _AddRef;
-    TValue.Make(@res, TypeInfo(LongInt), aResult);
-  end else if aInvokable = fReleaseType then begin
-    {$IFDEF DEBUG_VIRTINTF}Writeln('Call for Release');{$ENDIF}
-    res := _Release;
-    TValue.Make(@res, TypeInfo(LongInt), aResult);
-  end;
 end;
 
 procedure TVirtualInterface.HandleUserCallback(aUserData: Pointer; const aArgs: TValueArray; out aResult: TValue);

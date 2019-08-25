@@ -95,8 +95,8 @@ unit TypInfo;
        TIntfFlagsBase = set of TIntfFlag;
 
        // don't rely on integer values of TCallConv since it includes all conventions
-       // which both delphi and fpc support. In the future delphi can support more and
-       // fpc own conventions will be shifted/reordered accordinly
+       // which both Delphi and FPC support. In the future Delphi can support more and
+       // FPC's own conventions will be shifted/reordered accordingly
        TCallConv = (ccReg, ccCdecl, ccPascal, ccStdCall, ccSafeCall,
                     ccCppdecl, ccFar16, ccOldFPCCall, ccInternProc,
                     ccSysCall, ccSoftFloat, ccMWPascal);
@@ -579,17 +579,29 @@ unit TypInfo;
         function GetUnitName: ShortString; inline;
         function GetPropertyTable: PPropData; inline;
       public
+        property UnitName: ShortString read GetUnitName;
+        property PropertyTable: PPropData read GetPropertyTable;
+      public
         {$ifdef PROVIDE_ATTR_TABLE}
         AttributeTable : PAttributeTable;
         {$endif}
-        ClassType : TClass;
-        Parent : PPTypeInfo;
-        PropCount : SmallInt;
-        property UnitName: ShortString read GetUnitName;
-        property PropertyTable: PPropData read GetPropertyTable;
-      private
-        UnitNameField : ShortString;
-        { PropertyTable: TPropData }
+        case TTypeKind of
+          tkClass: (
+            ClassType : TClass;
+            Parent : PPTypeInfo;
+            PropCount : SmallInt;
+            UnitNameField : ShortString;
+            { PropertyTable: TPropData }
+          );
+          { include for proper alignment }
+          tkInt64: (
+            dummy: Int64;
+          );
+{$ifndef FPUNONE}
+          tkFloat: (
+            FloatType : TFloatType
+          );
+{$endif}
       end;
 
       PTypeData = ^TTypeData;
@@ -1023,15 +1035,15 @@ type
 
 function aligntoptr(p : pointer) : pointer;inline;
    begin
-{$ifdef m68k}
+{$ifdef CPUM68K}
      result:=AlignTypeData(p);
-{$else m68k}
+{$else CPUM68K}
 {$ifdef FPC_REQUIRES_PROPER_ALIGNMENT}
      result:=align(p,sizeof(p));
 {$else FPC_REQUIRES_PROPER_ALIGNMENT}
      result:=p;
 {$endif FPC_REQUIRES_PROPER_ALIGNMENT}
-{$endif m68k}
+{$endif CPUM68K}
    end;
 
 
@@ -3354,7 +3366,7 @@ var
   p: PByte;
 begin
   p := PByte(@UnitNameField[0]) + SizeOf(UnitNameField[0]) + Length(UnitNameField);
-  Result := AlignTypeData(p);
+  Result := AlignToPtr(p);
 end;
 
 { TTypeData }
