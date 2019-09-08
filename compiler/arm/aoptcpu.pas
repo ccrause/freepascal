@@ -472,7 +472,9 @@ Implementation
       hp1 : tai;
     begin
       Result:=false;
-      if (MatchInstruction(movp, A_VMOV, [taicpu(p).condition], [taicpu(p).oppostfix]) or
+      if ((MatchInstruction(movp, A_VMOV, [taicpu(p).condition], [taicpu(p).oppostfix]) and
+           ((getregtype(taicpu(movp).oper[0]^.reg)=R_MMREGISTER) or (taicpu(p).opcode=A_VLDR))
+          ) or
           (((taicpu(p).oppostfix in [PF_F64F32,PF_F64S16,PF_F64S32,PF_F64U16,PF_F64U32]) or (getsubreg(taicpu(p).oper[0]^.reg)=R_SUBFD)) and MatchInstruction(movp, A_VMOV, [taicpu(p).condition], [PF_F64])) or
           (((taicpu(p).oppostfix in [PF_F32F64,PF_F32S16,PF_F32S32,PF_F32U16,PF_F32U32]) or (getsubreg(taicpu(p).oper[0]^.reg)=R_SUBFS)) and MatchInstruction(movp, A_VMOV, [taicpu(p).condition], [PF_F32]))
          ) and
@@ -518,6 +520,17 @@ Implementation
                   { adjust used regs }
                   IncludeRegInUsedRegs(taicpu(movp).oper[0]^.reg,UsedRegs);
                 end;
+
+              { change
+                  vldr reg0,[reg1]
+                  vmov reg2,reg0
+                into
+                  ldr reg2,[reg1]
+
+                if reg2 is an int register
+              }
+              if (taicpu(p).opcode=A_VLDR) and (getregtype(taicpu(movp).oper[0]^.reg)=R_INTREGISTER) then
+                taicpu(p).opcode:=A_LDR;
 
               { finally get rid of the mov }
               taicpu(p).loadreg(0,taicpu(movp).oper[0]^.reg);
@@ -2243,6 +2256,30 @@ Implementation
                         hp4.free;
                         p:=hp2;
                         DebugMsg('Peephole Bl2B done', p);
+                      end;
+                  end;
+                A_VMOV:
+                  begin
+                    {
+                      change
+                      vmov reg0,reg1,reg2
+                      vmov reg1,reg2,reg0
+                      into
+                      vmov reg0,reg1,reg2
+
+                      can be applied regardless if reg0 or reg2 is the vfp register
+                    }
+                    if (taicpu(p).ops = 3) and
+                      GetNextInstruction(p, hp1) and
+                      MatchInstruction(hp1, A_VMOV, [taicpu(p).condition], [taicpu(p).oppostfix]) and
+                      (taicpu(hp1).ops = 3) and
+                      MatchOperand(taicpu(p).oper[0]^, taicpu(hp1).oper[2]^) and
+                      MatchOperand(taicpu(p).oper[1]^, taicpu(hp1).oper[0]^) and
+                      MatchOperand(taicpu(p).oper[2]^, taicpu(hp1).oper[1]^) then
+                      begin
+                        asml.Remove(hp1);
+                        hp1.free;
+                        DebugMsg('Peephole VMovVMov2VMov done', p);
                       end;
                   end;
                 A_VLDR,

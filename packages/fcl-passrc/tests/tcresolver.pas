@@ -453,6 +453,7 @@ type
     Procedure TestProc_ImplicitCalls;
     Procedure TestProc_Absolute;
     Procedure TestProc_LocalInit;
+    Procedure TestProc_ExtNamePropertyFail;
 
     // anonymous procs
     Procedure TestAnonymousProc_Assign;
@@ -945,6 +946,7 @@ type
     Procedure TestTypeHelper_Constructor_NewInstance;
     Procedure TestTypeHelper_Interface;
     Procedure TestTypeHelper_Interface_ConstructorFail;
+    Procedure TestTypeHelper_TypeAliasType;
 
     // attributes
     Procedure TestAttributes_Globals;
@@ -7503,6 +7505,16 @@ begin
   ParseProgram;
 end;
 
+procedure TTestResolver.TestProc_ExtNamePropertyFail;
+begin
+  StartProgram(false);
+  Add([
+  'procedure Foo; external name ''});'' property;',
+  'begin']);
+  CheckParserException('Expected ";" at token "property" in file afile.pp at line 2 column 36',
+    nParserExpectTokenError);
+end;
+
 procedure TTestResolver.TestAnonymousProc_Assign;
 begin
   StartProgram(false);
@@ -9149,7 +9161,7 @@ begin
   Add('begin');
   Add('end;');
   Add('begin');
-  CheckResolverException('identifier not found "TClassA"',nIdentifierNotFound);
+  CheckResolverException('class "TClassA" not found in this module',nClassXNotFoundInThisModule);
 end;
 
 procedure TTestResolver.TestClass_MethodInOtherUnitFail;
@@ -9170,7 +9182,8 @@ begin
   'begin',
   'end;',
   'begin']);
-  CheckResolverException('method class "TObject" in other unit "unit1"',nMethodClassXInOtherUnitY);
+  CheckResolverException('class "TObject" not found in this module',
+    nClassXNotFoundInThisModule);
 end;
 
 procedure TTestResolver.TestClass_MethodWithParams;
@@ -14498,6 +14511,10 @@ begin
   'type',
   '  TDynArrInt = array of byte;',
   '  TStaArrInt = array[1..2] of byte;',
+  'procedure Fly(var a: array of byte);',
+  'begin',
+  '  Fly(a);',
+  'end;',
   'procedure DoIt(a: array of byte);',
   'var',
   '  d: TDynArrInt;',
@@ -14508,6 +14525,8 @@ begin
   '  // d:=a; forbidden in delphi',
   '  DoIt(d);',
   '  DoIt(s);',
+  '  Fly(a);',
+  '  Fly(d);', // dyn array can be passed to a var open array
   'end;',
   'begin',
   '']);
@@ -15917,8 +15936,8 @@ begin
   Add([
   'type p = ^(red, green);',
   'begin']);
-  CheckResolverException('not yet implemented: pointer of anonymous type',
-    nNotYetImplemented);
+  CheckParserException('Expected "Identifier" at token "(" in file afile.pp at line 2 column 11',
+    nParserExpectTokenError);
 end;
 
 procedure TTestResolver.TestPointer_AssignPointerToClassFail;
@@ -17937,6 +17956,37 @@ begin
   'begin',
   '']);
   CheckResolverException('constructor is not supported',nXIsNotSupported);
+end;
+
+procedure TTestResolver.TestTypeHelper_TypeAliasType;
+begin
+  StartProgram(false);
+  Add([
+  '{$modeswitch typehelpers}',
+  'type',
+  '  TEnum = type longint;',
+  '  TIntHelper = type helper for longint',
+  '    procedure Run;',
+  '  end;',
+  '  TEnumHelper = type helper for TEnum',
+  '    procedure Fly;',
+  '  end;',
+  'procedure TIntHelper.Run;',
+  'begin',
+  'end;',
+  'procedure TEnumHelper.Fly;',
+  'begin',
+  'end;',
+  'var',
+  '  e: TEnum;',
+  '  i: longint;',
+  'begin',
+  '  i.Run;',
+  '  e.Fly;',
+  '  with i do Run;',
+  '  with e do Fly;',
+  '']);
+  ParseProgram;
 end;
 
 procedure TTestResolver.TestAttributes_Globals;

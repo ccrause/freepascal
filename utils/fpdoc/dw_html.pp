@@ -145,6 +145,8 @@ type
     procedure DescrEndItalic; override;
     procedure DescrBeginEmph; override;
     procedure DescrEndEmph; override;
+    procedure DescrBeginUnderline; override;
+    procedure DescrEndUnderline; override;
     procedure DescrWriteImageEl(const AFileName, ACaption, ALinkName : DOMString); override;
     procedure DescrWriteFileEl(const AText: DOMString); override;
     procedure DescrWriteKeywordEl(const AText: DOMString); override;
@@ -1097,6 +1099,16 @@ begin
 end;
 
 procedure THTMLWriter.DescrEndEmph;
+begin
+  PopOutputNode;
+end;
+
+procedure THTMLWriter.DescrBeginUnderline;
+begin
+  PushOutputNode(CreateEl(CurOutputNode, 'u'));
+end;
+
+procedure THTMLWriter.DescrEndUnderline;
 begin
   PopOutputNode;
 end;
@@ -2657,17 +2669,22 @@ Procedure THTMLWriter.AddElementsFromList(L : TStrings; List : TFPList; UsePathN
 Var
   I : Integer;
   El : TPasElement;
+  N : TDocNode;
 
 begin
   For I:=0 to List.Count-1 do
     begin
     El:=TPasElement(List[I]);
-    if UsePathName then
-      L.AddObject(El.PathName,El)
-    else
-      L.AddObject(El.Name,El);
-    If el is TPasEnumType then
-      AddElementsFromList(L,TPasEnumType(el).Values);
+    N:=Engine.FindDocNode(El);
+    if (N=Nil) or (not N.IsSkipped) then
+      begin
+      if UsePathName then
+        L.AddObject(El.PathName,El)
+      else
+        L.AddObject(El.Name,El);
+      If el is TPasEnumType then
+        AddElementsFromList(L,TPasEnumType(el).Values);
+      end;
     end;
 end;
 
