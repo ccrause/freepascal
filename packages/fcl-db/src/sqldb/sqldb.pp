@@ -2699,13 +2699,10 @@ end;
 procedure TCustomSQLQuery.ApplyFilter;
 
 begin
-  FreeFldBuffers;
   FStatement.Unprepare;
-  FIsEOF := False;
-  inherited InternalClose;
   FStatement.DoPrepare;
   FStatement.DoExecute;
-  inherited InternalOpen;
+  InternalRefresh;
   First;
 end;
 

@@ -946,6 +946,7 @@ type
     Procedure TestTypeHelper_Constructor_NewInstance;
     Procedure TestTypeHelper_Interface;
     Procedure TestTypeHelper_Interface_ConstructorFail;
+    Procedure TestTypeHelper_TypeAliasType;
 
     // attributes
     Procedure TestAttributes_Globals;
@@ -14510,6 +14511,10 @@ begin
   'type',
   '  TDynArrInt = array of byte;',
   '  TStaArrInt = array[1..2] of byte;',
+  'procedure Fly(var a: array of byte);',
+  'begin',
+  '  Fly(a);',
+  'end;',
   'procedure DoIt(a: array of byte);',
   'var',
   '  d: TDynArrInt;',
@@ -14520,6 +14525,8 @@ begin
   '  // d:=a; forbidden in delphi',
   '  DoIt(d);',
   '  DoIt(s);',
+  '  Fly(a);',
+  '  Fly(d);', // dyn array can be passed to a var open array
   'end;',
   'begin',
   '']);
@@ -17949,6 +17956,37 @@ begin
   'begin',
   '']);
   CheckResolverException('constructor is not supported',nXIsNotSupported);
+end;
+
+procedure TTestResolver.TestTypeHelper_TypeAliasType;
+begin
+  StartProgram(false);
+  Add([
+  '{$modeswitch typehelpers}',
+  'type',
+  '  TEnum = type longint;',
+  '  TIntHelper = type helper for longint',
+  '    procedure Run;',
+  '  end;',
+  '  TEnumHelper = type helper for TEnum',
+  '    procedure Fly;',
+  '  end;',
+  'procedure TIntHelper.Run;',
+  'begin',
+  'end;',
+  'procedure TEnumHelper.Fly;',
+  'begin',
+  'end;',
+  'var',
+  '  e: TEnum;',
+  '  i: longint;',
+  'begin',
+  '  i.Run;',
+  '  e.Fly;',
+  '  with i do Run;',
+  '  with e do Fly;',
+  '']);
+  ParseProgram;
 end;
 
 procedure TTestResolver.TestAttributes_Globals;
