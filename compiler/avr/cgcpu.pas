@@ -464,10 +464,10 @@ unit cgcpu;
              if b > tcgsize2size[size] then
                begin
                  b := tcgsize2size[size];
-                 b2 := a mod 8;
+                 b2 := 0;
                end
              else
-               b2 := 0;
+               b2 := a mod 8;
 
              if b < tcgsize2size[size] then
                // copy from src to dst accounting for shift offset
