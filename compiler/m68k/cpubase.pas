@@ -70,16 +70,16 @@ unit cpubase;
          a_mov3q,a_mvz,a_mvs,a_sats,a_byterev,a_ff1,a_remu,a_rems,
          { fpu processor instructions - directly supported }
          { ieee aware and misc. condition codes not supported   }
-         a_fabs,a_fadd,
+         a_fabs,fsabs,fdabs,a_fadd,a_fsadd,a_fdadd,
          a_fbeq,a_fbne,a_fbngt,a_fbgt,a_fbge,a_fbnge,
          a_fblt,a_fbnlt,a_fble,a_fbgl,a_fbngl,a_fbgle,a_fbngle,
          a_fdbeq,a_fdbne,a_fdbgt,a_fdbngt,a_fdbge,a_fdbnge,
          a_fdblt,a_fdbnlt,a_fdble,a_fdbgl,a_fdbngl,a_fdbgle,a_fdbngle,
          a_fseq,a_fsne,a_fsgt,a_fsngt,a_fsge,a_fsnge,
          a_fslt,a_fsnlt,a_fsle,a_fsgl,a_fsngl,a_fsgle,a_fsngle,
-         a_fcmp,a_fdiv,a_fmove,a_fmovem,
-         a_fmul,a_fneg,a_fnop,a_fsqrt,a_fsub,a_fsgldiv,
-         a_fsflmul,a_ftst,
+         a_fcmp,a_fdiv,a_fsdiv,a_fddiv,a_fmove,a_fsmove,a_fdmove,a_fmovem,
+         a_fmul,a_fsmul,a_fdmul,a_fneg,a_fsneg,a_fdneg,a_fnop,a_fsqrt,a_fssqrt,a_fdsqrt,
+         a_fsub,a_fssub,a_fdsub,a_fsgldiv,a_fsglmul,a_ftst,
          a_ftrapeq,a_ftrapne,a_ftrapgt,a_ftrapngt,a_ftrapge,a_ftrapnge,
          a_ftraplt,a_ftrapnlt,a_ftraple,a_ftrapgl,a_ftrapngl,a_ftrapgle,a_ftrapngle,
          a_fint,a_fintrz,
@@ -157,10 +157,6 @@ unit cpubase;
       VOLATILE_INTREGISTERS = [RS_D0,RS_D1];
       VOLATILE_FPUREGISTERS = [RS_FP0,RS_FP1];
       VOLATILE_ADDRESSREGISTERS = [RS_A0,RS_A1];
-
-    type
-      totherregisterset = set of tregisterindex;
-
 
 {*****************************************************************************
                                 Conditions
@@ -403,9 +399,16 @@ implementation
 
     function is_calljmp(o:tasmop):boolean;
       begin
-        is_calljmp :=
-          o in [A_BXX,A_FBXX,A_DBXX,A_BCC..A_BVS,A_DBCC..A_DBVS,A_FBEQ..A_FSNGLE,
-                A_JSR,A_BSR,A_JMP];
+        case o of
+          A_BXX,A_FBXX,A_DBXX,
+          A_BCC..A_BVS,
+          A_DBCC..A_DBVS,
+          A_FBEQ..A_FSNGLE,
+          A_JSR,A_BSR,A_JMP:
+            is_calljmp:=true;
+          else
+            is_calljmp:=false;
+        end;
       end;
 
 
