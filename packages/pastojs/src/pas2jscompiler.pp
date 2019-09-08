@@ -2259,7 +2259,7 @@ begin
     MapFilename:=LocalFilename;
     if (BaseDir<>'') and not SrcMapFilenamesAbsolute then
     begin
-      if not FS.TryCreateRelativePath(LocalFilename,BaseDir,true,MapFilename) then
+      if not FS.TryCreateRelativePath(LocalFilename,BaseDir,true,false,MapFilename) then
       begin
         // e.g. file is on another partition
         if not SrcMapInclude then
@@ -2273,6 +2273,12 @@ begin
         MapFilename:=LocalFilename;
       end;
     end;
+    if FilenameIsAbsolute(MapFilename)
+        and SameText(SrcMapSourceRoot,'file://') then
+      begin
+      // Firefox needs the "file://" schema with every file
+      MapFilename:='file://'+MapFilename;
+      end;
     {$IFNDEF Unix}
     // use / as PathDelim
     if PathDelim<>'/' then

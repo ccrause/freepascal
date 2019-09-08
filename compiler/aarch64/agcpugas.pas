@@ -50,7 +50,7 @@ unit agcpugas;
 
     const
       gas_shiftmode2str : array[tshiftmode] of string[4] = (
-        '','lsl','lsr','asr',
+        '','lsl','lsr','asr','ror',
         'uxtb','uxth','uxtw','uxtx',
         'sxtb','sxth','sxtw','sxtx');
 
@@ -236,6 +236,11 @@ unit agcpugas;
               end
             else
               getopstr:=getreferencestring(asminfo,o.ref^);
+          top_realconst:
+            begin
+              str(o.val_real,Result);
+              Result:='#'+Result;
+            end
           else
             internalerror(2014121507);
         end;
