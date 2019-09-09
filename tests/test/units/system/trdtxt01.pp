@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { %FILES=testpc.txt }
 Program trdtxt01;
 

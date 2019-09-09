@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { %recompile }
 
 program tmacpas1;

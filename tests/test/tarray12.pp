@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program tarray12;
 
 {$mode objfpc}

@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program rtti;
 
 {$ifdef fpc}

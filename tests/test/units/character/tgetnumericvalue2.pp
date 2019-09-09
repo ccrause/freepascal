@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program tgetnumericvalue2;
 
 {$ifdef FPC}

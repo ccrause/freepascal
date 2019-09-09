@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { %OPT=-gh }
 
 program tw35028;

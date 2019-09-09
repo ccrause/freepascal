@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program rcerror;
 
 {$MODE DELPHI} {$H+} {$R+}

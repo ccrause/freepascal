@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { test copy optimization of dyn. arrays }
 uses
   Sysutils;

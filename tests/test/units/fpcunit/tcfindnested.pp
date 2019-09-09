@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 unit tcfindnested;
 
 {$mode objfpc}{$H+}

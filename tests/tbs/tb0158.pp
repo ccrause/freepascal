@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { Old file: tbs0189.pp }
 { cant compare adresses of function variables !! As tbs0188 FPC syntax problem see source (PM) }
 

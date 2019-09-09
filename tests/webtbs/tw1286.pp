@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 {$ifdef fpc}{$mode objfpc}{$endif}
 uses sysutils;
  var S:String;

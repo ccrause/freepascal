@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { Checks whether the %x format string supports qwords.
  This is a variation of tb0488a
 }

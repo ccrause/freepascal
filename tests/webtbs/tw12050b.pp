@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { %OPT=-Sew -vw }
 
 unit tw12050b;

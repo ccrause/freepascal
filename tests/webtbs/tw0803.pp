@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 {$MODE objfpc}
 program FileExc;
 uses SysUtils, Classes;

@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 
 {$ifdef fpc}{$mode objfpc}{$h+}{$endif}
 {$apptype console}

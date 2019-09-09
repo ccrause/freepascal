@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { %NORUN }
 
 { in mode Delphi generic types might be overloaded - here: procvars only }

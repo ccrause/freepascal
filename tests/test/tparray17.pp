@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { from gpc tests, original name: pack6.pas }
 
 { Introduced the type declaration. Previously, both arrays were `of 0..3'.

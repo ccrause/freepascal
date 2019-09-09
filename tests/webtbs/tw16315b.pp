@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { %fail }
 {$ieeeerrors+}
 program test;

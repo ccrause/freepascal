@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program DumpClass;
 
 {$mode objfpc}{$H+}

@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { %OPT=-gh }
 {$mode objfpc}{$h+}
 { Test that exception in object constructor does not cause memory leak }

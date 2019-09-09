@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { %version=1.1 }
 {$mode objfpc}
 { Source provided for Free Pascal Bug Report 2763 }

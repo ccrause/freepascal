@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program tiscontrol2;
 
 {$ifdef FPC}

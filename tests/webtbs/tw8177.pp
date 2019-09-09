@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program ValidateStrToInt;
 
 {$APPTYPE CONSOLE}

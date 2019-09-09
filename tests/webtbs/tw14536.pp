@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program test_varbyref;
 
 {$mode objfpc}{$H+}

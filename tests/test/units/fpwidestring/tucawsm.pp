@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { %FILES=CollationTest_NON_IGNORABLE_SHORT.txt CollationTest_SHIFTED_SHORT.txt}
 program tucawsm;
 { Test the Unicode Collation Algorithm (UCA) incremental implementation

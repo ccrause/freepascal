@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { Test for FloatToStr and CurrToStr functions. }
 
 uses sysutils;

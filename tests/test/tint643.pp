@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 {$q+}
 {$mode objfpc}
 uses

@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { Old file: tbs0288.pp }
 { crash with virtual method in except part             OK 0.99.13 (PFV) }
 

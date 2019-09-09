@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 
 { Variation without virtual classes : no VMT }
 { here sizeof directly returns a constant value }

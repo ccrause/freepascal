@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 uses
   unicodeducet, fpwidestring, cp1253, cp1251,
   SysUtils;

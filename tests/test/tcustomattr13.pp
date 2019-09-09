@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program tcustomattr13;
 
 {$mode objfpc}

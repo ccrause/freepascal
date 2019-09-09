@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { %opt=-g-h }
 
 program project1;

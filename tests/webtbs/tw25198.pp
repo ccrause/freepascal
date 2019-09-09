@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program concatenate_resourestrings_delphiunicode;
 
 {$mode delphiunicode}

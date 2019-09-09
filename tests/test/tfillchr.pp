@@ -1,3 +1,4 @@
+{ TIMEOUT=60 }
 const
   err: boolean = false;
 

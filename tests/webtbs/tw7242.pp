@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 {$mode delphi}
 unit tw7242;
 

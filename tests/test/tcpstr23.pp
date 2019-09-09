@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program tcpstr23;
 
 {$MODE DELPHI}

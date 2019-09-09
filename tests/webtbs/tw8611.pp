@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program ie200501152;
 
 {$mode objfpc}

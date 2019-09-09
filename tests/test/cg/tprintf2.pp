@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { %version=1.1 }
 { %NOTE=This test requires a C library }
 

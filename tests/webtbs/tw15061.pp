@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 {$ifdef FPC}
 {$mode macpas}
 {$align mac68k}

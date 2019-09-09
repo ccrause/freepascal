@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 uses sysutils;
  var r:array[0..3] of real;
 begin

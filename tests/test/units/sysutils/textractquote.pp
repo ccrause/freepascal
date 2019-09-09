@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 // test  AnsiExtractQuotedStr
 
 {$mode delphi}

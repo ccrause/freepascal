@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { %VERSION=1.1 }
 {%OPT=-Og}
 { This verifies if the strings are

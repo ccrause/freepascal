@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { %norun }
 { %opt=-vn -Sen }
 

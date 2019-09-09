@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { %opt=-Oonoconstprop }
 {$mode objfpc}
 {$r+}

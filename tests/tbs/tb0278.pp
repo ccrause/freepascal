@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { Old file: tbs0330.pp }
 {  }
 

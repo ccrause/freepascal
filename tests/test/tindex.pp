@@ -1,4 +1,4 @@
-
+{ TIMEOUT=60 }
 var
   a, b: array[0..515] of byte;
   bw: array[0..258] of word absolute b;

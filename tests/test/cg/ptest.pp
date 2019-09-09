@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 {
   Program to test linking between C and pascal units.
 

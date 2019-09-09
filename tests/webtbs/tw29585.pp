@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program tw29585;
 {$IFDEF FPC}
 {$MODE OBJFPC}{$H+}

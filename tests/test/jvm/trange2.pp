@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program trange2;
 
 {$mode objfpc}

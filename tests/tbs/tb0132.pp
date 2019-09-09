@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { Old file: tbs0154.pp }
 { Subrange types give type mismatch when assigning to   OK 0.99.7 (PFV) }
 

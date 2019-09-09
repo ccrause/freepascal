@@ -33,6 +33,7 @@
 {$E+}
 {$endif NEEDFPUEMU}
 
+{$ifndef FPUNONE}
 procedure fail;
 begin
   WriteLn('Failed!');
@@ -277,9 +278,10 @@ end;
   else
     WriteLn('Success.');
  end;
-
+{$endif FPUNONE}
 
 Begin
+{$ifndef FPUNONE}
  RealTestEqual;
  RealTestNotEqual;
  RealTestLE;
@@ -289,4 +291,5 @@ Begin
  RealTestDiv;
  RealTestMul;
 { RealTestComplex;}
+{$endif FPUNONE}
 end.

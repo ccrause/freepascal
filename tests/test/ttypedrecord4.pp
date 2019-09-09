@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 {$mode macpas}
 { Mac Pascal uses commas as separators between record fields in typed constants }
 program ttyperecord4;

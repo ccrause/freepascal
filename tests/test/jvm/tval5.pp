@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program tval5;
 
 {$mode objfpc}

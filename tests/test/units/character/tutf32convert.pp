@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program tutf32convert;
 
 {$mode objfpc}

@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 {$mode delphi}
 
 uses variants, sysutils;

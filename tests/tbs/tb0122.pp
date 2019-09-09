@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { %OPT= -S2 }
 
 { Old file: tbs0141.pp }

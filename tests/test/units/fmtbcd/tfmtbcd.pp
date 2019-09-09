@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 // A basic tests for FmtBCD unit
 
 {$ifdef fpc}{$mode objfpc}{$h+}{$endif}

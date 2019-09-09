@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { %OPT=-gh }
 { Source provided for Free Pascal Bug Report 4247 }
 { Submitted by "Martin Schreiber" on  2005-08-02 }

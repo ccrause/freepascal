@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program t5;
 {$ifdef fpc}{$mode objfpc}{$h+}{$endif}
 

@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program tcnvstr3;
 
 { Type conversion program for char -> string     }

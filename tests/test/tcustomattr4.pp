@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program tcustomattr4;
 
 {$mode delphi}

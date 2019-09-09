@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { This passes under Delphi and Borland pascal      }
 { for objects, classes don't pass, cf. /tbf/tb0125 }
 type

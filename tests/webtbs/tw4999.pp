@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program fpc203fish;
 {$mode objfpc}{$H+}
 uses  Classes;

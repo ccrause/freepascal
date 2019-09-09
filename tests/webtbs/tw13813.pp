@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program test_collection;
 {$ifdef fpc}{$mode objfpc}{$h+}{$endif}
 {$apptype console}

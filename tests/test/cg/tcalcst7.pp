@@ -29,7 +29,7 @@ program tcalcst7;
 {$endif}
 
 
-{$ifdef cpu68k}
+{$if defined(cpu68k) or defined(cpuavr)}
   {$define cpusmall}
 {$endif}
 {$ifdef cpui8086}
@@ -60,8 +60,10 @@ program tcalcst7;
   RESULT_U16BIT = $500F;
   RESULT_S32BIT = $500F0000;
   RESULT_S64BIT = $500F0000;
+{$ifndef FPUNONE}
   RESULT_S32REAL = 1777.12;
   RESULT_S64REAL = 3444.24;
+{$endif FPUNONE}
   RESULT_BOOL8BIT = 1;
   RESULT_BOOL16BIT = 1;
   RESULT_BOOL32BIT = 1;
@@ -112,8 +114,10 @@ var
  global_u8bit : byte;
  global_u16bit : word;
  global_s32bit : longint;
+{$ifndef FPUNONE}
  global_s32real : single;
  global_s64real : double;
+{$endif FPUNONE}
  global_ptr : pchar;
  global_proc : tprocedure;
  global_bigstring : shortstring;
@@ -128,8 +132,10 @@ var
  value_s64bit : int64;
  value_class : tclass1;
 {$endif}
+{$ifndef FPUNONE}
  value_s32real : single;
  value_s64real  : double;
+{$endif FPUNONE}
  value_proc : tprocedure;
  value_ptr : pchar;
  value_smallrec : tsmallrecord;
@@ -154,8 +160,10 @@ var
       global_u8bit := 0;
       global_u16bit := 0;
       global_s32bit := 0;
+{$ifndef FPUNONE}
       global_s32real := 0.0;
       global_s64real := 0.0;
+{$endif FPUNONE}
       global_ptr := nil;
       global_proc := nil;
       global_bigstring := '';
@@ -173,8 +181,10 @@ var
       value_u8bit := 0;
       value_u16bit := 0;
       value_s32bit := 0;
+{$ifndef FPUNONE}
       value_s32real := 0.0;
       value_s64real  := 0.0;
+{$endif FPUNONE}
       value_proc := nil;
       value_ptr := nil;
 {$ifndef tp}
@@ -218,6 +228,7 @@ var
     end;
 
 
+{$ifndef FPUNONE}
    function gets32real: single;
     begin
       gets32real:=RESULT_S32REAL;
@@ -227,6 +238,7 @@ var
     begin
       gets64real:=RESULT_S64REAL;
     end;
+{$endif FPUNONE}
 
   {************************************************************************}
   {                           CONST  PARAMETERS                            }
@@ -252,7 +264,7 @@ var
         vtInteger : global_u8bit := arr[i].vinteger and $ff;
         vtBoolean : global_boolean := arr[i].vboolean;
         vtChar : global_char := arr[i].vchar;
-        vtExtended : global_s64real := arr[i].VExtended^;
+        {$ifndef FPUNONE}vtExtended : global_s64real := arr[i].VExtended^;{$endif FPUNONE}
         vtString :  global_bigstring := arr[i].VString^;
         vtPointer : ;
         vtPChar : global_ptr := arr[i].VPchar;
@@ -371,7 +383,7 @@ var
         vtInteger : global_u8bit := arr[i].vinteger and $ff;
         vtBoolean : global_boolean := arr[i].vboolean;
         vtChar : global_char := arr[i].vchar;
-        vtExtended : global_s64real := arr[i].VExtended^;
+        {$ifndef FPUNONE}vtExtended : global_s64real := arr[i].VExtended^;{$endif FPUNONE}
         vtString :  global_bigstring := arr[i].VString^;
         vtPointer : ;
         vtPChar : global_ptr := arr[i].VPchar;
@@ -621,8 +633,10 @@ begin
   value_class := tclass1.create;
   value_boolean := RESULT_BOOLEAN;
   value_char := RESULT_CHAR;
+{$ifndef FPUNONE}
   value_s64real:=RESULT_S64REAL;
-  proc_const_smallarray_const_1([value_u8bit,value_ptr,value_s64bit,value_char,value_smallstring,value_s64real,
+{$endif FPUNONE}
+  proc_const_smallarray_const_1([value_u8bit,value_ptr,value_s64bit,value_char,value_smallstring,{$ifndef FPUNONE}value_s64real,{$endif FPUNONE}
     value_boolean,value_class]);
 
   if global_u8bit <> RESULT_U8BIT then
@@ -632,8 +646,10 @@ begin
     failed := true;
   if global_boolean <> RESULT_BOOLEAN then
     failed:=true;
+{$ifndef FPUNONE}
   if trunc(global_s64real) <> trunc(RESULT_S64REAL) then
      failed := true;
+{$endif FPUNONE}
   if global_bigstring <> RESULT_SMALLSTRING then
      failed := true;
   if global_ptr <> value_ptr then
@@ -815,9 +831,11 @@ begin
   value_class := tclass1.create;
   value_boolean := RESULT_BOOLEAN;
   value_char := RESULT_CHAR;
+{$ifndef FPUNONE}
   value_s64real:=RESULT_S64REAL;
+{$endif FPUNONE}
   proc_const_smallarray_const_1_mixed(RESULT_U8BIT, [value_u8bit,value_ptr,value_s64bit,value_char,value_smallstring,
-    value_s64real,value_boolean,value_class],RESULT_U8BIT);
+    {$ifndef FPUNONE}value_s64real,{$endif FPUNONE}value_boolean,value_class],RESULT_U8BIT);
 
   if global_u8bit <> RESULT_U8BIT then
     failed := true;
@@ -826,8 +844,10 @@ begin
     failed := true;
   if global_boolean <> RESULT_BOOLEAN then
     failed:=true;
+{$ifndef FPUNONE}
   if trunc(global_s64real) <> trunc(RESULT_S64REAL) then
      failed := true;
+{$endif FPUNONE}
   if global_bigstring <> RESULT_SMALLSTRING then
      failed := true;
   if global_ptr <> value_ptr then

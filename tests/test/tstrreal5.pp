@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program tstrreal4;
 { test for NegCurFormat values  by Zeljan Rikalo
   valid values are at:

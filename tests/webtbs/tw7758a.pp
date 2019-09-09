@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { %norun }
 
 {$ifdef go32v2}

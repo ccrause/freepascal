@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 ﻿{$apptype console}
 uses
   unicodeducet, fpwidestring, cp866,

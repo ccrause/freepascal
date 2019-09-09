@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { %opt=-Sd }
 
 {$IFNDEF FPC}

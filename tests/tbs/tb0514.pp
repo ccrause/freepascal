@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { original: peter5d.pas from the GNU Pascal testsuite }
 
 {$mode macpas}

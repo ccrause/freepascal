@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { %OPT=-S2 }
 { Source provided for Free Pascal Bug Report 4704 }
 { Submitted by "Phil H." on  2006-01-17 }

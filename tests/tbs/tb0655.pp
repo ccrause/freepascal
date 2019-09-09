@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program tb0655;
 
 uses

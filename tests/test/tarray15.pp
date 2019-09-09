@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program tarray15;
 
 {$define target_supports_rodata}

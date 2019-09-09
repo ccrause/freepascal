@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program bug;
 
 {$MODE OBJFPC} {$H+}

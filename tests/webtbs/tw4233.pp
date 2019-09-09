@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { Source provided for Free Pascal Bug Report 4233 }
 { Submitted by "christian franz" on  2005-07-28 }
 { e-mail: cfranz@access.ch }

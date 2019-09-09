@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 PROGRAM Test;
 
 USES

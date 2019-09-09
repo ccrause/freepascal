@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { this tests that constructors in helpers are working correctly }
 
 program tthlp14;

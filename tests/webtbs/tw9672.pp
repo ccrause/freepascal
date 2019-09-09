@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 {$mode objfpc} {$H+}
 uses fgl,sysutils;
 

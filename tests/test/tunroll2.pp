@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { %OPT=-Ooloopunroll -Sg }
 {$mode objfpc}
 

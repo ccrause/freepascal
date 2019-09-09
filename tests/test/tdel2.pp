@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 {%OPT=-gh}
 program tdel2;
 {$ifdef fpc}{$mode objfpc}{$h+}{$endif}

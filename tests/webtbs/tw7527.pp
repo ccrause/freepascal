@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program test_mix_string_types;
 {$define fail1}
 {$define fail2}

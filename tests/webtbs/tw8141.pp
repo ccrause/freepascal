@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { %norun }
 uses
   Classes, SysUtils;

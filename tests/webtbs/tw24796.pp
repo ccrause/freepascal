@@ -47,6 +47,7 @@ end;
 
 /////////////////////////////////////////
 
+{$ifndef CPUAVR}
 type
     bits64 = qword;
 
@@ -84,12 +85,14 @@ begin
     end;
 
 end;
-
+{$endif CPUAVR}
 /////////////////////////////////////////
 
 begin
     test1;
+{$ifndef CPUAVR}
     test2;
+{$endif CPUAVR}
     if fault_mask = 0 then
         writeln( 'pass' )
     else

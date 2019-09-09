@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { this tests that forced typecasts to inline specialized types work }
 program tgeneric52;
 

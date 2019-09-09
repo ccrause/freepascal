@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 unit tw10807;
 
 interface

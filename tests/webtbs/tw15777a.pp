@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { %opt=-vw -Sew }
 
 { should not cause warnings about potential problems with coerced univ

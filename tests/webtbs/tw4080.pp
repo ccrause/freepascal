@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program tw4080;
 {$i+}
 {$ifdef go32v2}

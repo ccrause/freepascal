@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { from gpc testsuite, original name sam7.pas }
 
 {$ifdef fpc}

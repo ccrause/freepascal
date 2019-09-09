@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 unit umacpas1;
 
 {$DEFINE UMACPAS_PRE_INTERFACE_VAR}

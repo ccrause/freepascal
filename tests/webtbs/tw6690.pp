@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program inheritedcorba;
 {$mode objfpc}{$h+}
 uses

@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { %fail }
 var c,c1,c2 : char;
 begin

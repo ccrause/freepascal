@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program test_intf;
 
 {$mode objfpc}{$H+}

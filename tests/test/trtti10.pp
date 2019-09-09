@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program trtti10;
 
 {$MODE DELPHI}

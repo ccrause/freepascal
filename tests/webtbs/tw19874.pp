@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { -*- compile-command: "fpc -Sa test_fgl_first_last_set.pas" -*- }
 {$mode objfpc}{$H+}
 

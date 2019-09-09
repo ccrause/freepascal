@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program utf8;
 {$ifdef FPC}{$mode objfpc}{$h+}{$INTERFACES CORBA}{$endif}
 {$ifdef mswindows}{$apptype console}{$endif}

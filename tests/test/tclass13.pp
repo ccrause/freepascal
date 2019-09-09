@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program tclass13;
 
 {$ifdef fpc}

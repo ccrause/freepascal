@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 {$Q+}
 uses math;
 var s1,s2:byte;

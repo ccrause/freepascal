@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { original: peter5b.pas from the GNU Pascal testsuite }
 
 { Mac Pascal objects }

@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 unit tclinkedlist;
 
 {$mode objfpc}{$H+}

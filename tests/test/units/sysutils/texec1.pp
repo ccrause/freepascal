@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { %result=1 }
 { %NEEDEDAFTER }
 { this test fails when it isn't called by execansi }

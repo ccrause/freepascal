@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program prueba;
 uses math;
 var

@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 {$mode macpas}
 function f: longint;
 begin

@@ -33,6 +33,7 @@ var
    q1,q3,q4 : qword;
 
 begin
+{$ifndef CPUAVR}
    q1:=1;
    q3:=1;
    q4:=1;
@@ -99,4 +100,5 @@ begin
    read(i); }
    str(q,s);
    str(i,s);
+{$endif CPUAVR}
 end.

@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program tmacnonlocalgoto;
 {$MODE MACPAS}
 

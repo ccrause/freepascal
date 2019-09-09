@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { the parent in the RTTI of a non derived helper is Nil, otherwise it is the
   typeinfo of the parent helper; also the type info of the extended type is
   available through ExtendedInfo }

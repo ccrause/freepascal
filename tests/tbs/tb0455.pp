@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 {$IFDEF FPC}
 {$MODE DELPHI}
 {$ENDIF}

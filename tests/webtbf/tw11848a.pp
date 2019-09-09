@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { %OPT=-Sew -vw -Oodfa }
 { %FAIL }
 {$mode objfpc}{$H+}

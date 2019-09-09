@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { The original test is about $Q option only,
   ifor which we explicitly disabled $R.
   Here use both $Q and $R,

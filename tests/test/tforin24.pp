@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program tforin24;
 
 {$mode objfpc}

@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 // A basic test for TCustomVariantType creation/registration
 
 {$ifdef fpc}{$mode objfpc}{$h+}{$endif}

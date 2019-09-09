@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 {$mode macpas}
 program test;
 var r: record field: packed array [0..1] of byte; b:  byte; end;

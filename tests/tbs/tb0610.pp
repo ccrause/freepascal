@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program testarray;
 {$mode objfpc}
 {$h+}

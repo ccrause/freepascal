@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 {$mode delphi}{$H+}{$M+}
 
 uses

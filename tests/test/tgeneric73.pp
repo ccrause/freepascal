@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { %NORUN }
 
 { This tests that nested types can reference each other inside a generic }

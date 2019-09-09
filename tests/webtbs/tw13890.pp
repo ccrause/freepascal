@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program test_bits;
 {$ifdef fpc}{$mode objfpc}{$h+}{$endif}
 

@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 {$packset 1}
 program t;
 {$mode objfpc}{$h+}

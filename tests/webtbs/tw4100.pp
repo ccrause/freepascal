@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { %OPT=-CE }
 { %result=217 }
 

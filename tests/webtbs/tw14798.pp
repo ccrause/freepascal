@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 {%delfiles=dump.bin}
 
 { Source provided for Free Pascal Bug Report 14708 }

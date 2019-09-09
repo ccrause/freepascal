@@ -14,5 +14,9 @@ const PArr : array [0..3] of Fn = (Help, P1, P2, P3) ;
 procedure bla(const i:longint); begin end;
 
 begin
+{$ifdef CPUAVR}
+ bla(PArr[0]);
+{$else}
  bla(PArr[Paramcount]);
+{$endif}
 end.

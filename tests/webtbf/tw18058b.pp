@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { %fail }
 
 {$ifdef fpc}{$mode objfpc}{$H+}{$endif}

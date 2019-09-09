@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program tw25004;
 
 {$MODE DELPHI}

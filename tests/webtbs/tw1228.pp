@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { %INTERACTIVE }
 
 { Source provided for Free Pascal Bug Report 1228 }

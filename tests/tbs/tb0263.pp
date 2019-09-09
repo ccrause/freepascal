@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { %RESULT=217 }
 
 { Old file: tbs0306.pp }

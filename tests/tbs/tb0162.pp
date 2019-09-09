@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { Old file: tbs0193.pp }
 { overflow checking for 8 and 16 bit operations wrong }
 

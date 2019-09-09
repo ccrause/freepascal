@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 Unit tccompstreaming;
 
 {$mode objfpc}

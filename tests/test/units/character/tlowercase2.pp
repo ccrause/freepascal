@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program tlowercase2;
 
 {$ifdef FPC}

@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { %NORUN }
 
 { In Delphi mode unsupported types like TextFile are ignored inside records

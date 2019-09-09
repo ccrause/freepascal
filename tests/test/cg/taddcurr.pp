@@ -25,6 +25,8 @@
 { RIGHT NODE (operand)                                          }
 {  LOC_FPU                                                      }
 {  LOC_REFERENCE / LOC_MEM                                      }
+
+{$ifndef FPUNONE}
 procedure fail;
 begin
   WriteLn('Failed!');
@@ -256,9 +258,11 @@ end;
   else
     WriteLn('Success.');
  end;
+{$endif FPUNONE}
 
 
 Begin
+{$ifndef FPUNONE}
  CurrencyTestEqual;
  CurrencyTestNotEqual;
  CurrencyTestLE;
@@ -268,4 +272,5 @@ Begin
  CurrencyTestDiv;
  CurrencyTestMul;
 { CurrencyTestComplex;}
+{$endif FPUNONE}
 end.

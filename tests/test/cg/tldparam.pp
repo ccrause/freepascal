@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { This tests the passing of parameters of routines }
 { and how they are accessed.                       }
 { Tests secondload() and secondcallparan()         }

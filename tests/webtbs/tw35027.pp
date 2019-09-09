@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program tw35027;
 {$mode objfpc}{$H+}
 uses

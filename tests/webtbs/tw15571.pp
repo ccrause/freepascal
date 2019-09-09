@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 uses cmem, sysutils;
 begin
  inttostr(1234);

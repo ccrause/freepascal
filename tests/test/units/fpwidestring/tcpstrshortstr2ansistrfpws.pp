@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 ﻿{$mode objfpc} {$H+}
 uses
   unicodeducet, fpwidestring, cp1252, cp866,

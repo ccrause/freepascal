@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 // to have correct test result with delphi set codepage option to 65001
 program tcpstr17;
 {$ifdef go32v2}

@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 {$mode objfpc}
 
 { tests forward class types }

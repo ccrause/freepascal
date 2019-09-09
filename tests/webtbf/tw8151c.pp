@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { %opt=-Oodfa -Sew -vw }
 { %fail }
 {$IFDEF FPC}

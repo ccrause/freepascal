@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { %GRAPH }
 { Source provided for Free Pascal Bug Report 1050 }
 { Submitted by "Jonathan Ball" on  2000-07-17 }

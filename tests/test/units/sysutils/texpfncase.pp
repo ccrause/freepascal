@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program texpfncase;
 {$IFDEF FPC}
  {$MODE DELPHI}

@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program tmaclocalprocparam;
 {$MODE MACPAS}
 

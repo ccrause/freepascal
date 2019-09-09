@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { %FAIL }
 
 { helper types can not be used with default }

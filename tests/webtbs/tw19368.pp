@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program Test5_FloatToStr_2Times;
 
 {$mode objfpc}{$H+}

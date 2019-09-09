@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program trtti8;
 
 {$mode delphi}

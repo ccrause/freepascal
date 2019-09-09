@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { Source provided for Free Pascal Bug Report 3973 }
 { Submitted by "alphax" on  2005-05-16 }
 { e-mail: graphcoloring@yahoo.com.cn }

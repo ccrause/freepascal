@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program test_intf_query;
 
 {$IFDEF FPC}

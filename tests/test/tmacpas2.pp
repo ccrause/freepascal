@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 {$MODE MACPAS}
 
 {Tests of mac pascal constructs}

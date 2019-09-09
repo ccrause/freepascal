@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program terecs14;
 
 {$mode objfpc}

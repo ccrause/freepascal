@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 {****************************************************************}
 {  CODE GENERATOR TEST PROGRAM                                   }
 {  Copyright (c) 2002 Carl Eric Codere                           }

@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { This test explicity generates a range check error
   in Tab.Count (which is zero) -1
   as upper range in set.

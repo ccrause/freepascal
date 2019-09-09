@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { Program 1 : memory waste
  dummy test }
 

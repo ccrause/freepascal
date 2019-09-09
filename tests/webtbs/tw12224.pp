@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program test_widestrprop_p2;
 {$mode objfpc}{$H+}
 uses

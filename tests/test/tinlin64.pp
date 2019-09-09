@@ -1,7 +1,7 @@
 program test_64bit_inline;
 
 {$inline on}
-
+{$ifndef CPUAVR}
 function add (a,b : int64) : int64;
 begin
   add:=a+b;
@@ -11,12 +11,12 @@ function inlineadd (a,b : int64) : int64; inline;
 begin
   inlineadd:=a+b;
 end;
-
-
+{$endif CPUAVR}
 var
   a, b, c, d : int64;
 
 begin
+{$ifndef CPUAVR}
   a:=50;
   b:=78;
   d:= -45;
@@ -37,4 +37,5 @@ begin
       writeln('Error in inlined function with int64 args');
       Halt(1);
     end;
+{$endif CPUAVR}
 end.

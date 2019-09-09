@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program TestStrIComp;
 
 {$ifdef go32v2}

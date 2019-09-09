@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 // test that enumeration members are retrieved from the right enumeration types
 // test enumeration.element syntax
 // test scropedenums directive

@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { %opt=-Mdelphi -Sa }
 { don't run this test when no hardware fpu is available, it would take a lot of time }
 {$ifndef FPUSOFT}

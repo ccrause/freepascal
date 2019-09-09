@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 
 // without -O3 prints  0002020200010101
 // with -O3 prints 0001010100010101

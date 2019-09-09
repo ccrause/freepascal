@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { %OPT=-Sd }
 
 { Source provided for Free Pascal Bug Report 4678 }

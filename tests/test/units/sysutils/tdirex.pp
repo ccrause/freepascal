@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program test_directoryexists;
 
 {$H+}

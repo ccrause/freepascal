@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 // to have correct test result with delphi set codepage option to 866
 program tcpstr18;
 {$apptype console}

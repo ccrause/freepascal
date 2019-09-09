@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program tclassinfo1;
 
 {$apptype console}

@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 uses
 {$ifdef unix}
   cthreads,

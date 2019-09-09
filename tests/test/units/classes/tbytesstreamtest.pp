@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program tbytesstreamtest;
 
 {$mode objfpc}{$H+}

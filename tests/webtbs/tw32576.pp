@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { %OPT=-O3 }
 {$mode objfpc}
 {$R+}

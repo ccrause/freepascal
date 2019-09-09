@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 unit tw11852;
 
 interface

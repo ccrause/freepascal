@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program test;
 
 uses sysutils;

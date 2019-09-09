@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 {$IFDEF FPC}{$mode objfpc}{$ENDIF}
 {$h+}
 

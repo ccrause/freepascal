@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program intpow;
 {$apptype console}
 {$mode delphi}

@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { Old file: tbs0289.pp }
 { no hint/note for unused types : implemented with -vnh OK 0.99.13 (PM) }
 

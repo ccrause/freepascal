@@ -23,7 +23,9 @@ const
   RESULT_U32BIT = 654321;
   RESULT_U8BIT  = $55;
   RESULT_S16BIT = -12124;
+{$ifndef FPUNONE}
   RESULT_REAL   = 12.12;
+{$endif FPUNONE}
 
   { adjusts the size of the bigrecord }
   MAX_INDEX = 7;
@@ -68,10 +70,12 @@ type
         getresults16bit := RESULT_S16BIT;
       end;
 
+{$ifndef FPUNONE}
     function getresultreal : real;
       begin
         getresultreal := RESULT_REAL;
       end;
+{$endif FPUNONE}
 
 var
  failed : boolean;
@@ -80,7 +84,9 @@ var
  s16bit : smallint;
  u8bit : byte;
  boolval : boolean;
+{$ifndef FPUNONE}
  real_val : real;
+{$endif FPUNONE}
  bigrecord1, bigrecord2 : tbigrecord;
  i: integer;
 Begin
@@ -129,9 +135,11 @@ Begin
   Write('left : LOC_REFERENCE, right : LOC_FPUREGISTER tests..');
   failed := false;
 
+{$ifndef FPUNONE}
   real_val := getresultreal;
   if trunc(real_val) <> trunc(RESULT_REAL) then
     failed := true;
+{$endif FPUNONE}
 
   if failed then
     fail

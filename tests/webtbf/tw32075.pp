@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { %fail }
 program compilercrash;
 // This code is nonsense a.t.m. but it crashes the compiler.

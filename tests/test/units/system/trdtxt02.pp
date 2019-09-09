@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { %FILES=testux.txt }
 Program trdtxt02;
 

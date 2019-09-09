@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 uses typinfo;
 type
   TEnum = (Name1,Name2,Name3);

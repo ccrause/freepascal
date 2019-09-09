@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { %INTERACTIVE }
 
 program test_crt;

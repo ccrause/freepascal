@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { %opt=-Sen -vn }
 program notusedbug;
 

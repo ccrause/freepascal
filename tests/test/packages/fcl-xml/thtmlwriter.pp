@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program TestHtmlWriter;
 
 {$mode objfpc}{$H+}

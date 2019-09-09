@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { %FAIL }
 
 { As C++ classes aren't fully implemented we disallow Default for them as well }

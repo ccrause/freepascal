@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 {$mode macpas}
 
 program FatalError_2006082312;

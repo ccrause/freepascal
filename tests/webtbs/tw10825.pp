@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program stringconcat;
 //compile with -gh
 

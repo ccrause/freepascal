@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program av;
 {$ifdef FPC}{$mode objfpc}{$h+}{$INTERFACES CORBA}{$endif}
 {$ifdef mswindows}{$apptype console}{$endif}

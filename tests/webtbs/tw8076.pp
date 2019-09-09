@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { %interactive }
 
 { should fill the rightmost column of the window with a yellow bar }

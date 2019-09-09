@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 {$codepage cp866}
 
 {$ifdef go32v2}

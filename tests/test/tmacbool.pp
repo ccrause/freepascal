@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program macbool;
 
 {$mode macpas}

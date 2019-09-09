@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 Program fpcbugcheck;
 
 {$mode macpas} { for | }

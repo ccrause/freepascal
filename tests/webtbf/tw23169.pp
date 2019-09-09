@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { %fail }
 {$mode objfpc}
 uses gvector;

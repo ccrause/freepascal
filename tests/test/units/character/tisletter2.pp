@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program tisletter;
 {$ifndef FPC}
   {$APPTYPE CONSOLE}    

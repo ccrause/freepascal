@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { Old file: tbs0268.pp }
 { crash with exceptions                                OK 0.99.13 (FK) }
 

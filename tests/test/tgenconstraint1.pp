@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { %NORUN }
 
 { Extensively test the Delphi compatible constraint syntax }

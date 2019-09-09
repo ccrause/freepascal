@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 ﻿{$codepage utf8}
 {$mode objfpc} {$h+} {$coperators on}
 uses

@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { test code based on code from ttp://www.geocities.com/svi37/cyber/delphi9/iimplementation.html }
 {$ifdef fpc}
 {$mode delphi}

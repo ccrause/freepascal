@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { This test has been checked against the following Delphi versions:
   Delphi XE3 32-bit - test passes
   Delphi XE5 32-bit - test passes

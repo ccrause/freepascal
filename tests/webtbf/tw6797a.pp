@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { %fail }
 program intfbug2;
 {$ifdef fpc}

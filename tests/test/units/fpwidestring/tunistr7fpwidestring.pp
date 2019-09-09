@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 {$codepage utf-8}
 
 uses

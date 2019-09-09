@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 uses
   stdconvs,math;
 begin

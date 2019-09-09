@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program tdefault1;
 
 {$APPTYPE CONSOLE}

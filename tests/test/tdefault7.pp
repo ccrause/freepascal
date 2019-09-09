@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { %FAIL }
 
 { In non-Delphi modes unsupported types like TextFile are not allowed inside

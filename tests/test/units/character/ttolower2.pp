@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program ttolower2;
 
 {$ifdef FPC}

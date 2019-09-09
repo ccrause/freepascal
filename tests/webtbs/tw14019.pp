@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { %opt=-gh }
 
 program RefCountBug;

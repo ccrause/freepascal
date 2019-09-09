@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { %fail }
 { Returns this error under Delphi :
   Error: Types of actual and formal var parameters must be identical }

@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { %RESULT=217 }
 
 {$ifdef fpc}

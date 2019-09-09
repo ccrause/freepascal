@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 {$mode objfpc}
 type 
   TT_Stream   = record z : Pointer; end;

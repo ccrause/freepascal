@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program trange1;
 
 { %VERSION=1.1 }

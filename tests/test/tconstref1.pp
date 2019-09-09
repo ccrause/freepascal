@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program tConstRef1;
 
 {$mode objfpc}{$h+}

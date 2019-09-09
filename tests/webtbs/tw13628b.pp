@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { %needlibrary }
 { %delfiles=tw13628a }
 

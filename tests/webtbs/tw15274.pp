@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { %norun }
 
 {$mode objfpc}{$H+}

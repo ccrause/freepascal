@@ -1,5 +1,5 @@
 { %skiptarget=go32v2 }
-
+{ %SKIPCPU=avr }
 {$mode objfpc}
 uses
    sysutils;

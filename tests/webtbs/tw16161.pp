@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program tw16161;
 
 {$ifdef fpc}

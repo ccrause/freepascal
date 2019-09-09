@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { %FILES=ctest.o }
 {****************************************************************}
 {  CODE GENERATOR TEST PROGRAM                                   }

@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { Old file: tbs0064.pp }
 {  shows other types of problems with case statements   OK 0.99.1 (FK) }
 

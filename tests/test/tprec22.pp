@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 // http://lists.freepascal.org/lists/fpc-devel/2008-June/013919.html
 
 // I was interested to see if bit packing works when a record member spans

@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { %fail }
 
 { Source provided for Free Pascal Bug Report 4777 }

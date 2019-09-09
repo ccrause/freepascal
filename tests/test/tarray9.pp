@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { %OPT=-gh }
 
 { Test correct RTTI handling of open arrays with managed elements. 

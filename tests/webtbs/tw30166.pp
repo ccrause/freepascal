@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { Test against Mantis #30166, an issue in the i386 fpc_div_int64 helper. }
 Uses sysutils;
 

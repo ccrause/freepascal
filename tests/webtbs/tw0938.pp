@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 Program test_operator;
 
 {$mode fpc}

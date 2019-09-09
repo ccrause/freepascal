@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { %NORUN }
 
 { this tests that helpers can introduce class methods for classes - mode

@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { %opt=-gh }
 
 {$ifdef go32v2}

@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { %VERSION=1.1 }
 program testv6;
 

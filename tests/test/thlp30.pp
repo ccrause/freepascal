@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { helpers can extend type parameters if they can only be classes }
 program thlp30;
 

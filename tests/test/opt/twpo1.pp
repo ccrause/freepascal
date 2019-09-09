@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { %wpoparas=devirtcalls,optvmts }
 { %wpopasses=1 }
 

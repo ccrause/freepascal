@@ -1,3 +1,4 @@
+{ %TIMEOUT=60 }
 program test;
 type
  extremelylongtypenamethatsomeguywantstocallitinspiteofyourpredilections=longword;

@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { Note: this is a vastly reduced variant of the example attached to bug report #31945 }
 
 unit tw31945;

@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 unit tcpersistent;
 
 {$mode objfpc}{$H+}

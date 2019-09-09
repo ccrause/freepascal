@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program fpc_advrec_bug;
 
 {$mode delphi}

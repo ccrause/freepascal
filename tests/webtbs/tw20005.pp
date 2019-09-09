@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { %OPT=-gl -gh }
 {$mode objfpc}{$H+}
 uses Classes, SysUtils, FGL;

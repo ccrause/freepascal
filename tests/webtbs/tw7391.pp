@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program stored;
 {$mode objfpc}{$h+}
 uses

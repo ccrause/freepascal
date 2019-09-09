@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program stf2;
 
 {$IFDEF FPC}

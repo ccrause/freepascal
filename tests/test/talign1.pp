@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { This verifies if the resource string table
   is correctly aligned, normally the assembler
   should be verified manually.

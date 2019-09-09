@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { %opt=-Fasysutils}
 {$mode iso}
 {$modeswitch exceptions+}

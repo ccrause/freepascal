@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 {$ifdef fpc}{$mode delphi}{$endif}
 {$ifdef MSWindows}{$apptype console}{$endif}
 uses

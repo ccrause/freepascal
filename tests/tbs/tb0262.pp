@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { %OPT=-CE }
 { Old file: tbs0305.pp }
 { Finally is not handled correctly after inputting 0 }

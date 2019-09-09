@@ -3,6 +3,9 @@ program mymodtest;
 {$MODE DELPHI}
 {$ASSERTIONS ON}
 
+const
+  looplimit = {$ifdef CPUAVR}100{$else}loopcount{$endif};
+
 // Pascal implementation of signed modulus by power of 2 constant algorithm
 function my_modulus(x, m : integer) : integer;
 var
@@ -53,7 +56,7 @@ var
 begin
 	randseed := 1; // just take any, but repeatable
 	write('positive int32 division test...');
-	for i := -10000 to 10000 do begin
+	for i := -loopcount to loopcount do begin
 		j := random(high(integer));
 		if (random(2) = 1) then j := -j;
 		k := 19;
@@ -62,7 +65,7 @@ begin
 	writeln('Success.');
 	
 	write('Negative int32 division test...');
-	for i := -10000 to 10000 do begin
+	for i := -loopcount to loopcount do begin
 		j := random(high(integer));
 		if (random(2) = 1) then j := -j;
 		k := -19;
@@ -71,7 +74,7 @@ begin
 	writeln('Success.');
 
 	write('positive int32 division test...');
-	for i := -10000 to 10000 do begin
+	for i := -loopcount to loopcount do begin
 		j := random(high(integer));
 		if (random(2) = 1) then j := -j;
 		k := 3;
@@ -80,7 +83,7 @@ begin
 	writeln('Success.');
 	
 	write('Negative int32 division test...');
-	for i := -10000 to 10000 do begin
+	for i := -loopcount to loopcount do begin
 		j := random(high(integer));
 		if (random(2) = 1) then j := -j;
 		k := -3;
@@ -89,7 +92,7 @@ begin
 	writeln('Success.');
 
 	write('positive int32 division test...');
-	for i := -10000 to 10000 do begin
+	for i := -loopcount to loopcount do begin
 		j := random(high(integer));
 		if (random(2) = 1) then j := -j;
 		k := 7;
@@ -98,7 +101,7 @@ begin
 	writeln('Success.');
 	
 	write('Negative int32 division test...');
-	for i := -10000 to 10000 do begin
+	for i := -loopcount to loopcount do begin
 		j := random(high(integer));
 		if (random(2) = 1) then j := -j;
 		k := -7;
@@ -107,7 +110,7 @@ begin
 	writeln('Success.');
 	
 	write('positive int32 division test...');
-	for i := -10000 to 10000 do begin
+	for i := -loopcount to loopcount do begin
 		j := random(high(integer));
 		if (random(2) = 1) then j := -j;
 		k := 5;
@@ -116,7 +119,7 @@ begin
 	writeln('Success.');
 	
 	write('Negative int32 division test...');
-	for i := -10000 to 10000 do begin
+	for i := -loopcount to loopcount do begin
 		j := random(high(integer));
 		if (random(2) = 1) then j := -j;
 		k := -5;
@@ -125,7 +128,7 @@ begin
 	writeln('Success.');
 	
 	write('positive int32 division test...');
-	for i := -10000 to 10000 do begin
+	for i := -loopcount to loopcount do begin
 		j := random(high(integer));
 		if (random(2) = 1) then j := -j;
 		k := 512;
@@ -134,7 +137,7 @@ begin
 	writeln('Success.');
 	
 	write('Negative int32 division test...');
-	for i := -10000 to 10000 do begin
+	for i := -loopcount to loopcount do begin
 		j := random(high(integer));
 		if (random(2) = 1) then j := -j;
 		k := -512;
@@ -145,7 +148,7 @@ begin
 //-----------------------------------------------------------------
 	
 	write('positive int32 modulus test (19)...');
-	for i := -10000 to 10000 do begin
+	for i := -loopcount to loopcount do begin
 		j := random(high(integer));
 		if (random(2) = 1) then j := -j;
 		k := 19;
@@ -155,7 +158,7 @@ begin
 	
 
 	write('Negative int32 modulus test (-19)...');
-	for i := -10000 to 10000 do begin
+	for i := -loopcount to loopcount do begin
 		j := random(high(integer));
 		if (random(2) = 1) then j := -j;
 		k := -19;
@@ -166,7 +169,7 @@ begin
 	writeln('Success.');
 	
 	write('positive int32 modulus test (3)...');
-	for i := -10000 to 10000 do begin
+	for i := -loopcount to loopcount do begin
 		j := random(high(integer));
 		if (random(2) = 1) then j := -j;
 		k := 3;
@@ -176,7 +179,7 @@ begin
 	
 
 	write('Negative int32 modulus test (-3)...');
-	for i := -10000 to 10000 do begin
+	for i := -loopcount to loopcount do begin
 		j := random(high(integer));
 		if (random(2) = 1) then j := -j;
 		k := -3;
@@ -187,7 +190,7 @@ begin
 	writeln('Success.');
 	
 	write('positive int32 modulus test (5)...');
-	for i := -10000 to 10000 do begin
+	for i := -loopcount to loopcount do begin
 		j := random(high(integer));
 		if (random(2) = 1) then j := -j;
 		k := 5;
@@ -197,7 +200,7 @@ begin
 	
 
 	write('Negative int32 modulus test (-5)...');
-	for i := -10000 to 10000 do begin
+	for i := -loopcount to loopcount do begin
 		j := random(high(integer));
 		if (random(2) = 1) then j := -j;
 		k := -5;
@@ -208,7 +211,7 @@ begin
 	writeln('Success.');
 	
 	write('positive int32 modulus test (7)...');
-	for i := -10000 to 10000 do begin
+	for i := -loopcount to loopcount do begin
 		j := random(high(integer));
 		if (random(2) = 1) then j := -j;
 		k := 7;
@@ -218,7 +221,7 @@ begin
 	
 
 	write('Negative int32 modulus test (-7)...');
-	for i := -10000 to 10000 do begin
+	for i := -loopcount to loopcount do begin
 		j := random(high(integer));
 		if (random(2) = 1) then j := -j;
 		k := -7;
@@ -229,7 +232,7 @@ begin
 	writeln('Success.');
 	
 	write('positive int32 modulus test (512)...');
-	for i := -10000 to 10000 do begin
+	for i := -loopcount to loopcount do begin
 		j := random(high(integer));
 		if (random(2) = 1) then j := -j;
 		k := 512;
@@ -239,7 +242,7 @@ begin
 	
 
 	write('Negative int32 modulus test (-512)...');
-	for i := -10000 to 10000 do begin
+	for i := -loopcount to loopcount do begin
 		j := random(high(integer));
 		if (random(2) = 1) then j := -j;
 		k := -512;
@@ -250,7 +253,7 @@ begin
 	writeln('Success.');
 	
 	write('positive uint32 division test (19)...');
-	for i := -10000 to 10000 do begin
+	for i := -loopcount to loopcount do begin
 		y := random(high(integer));
 		if (random(2) = 1) then y := 2 * y;
 		z := 19;
@@ -259,7 +262,7 @@ begin
 	writeln('Success.');
 	
 	write('positive uint32 modulus test (19)...');
-	for i := -10000 to 10000 do begin
+	for i := -loopcount to loopcount do begin
 		y := random(high(integer));
 		if (random(2) = 1) then y := 2 * y;
 		z := 19;
@@ -268,7 +271,7 @@ begin
 	writeln('Success.');
 	
 	write('positive uint32 division test (3)...');
-	for i := -10000 to 10000 do begin
+	for i := -loopcount to loopcount do begin
 		y := random(high(integer));
 		if (random(2) = 1) then y := 2 * y;
 		z := 3;
@@ -277,7 +280,7 @@ begin
 	writeln('Success.');
 
 	write('positive uint32 modulus test (3)...');
-	for i := -10000 to 10000 do begin
+	for i := -loopcount to loopcount do begin
 		y := random(high(integer));
 		if (random(2) = 1) then y := 2 * y;
 		z := 3;
@@ -286,7 +289,7 @@ begin
 	writeln('Success.');
 	
 	write('positive uint32 division test (5)...');
-	for i := -10000 to 10000 do begin
+	for i := -loopcount to loopcount do begin
 		y := random(high(integer));
 		if (random(2) = 1) then y := 2 * y;
 		z := 5;
@@ -295,7 +298,7 @@ begin
 	writeln('Success.');
 	
 	write('positive uint32 modulus test (5)...');
-	for i := -10000 to 10000 do begin
+	for i := -loopcount to loopcount do begin
 		y := random(high(integer));
 		if (random(2) = 1) then y := 2 * y;
 		z := 5;
@@ -304,7 +307,7 @@ begin
 	writeln('Success.');
 	
 	write('positive uint32 division test (7)...');
-	for i := -10000 to 10000 do begin
+	for i := -loopcount to loopcount do begin
 		y := random(high(integer));
 		if (random(2) = 1) then y := 2 * y;
 		z := 7;
@@ -313,7 +316,7 @@ begin
 	writeln('Success.');
 	
 	write('positive uint32 modulus test (7)...');
-	for i := -10000 to 10000 do begin
+	for i := -loopcount to loopcount do begin
 		y := random(high(integer));
 		if (random(2) = 1) then y := 2 * y;
 		z := 7;
@@ -323,7 +326,7 @@ begin
 	
 
 	write('positive uint32 division test (512)...');
-	for i := -10000 to 10000 do begin
+	for i := -loopcount to loopcount do begin
 		y := random(high(integer));
 		if (random(2) = 1) then y := 2 * y;
 		z := 512;
@@ -332,7 +335,7 @@ begin
 	writeln('Success.');
 
 	write('positive uint32 modulus test (512)...');
-	for i := -10000 to 10000 do begin
+	for i := -loopcount to loopcount do begin
 		y := random(high(integer));
 		if (random(2) = 1) then y := 2 * y;
 		z := 512;
@@ -342,7 +345,7 @@ begin
 
         { extra test for div by constant optimization }
 	write('positive uint32 division test ($deadbeef)...');
-	for i := -10000 to 10000 do begin
+	for i := -loopcount to loopcount do begin
 		y := random(high(integer));
 		if (random(2) = 1) then y := 2 * y;
 		z := $deadbeef;
@@ -351,7 +354,7 @@ begin
 	writeln('Success.');
 
 	write('positive uint32 division test ($b16beef)...');
-	for i := -10000 to 10000 do begin
+	for i := -loopcount to loopcount do begin
 		y := random(high(integer));
 		if (random(2) = 1) then y := 2 * y;
 		z := $b16beef;

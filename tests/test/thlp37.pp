@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { published properties/methods are available in the helper's RTTI }
 program thlp37;
 

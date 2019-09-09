@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { %OPT=-Seh }
 program Test;
 uses SysUtils;

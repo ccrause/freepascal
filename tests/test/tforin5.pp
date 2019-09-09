@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program tforin5;
 
 // test operator Enumerator support for classes

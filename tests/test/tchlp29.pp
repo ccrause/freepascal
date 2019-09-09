@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { class helpers don't hide methods of the subclasses of the extended class }
 program tchlp29;
 

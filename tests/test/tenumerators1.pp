@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program tenumerators1;
 
 {$ifdef fpc}

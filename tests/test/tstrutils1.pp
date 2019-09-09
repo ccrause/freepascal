@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program tstrutils1;
 
 // tests MBCS compatibility of strutils ansistartsstr and -endsstr.

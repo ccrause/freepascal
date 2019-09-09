@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 
 program project1;
 // Run the following to cause an access violation

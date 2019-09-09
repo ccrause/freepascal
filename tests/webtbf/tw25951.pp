@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { %fail }
 // Mainly used for compiler discovery and turning on global compiler settings.
 // This simplifies vwrdefines.inc maintenance, since vwrdefines.inc is per application, and this one is global

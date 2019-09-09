@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program tw27185;
 
 {$mode objfpc}{$H+}

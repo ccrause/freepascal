@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program tcpstr13;
 
 // check that copy operation converts from 866 to DefaultSystemCodePage encoding

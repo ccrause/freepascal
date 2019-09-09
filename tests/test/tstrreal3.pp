@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { test by Graeme Geldenhuys }
 
 {$mode delphi}

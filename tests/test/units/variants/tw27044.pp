@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { %norun }
 { Test that invoking methods on Variant that are function results, etc. 
   compiles without errors. }

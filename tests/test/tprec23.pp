@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 // http://lists.freepascal.org/lists/fpc-devel/2008-June/013919.html
 
 uses SysUtils;

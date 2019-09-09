@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program trtti6;
 
 {$mode objfpc}{$H+}

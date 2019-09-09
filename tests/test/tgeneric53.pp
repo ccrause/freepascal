@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { this tests that checked typecasts to inline specialized types work }
 program tgeneric53;
 

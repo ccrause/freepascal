@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program testbug;
 {$APPTYPE CONSOLE}
 {$ifdef fpc}

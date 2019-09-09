@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 {$ifdef FPC}
 Uses Math;
 

@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program comparetext;
 {$ifdef FPC}{$mode objfpc}{$h+}{$endif}
 {$ifdef mswindows}{$apptype console}{$endif}

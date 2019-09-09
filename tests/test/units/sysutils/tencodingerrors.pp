@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program tencodingerrors;
 
 {$mode delphi}{$H+}

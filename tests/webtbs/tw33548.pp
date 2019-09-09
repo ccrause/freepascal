@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program app_test_core;
 
 {$H+}

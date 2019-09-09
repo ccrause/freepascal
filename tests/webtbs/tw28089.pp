@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program bug_StrPLCopy;
 
 {$APPTYPE CONSOLE}

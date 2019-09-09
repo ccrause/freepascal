@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program tw11371;
 
 {$mode delphi}{$H+}

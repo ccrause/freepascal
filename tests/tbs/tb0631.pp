@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program tb0631;
 
 {$MODE DELPHI}

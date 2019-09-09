@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 {%KNOWNCOMPILEERROR=CodeWarrior Pascal is sometimes similar to and sometimes different from TP/Delphi regarding calling procvars }
 {$mode macpas}
 

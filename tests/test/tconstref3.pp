@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program tconstref3;
 
 {$mode objfpc}{$h+}

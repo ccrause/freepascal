@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { from gpc tests, original name sam9.pas }
 
 {$ifdef fpc}

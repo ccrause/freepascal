@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 uses uw9113a, uw9113b;
 
 var

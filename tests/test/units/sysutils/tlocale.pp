@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { %interactive }
 
 {$ifdef go32v2}

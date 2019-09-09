@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { %OPT=-Seh -vh }
 { %norun }
 {$mode objfpc}

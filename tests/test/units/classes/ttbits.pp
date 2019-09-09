@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program ttbits;
 
 {$MODE objfpc}{$H+}

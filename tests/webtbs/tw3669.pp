@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { %opt=-Sew -vw }
 
 { Source provided for Free Pascal Bug Report 3669 }

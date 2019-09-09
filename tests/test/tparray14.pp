@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { based on gpc test pvs1 }
 { FLAG --extended-pascal }
 

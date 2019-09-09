@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program corbainterface;
 {$ifdef FPC}{$mode objfpc}{$h+}{$endif}
 {$ifdef mswindows}{$apptype console}{$endif}

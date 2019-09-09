@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { Old file: tbs0239.pp }
 { No warning for uninitialized class in IS statements  OK 0.99.11 (PM) }
 

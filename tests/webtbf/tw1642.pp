@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { %FAIL }
 program TestDefaultProperty;
 

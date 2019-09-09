@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { Program to test system unit setstring routines
   Tested against Delphi 3 and (where possible)
   against Borland Pascal v7.01

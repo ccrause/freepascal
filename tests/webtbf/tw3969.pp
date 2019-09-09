@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { %fail }
 {$Mode Delphi}
 {$R-,X+,V-}

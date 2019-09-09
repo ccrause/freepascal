@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { based on string/tester.c of glibc 2.3.6
 
 * Tester for string functions.

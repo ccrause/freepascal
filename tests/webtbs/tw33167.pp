@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 {$ifndef FPUNONE}
 uses
   math;

@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 {%NORUN}
 {$MODE MACPAS}
 

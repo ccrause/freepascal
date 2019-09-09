@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { %OPT=-CE }
 { this test is geared towards Double values }
 

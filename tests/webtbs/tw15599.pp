@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { %interactive }
 
 { the bug was that this put the 'x' at the *end* of the second line instead

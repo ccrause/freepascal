@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { %OPT=-Sen -vnw }
 { %RESULT=217 }
 

@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 unit tw23653;
 
 {$mode objfpc}{$H+}

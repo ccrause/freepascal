@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program a;
 {$mode delphi}
 uses

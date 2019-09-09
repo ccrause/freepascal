@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program EmptyStringWriter;
 
 {$mode objfpc}{$h+}

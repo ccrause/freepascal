@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { Source provided for Free Pascal Bug Report 3005 }
 { Submitted by "Michalis Kamburelis" on  2004-03-04 }
 { e-mail: michalis@camelot.homedns.org }

@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program tb;
 
 {$mode objfpc}

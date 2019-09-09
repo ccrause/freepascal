@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 {$MODE objfpc}
 uses SysUtils, Classes;
 type

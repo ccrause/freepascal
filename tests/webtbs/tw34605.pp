@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 {%OPT=-CR}
 
 { This test checks that correct code is generated

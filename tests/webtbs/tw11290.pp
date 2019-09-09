@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program optimiav;
 //compile with -OG2p3
 

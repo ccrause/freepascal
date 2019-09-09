@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 {$mode macpas}
 program ttyperecord3;
 type RGB = record red, green, blue:	integer end;

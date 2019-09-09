@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 {$mode macpas}
 
 {Test of anonymous procedure parameters}

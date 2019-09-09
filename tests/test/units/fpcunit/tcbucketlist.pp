@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 unit tcbucketlist;
 
 {$mode objfpc}{$H+}

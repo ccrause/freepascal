@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 var
   a : array[0..3] of pointer;
   i,j : longint;

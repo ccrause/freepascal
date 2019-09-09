@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program tmoperator10;
 
 {$MODE DELPHI}

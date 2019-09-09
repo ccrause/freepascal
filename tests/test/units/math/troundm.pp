@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 
 
 { Converting 64-bit integers with more than 53 significant bits to double-precision 

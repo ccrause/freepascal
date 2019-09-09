@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 
 // Tests storing interfaces in VariantArray
 {$ifdef fpc}{$mode objfpc}{$h+}{$endif}

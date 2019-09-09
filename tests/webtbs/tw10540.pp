@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { %norun }
 
 unit tw10540;

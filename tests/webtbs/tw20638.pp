@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 {%norun}
 program project1;
 {$mode delphi}

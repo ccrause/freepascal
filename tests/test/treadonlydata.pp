@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program treadonlydata;
 
 {$define target_supports_rodata}

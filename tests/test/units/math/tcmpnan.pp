@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { Tests unordered comparison results. This is a basic codegeneration test, but it needs
   Math unit to silence exceptions. }
 uses math;

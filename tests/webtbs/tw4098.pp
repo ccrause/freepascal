@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { %maxversion=2.0.99 }
 { %opt=-gh }
 { Source provided for Free Pascal Bug Report 4098 }

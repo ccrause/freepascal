@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 unit tw34893;
 {$ifdef fpc}
   {$mode delphi}

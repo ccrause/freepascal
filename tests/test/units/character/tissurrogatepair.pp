@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program tissurrogatepair;
 
 {$ifdef FPC}

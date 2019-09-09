@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program fpctest4;
 {$ifdef fpc}
 {$mode delphi}

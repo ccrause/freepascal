@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program varfunc_test;
 
 {$IFDEF FPC}

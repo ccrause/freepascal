@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 {$MODE DELPHI}
 
 program CharOverload;

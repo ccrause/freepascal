@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { THandle is unsigned at least for win32 OS,
   this leads to range check errors when fileopen
   returns invalid handle.

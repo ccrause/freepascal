@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program test_formatloat;
 {$mode objfpc}{$H+}
 uses

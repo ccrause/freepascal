@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 {$mode macpas}
 {$B-}
 program procparamvoidpointer2;

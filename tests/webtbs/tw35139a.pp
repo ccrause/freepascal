@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { 
   Check a fix for a bug that appeared in
   utils/fppkg/lnet/lTelnet.pp 

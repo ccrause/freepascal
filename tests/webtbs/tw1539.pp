@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { %interactive }
 { This test generates an error/retry box on windows }
 { Source provided for Free Pascal Bug Report 1539 }

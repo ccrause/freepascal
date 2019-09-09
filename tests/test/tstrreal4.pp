@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program tstrreal4;
 { test for issue #13722 by Zeljan Rikalo}
 uses SysUtils;

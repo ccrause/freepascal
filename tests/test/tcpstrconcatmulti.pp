@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 {$APPTYPE CONSOLE}
 // test "fpc_AnsiStr_Concat_multi" with a same type(same encoding) 
 {$ifdef go32v2}

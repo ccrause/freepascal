@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program BoolAsEnumTest_FPC;
 
 {$MODE Delphi}

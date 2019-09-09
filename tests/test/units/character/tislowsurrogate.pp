@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program tislowsurrogate;
 
 {$ifdef FPC}

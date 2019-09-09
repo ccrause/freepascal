@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program showbug ;
 
 {$mode macpas}

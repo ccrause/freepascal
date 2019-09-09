@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { Code extracted from fpc-image fpcolhash unit }
 
 {$mode objfpc}

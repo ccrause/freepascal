@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program TestDateVariantConversion;
 
 uses variants;

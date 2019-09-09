@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { %OPT=-Seh -vh }
 program test;
 uses math;

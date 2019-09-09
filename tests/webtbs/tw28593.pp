@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program tucs4toutf16FFFF;
 {$H+}
 uses

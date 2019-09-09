@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 {$mode objfpc}
 {$H+}
 // Run with paramters "1 2 3 4 5"

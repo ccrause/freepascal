@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { this file is stored in utf8, but we don't tell the compiler so that the string
   constant gets code page 0/CP_ACP; this test is to make sure that
   fpc_ansistr_to_widechararray() translates CP_ACP to the actual value of

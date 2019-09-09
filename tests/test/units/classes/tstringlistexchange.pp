@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program tstringlistexchange;
 
 {$mode objfpc}{$H+}

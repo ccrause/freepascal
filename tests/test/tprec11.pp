@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { from gpc testsuite, original name: waldek9b.pas }
 
 {$ifdef fpc}

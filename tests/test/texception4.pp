@@ -1,4 +1,5 @@
 { %skiptarget=go32v2 }
+{ %SKIPCPU=avr }
 { %OPT=-CE }
 
 {$mode objfpc}

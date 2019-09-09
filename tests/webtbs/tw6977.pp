@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program bug1;
 
 {$mode objfpc}{$H+}

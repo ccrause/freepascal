@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { this test is geared towards Double values }
 
 program tb0644;

@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 { Type conversion program for char -> string     }
 { possible types widechar -> widestring          }
 {                widechar -> shortstring         }

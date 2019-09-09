@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 program SmallTestInterfaceRTTI;
 
 {$mode objfpc}{$H+}
