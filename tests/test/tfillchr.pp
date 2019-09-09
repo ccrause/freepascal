@@ -1,4 +1,4 @@
-{ TIMEOUT=60 }
+{ %TIMEOUT=60 }
 const
   err: boolean = false;
 
