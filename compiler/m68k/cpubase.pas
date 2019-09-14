@@ -70,7 +70,7 @@ unit cpubase;
          a_mov3q,a_mvz,a_mvs,a_sats,a_byterev,a_ff1,a_remu,a_rems,
          { fpu processor instructions - directly supported }
          { ieee aware and misc. condition codes not supported   }
-         a_fabs,fsabs,fdabs,a_fadd,a_fsadd,a_fdadd,
+         a_fabs,a_fsabs,a_fdabs,a_fadd,a_fsadd,a_fdadd,
          a_fbeq,a_fbne,a_fbngt,a_fbgt,a_fbge,a_fbnge,
          a_fblt,a_fbnlt,a_fble,a_fbgl,a_fbngl,a_fbgle,a_fbngle,
          a_fdbeq,a_fdbne,a_fdbgt,a_fdbngt,a_fdbge,a_fdbnge,
@@ -457,11 +457,6 @@ implementation
       var p: pointer;
       begin
         case s of
-          OS_NO: begin
-{ TODO: FIX ME!!! results in bad code generation}
-            cgsize2subreg:=R_SUBWHOLE;
-            end;
-
           OS_8,OS_S8:
             cgsize2subreg:=R_SUBWHOLE;
           OS_16,OS_S16:
@@ -469,25 +464,15 @@ implementation
           OS_32,OS_S32:
             cgsize2subreg:=R_SUBWHOLE;
           OS_64,OS_S64:
-            begin
-             cgsize2subreg:=R_SUBWHOLE;
-            end;
-          OS_F32 :
-            cgsize2subreg:=R_SUBFS;
-          OS_F64 :
-            cgsize2subreg:=R_SUBFD;
-{
-            begin
-              // is this correct? (KB)
-              cgsize2subreg:=R_SUBNONE;
-            end;
-}
-          else begin
-    // this supposed to be debug
-    //        p:=nil; dword(p^):=0;
-    //        internalerror(200301231);
             cgsize2subreg:=R_SUBWHOLE;
-          end;
+
+          OS_F32,OS_F64 :
+            cgsize2subreg:=R_SUBNONE;
+
+          OS_NO:
+            cgsize2subreg:=R_SUBNONE;
+          else
+            internalerror(2019090801);
         end;
       end;
 
