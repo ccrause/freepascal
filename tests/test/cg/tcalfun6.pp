@@ -32,7 +32,7 @@
 {$endif}
 
 
-{$ifdef cpu68k}
+{$if defined(cpu68k) or defined(cpuavr)}
   {$define cpusmall}
 {$endif}
 {$ifdef cpui8086}
@@ -63,8 +63,10 @@
    RESULT_U16BIT = $500F;
    RESULT_S32BIT = $500F0000;
    RESULT_S64BIT = $500F0000;
+{$ifndef FPUNONE}
    RESULT_S32REAL = 1777.12;
    RESULT_S64REAL = 3444.24;
+{$endif FPUNONE}
    RESULT_BOOL8BIT = 1;
    RESULT_BOOL16BIT = 1;
    RESULT_BOOL32BIT = 1;
@@ -111,8 +113,10 @@
   global_u8bit : byte;
   global_u16bit : word;
   global_s32bit : longint;
+{$ifndef FPUNONE}
   global_s32real : single;
   global_s64real : double;
+{$endif FPUNONE}
   global_ptr : pchar;
   global_proc : tprocedure;
   global_bigstring : shortstring;
@@ -128,8 +132,10 @@
   value_u8bit : byte;
   value_u16bit : word;
   value_s32bit : longint;
+{$ifndef FPUNONE}
   value_s32real : single;
   value_s64real  : double;
+{$endif FPUNONE}
   value_proc : tprocedure;
   value_ptr : pchar;
   value_smallrec : tsmallrecord;
@@ -154,8 +160,10 @@
        global_u8bit := 0;
        global_u16bit := 0;
        global_s32bit := 0;
+{$ifndef FPUNONE}
        global_s32real := 0.0;
        global_s64real := 0.0;
+{$endif FPUNONE}
        global_ptr := nil;
        global_proc := nil;
        global_bigstring := '';
@@ -171,8 +179,10 @@
        value_u8bit := 0;
        value_u16bit := 0;
        value_s32bit := 0;
+{$ifndef FPUNONE}
        value_s32real := 0.0;
        value_s64real  := 0.0;
+{$endif FPUNONE}
        value_proc := nil;
        value_ptr := nil;
        fillchar(value_smallrec, sizeof(value_smallrec), #0);
@@ -249,6 +259,7 @@ function func_s64bit : int64;register;
    func_s64bit := RESULT_S64BIT;
  end;
 
+{$ifndef FPUNONE}
 function func_s32real : single;register;
  begin
    func_s32real := RESULT_S32REAL;
@@ -258,6 +269,7 @@ function func_s64real : double;register;
  begin
    func_s64real := RESULT_S64REAl;
  end;
+{$endif FPUNONE}
 
 function func_ansistring : ansistring;register;
  begin
@@ -353,6 +365,7 @@ function func_s64bit_mixed(b: byte) : int64;register;
    global_u8bit := b;
  end;
 
+{$ifndef FPUNONE}
 function func_s32real_mixed(b: byte) : single;register;
  var
   local_b: byte;
@@ -370,6 +383,7 @@ function func_s64real_mixed(b: byte) : double;register;
    local_b:=b;
    global_u8bit := b;
  end;
+{$endif FPUNONE}
 
 function func_ansistring_mixed(b: byte) : ansistring;register;
  var
@@ -729,6 +743,7 @@ function func_s64bit_mixed_nested(b: byte) : int64;register;
    global_u8bit := nested_one_func(local_b, RESULT_BIGSTRING);
  end;
 
+{$ifndef FPUNONE}
 function func_s32real_mixed_nested(b: byte) : single;register;
 
     procedure nested_one_proc(l: longint);
@@ -810,6 +825,7 @@ function func_s64real_mixed_nested(b: byte) : double;register;
    local_b:=b;
    global_u8bit := nested_one_func(local_b, RESULT_BIGSTRING);
  end;
+{$endif FPUNONE}
 
 function func_ansistring_mixed_nested(b: byte) : ansistring;register;
 
@@ -966,6 +982,7 @@ Begin
    WriteLn('Passed!');
 
 
+{$ifndef FPUNONE}
  write('Testing floatdef function results...');
 
  clear_globals;
@@ -988,6 +1005,7 @@ Begin
    fail
  else
    WriteLn('Passed!');
+{$endif FPUNONE}
 
  write('Testing ansistring function result...');
 
@@ -1105,6 +1123,7 @@ if value_ansistring <> RESULT_BIGSTRING then
    WriteLn('Passed!');
 
 
+{$ifndef FPUNONE}
  write('Testing floatdef function results with parameter...');
 
  clear_globals;
@@ -1129,6 +1148,7 @@ if value_ansistring <> RESULT_BIGSTRING then
    fail
  else
    WriteLn('Passed!');
+{$endif FPUNONE}
 
  write('Testing ansistring function result with parameter...');
 
@@ -1314,6 +1334,7 @@ if value_ansistring <> RESULT_BIGSTRING then
    WriteLn('Passed!');
 
 
+{$ifndef FPUNONE}
  write('Testing floatdef function (w/nesting) results with parameter...');
 
  clear_globals;
@@ -1354,6 +1375,7 @@ if value_ansistring <> RESULT_BIGSTRING then
    fail
  else
    WriteLn('Passed!');
+{$endif FPUNONE}
 
  write('Testing ansistring function (w/nesting) result with parameter...');
 

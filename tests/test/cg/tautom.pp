@@ -1,3 +1,4 @@
+{ %SKIPCPU=avr }
 {%OPT=-glh}
 program tautom;
 
