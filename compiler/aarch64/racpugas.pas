@@ -565,7 +565,8 @@ Unit racpugas;
                oper.opr.symbol:=hl;
              end
             else if (actopcode=A_ADR) or
-               (actopcode=A_ADRP) then
+               (actopcode=A_ADRP) or
+               (actopcode=A_LDR) then
               begin
                 oper.InitRef;
                 MaybeAddGotAddrMode;
@@ -731,6 +732,8 @@ Unit racpugas;
                  CreateLocalLabel(actasmpattern,hl,false);
                  Consume(AS_ID);
                  AddLabelOperand(hl);
+                 if oper.opr.ref.refaddr=addr_pic then
+                   oper.opr.ref.refaddr:=addr_page;
                end
               else
                { Check for label }
