@@ -32,14 +32,16 @@ type
     // ToDo: constraint T:Unit2.TBird
     // ToDo: constraint T:Unit2.TGen<word>
     procedure TestGen_ConstraintSpecialize;
-    procedure TestGen_ConstraintTSpecializeT; // ToDo
+    procedure TestGen_ConstraintTSpecializeWithT;
+    procedure TestGen_ConstraintTSpecializeAsTFail;
     procedure TestGen_TemplNameEqTypeNameFail;
     procedure TestGen_ConstraintInheritedMissingRecordFail;
     procedure TestGen_ConstraintInheritedMissingClassTypeFail;
     procedure TestGen_ConstraintMultiParam;
     procedure TestGen_ConstraintMultiParamClassMismatch;
     procedure TestGen_ConstraintClassType_DotIsAsTypeCast;
-    procedure TestGen_ConstraintClassType_ForInT; // ToDo
+    procedure TestGen_ConstraintClassType_ForInT;
+    procedure TestGen_ConstraintClassType_IsAs;
 
     // generic record
     procedure TestGen_RecordLocalNameDuplicateFail;
@@ -110,9 +112,8 @@ type
     procedure TestGen_LocalVar;
     procedure TestGen_Statements;
     procedure TestGen_InlineSpecializeExpr;
-    // ToDo: for-in
     procedure TestGen_TryExcept;
-    // ToDo: call
+    procedure TestGen_Call;
     // ToTo: nested proc
   end;
 
@@ -147,7 +148,7 @@ begin
   StartProgram(false);
   Add([
   'type generic TBird<T> = record end;',
-  'var b: TBird<word, byte>;',
+  'var b: specialize TBird<word, byte>;',
   'begin',
   '']);
   CheckResolverException('identifier not found "TBird<,>"',
@@ -328,32 +329,47 @@ begin
   ParseProgram;
 end;
 
-procedure TTestResolveGenerics.TestGen_ConstraintTSpecializeT;
+procedure TTestResolveGenerics.TestGen_ConstraintTSpecializeWithT;
 begin
-  exit; // ToDo
+  StartProgram(false);
+  Add([
+  '{$mode delphi}',
+  'type',
+  '  TObject = class end;',
+  '  TAnt<S> = class m: S; end;',
+  '  TBird<X; Y: TAnt<X>> = class',
+  '    Ant: Y;',
+  '  end;',
+  '  TEagle<X; Y:X> = class',
+  '    e: Y;',
+  '  end;',
+  '  TFireAnt<F> = class(TAnt<F>) end;',
+  '  TAntWord = TAnt<word>;',
+  '  TBirdAntWord = TBird<word, TAnt<word>>;',
+  'var',
+  '  a: TAnt<word>;',
+  '  b: TBird<word, TAntWord>;',
+  '  c: TBird<TBirdAntWord, TAnt<TBirdAntWord>>;',
+  '  f: TEagle<TAnt<boolean>, TFireAnt<boolean>>;',
+  '  fb: TFireAnt<boolean>;',
+  'begin',
+  '  b.Ant:=a;',
+  '  f.e:=fb;',
+  '']);
+  ParseProgram;
+end;
+
+procedure TTestResolveGenerics.TestGen_ConstraintTSpecializeAsTFail;
+begin
   StartProgram(false);
   Add([
   '{$mode objfpc}',
   'type',
-  '  TObject = class end;',
-  '  generic TAnt<S> = class m: S; end;',
-  '  generic TBird<X; Y:specialize TAnt<X>> = class',
-  '    o: Y;',
-  '  end;',
-  //'  generic TEagle<X; Y:X> = class',
-  //'    e: Y;',
-  //'  end;',
-  //'  generic TFireAnt<F> = class(specialize TAnt<F>) end;',
-  'var',
-  '  b: specialize TBird<word, specialize TAnt<word>>;',
-  //'  a: specialize TAnt<word>;',
-  //'  f: specialize TEagle<specialize TAnt<boolean>, specialize TFireAnt<boolean>>;',
-  //'  fb: specialize TFireAnt<boolean>;',
+  '  generic TAnt<S> = record v: S; end;',
+  '  generic TBird<T; U: specialize T<word>> = record v: T; end;',
   'begin',
-  //'  b.o:=a;',
-  //'  f.e:=fb;',
   '']);
-  ParseProgram;
+  CheckResolverException('identifier not found "T<>"',nIdentifierNotFound);
 end;
 
 procedure TTestResolveGenerics.TestGen_TemplNameEqTypeNameFail;
@@ -479,7 +495,6 @@ end;
 
 procedure TTestResolveGenerics.TestGen_ConstraintClassType_ForInT;
 begin
-  exit; // ToDo
   StartProgram(false);
   Add([
   '{$mode objfpc}',
@@ -493,31 +508,53 @@ begin
   '  generic TAnt<U> = class',
   '    function GetEnumerator: specialize TEnumerator<U>;',
   '  end;',
-  '  generic TRedAnt<S> = class(specialize TAnt<S>);',
-  '  generic TBird<S; T: specialize TRedAnt<S>> = class',
+  '  generic TBird<S; T: specialize TAnt<S>> = class',
   '    m: T;',
-  '    function GetEnumerator: specialize TEnumerator<T>;',
+  '    procedure Fly;',
   '  end;',
-  '  TFireAnt = class(specialize TRedAnt<word>);',
-  '  generic TEagle<U> = class(specialize TBird<U,TFireAnt>)',
-  '  end;',
-  '  TRedEagle = specialize TEagle<word>;',
   'function TEnumerator.MoveNext: boolean;',
   'begin',
   'end;',
   'function TAnt.GetEnumerator: specialize TEnumerator<U>;',
   'begin',
   'end;',
-  'function TBird.GetEnumerator: specialize TEnumerator<S>;',
+  'procedure TBird.Fly;',
+  'var i: S;',
   'begin',
+  '  for i in m do ;',
   'end;',
   'var',
-  '  r: TRedEagle;',
+  '  a: specialize TAnt<word>;',
   '  w: word;',
-  '  f: TFireAnt;',
+  '  b: specialize TBird<word,specialize TAnt<word>>;',
   'begin',
-  '  for w in r.m do ;',
-  '  for f in r do ;',
+  '  for w in a do ;',
+  '  for w in b.m do ;',
+  '']);
+  ParseProgram;
+end;
+
+procedure TTestResolveGenerics.TestGen_ConstraintClassType_IsAs;
+begin
+  StartProgram(false);
+  Add([
+  '{$mode objfpc}',
+  'type',
+  '  TObject = class end;',
+  '  generic TAnt<U> = class',
+  '    v: U;',
+  '    function Run: U;',
+  '  end;',
+  'function TAnt.Run: U;',
+  'var a: specialize TAnt<U>;',
+  'begin',
+  '  if v is TObject then ;',
+  '  if v is specialize TAnt<TObject> then',
+  '    specialize TAnt<TObject>(v).v:=nil;',
+  '  a:=v as specialize TAnt<U>;',
+  '  if (v as specialize TAnt<TObject>).v=nil then ;',
+  'end;',
+  'begin',
   '']);
   ParseProgram;
 end;
@@ -789,12 +826,12 @@ begin
   '  generic TAnt<T> = class;',
   '  generic TFish<U> = class',
   '    private type AliasU = U;',
-  '    var a: TAnt<AliasU>;',
+  '    var a: specialize TAnt<AliasU>;',
   '        Size: AliasU;',
   '  end;',
   '  generic TAnt<T> = class',
   '    private type AliasT = T;',
-  '    var f: TFish<AliasT>;',
+  '    var f: specialize TFish<AliasT>;',
   '        Speed: AliasT;',
   '  end;',
   'var',
@@ -980,7 +1017,7 @@ begin
   '  TObject = class end;',
   '  generic TBird<T> = class',
   '    e: T;',
-  '    v: TBird<boolean>;',
+  '    v: specialize TBird<boolean>;',
   '  end;',
   'var',
   '  b: specialize TBird<word>;',
@@ -1595,14 +1632,41 @@ begin
   '  except',
   '    on Exception do ;',
   '    on E: Exception do ;',
-  '    on E: EMsg<boolean> do E.Msg:=true;',
-  '    on E: EMsg<T> do E.Msg:=1;',
+  '    on E: specialize EMsg<boolean> do E.Msg:=true;',
+  '    on E: specialize EMsg<T> do E.Msg:=1;',
   '  end;',
   'end;',
   'var',
   '  b: specialize TBird<word>;',
   'begin',
   '  b.Fly(2);',
+  '']);
+  ParseProgram;
+end;
+
+procedure TTestResolveGenerics.TestGen_Call;
+begin
+  StartProgram(false);
+  Add([
+  '{$mode objfpc}',
+  'type',
+  '  TObject = class end;',
+  '  generic TBird<T> = class',
+  '    function Fly(p:T): T;',
+  '  end;',
+  'procedure Run(b: boolean); overload;',
+  'begin end;',
+  'procedure Run(w: word); overload;',
+  'begin end;',
+  'function TBird.Fly(p:T): T;',
+  'begin',
+  '  Run(p);',
+  '  Run(Result);',
+  'end;',
+  'var',
+  '  w: specialize TBird<word>;',
+  '  b: specialize TBird<boolean>;',
+  'begin',
   '']);
   ParseProgram;
 end;
