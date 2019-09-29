@@ -425,7 +425,7 @@ CPU_UNITS=atmega2561 atmega2560 avrsim
 CPU_UNITS_DEFINED=1
 endif
 ifeq ($(SUBARCH),avrxmega3)
-CPU_UNITS=atmega3208 atmega3209 atmega4808 atmega4809
+CPU_UNITS=atmega808 atmega809 atmega1608 atmega1609 atmega3208 atmega3209 atmega4808 atmega4809
 CPU_UNITS_DEFINED=1
 endif
 ifeq ($(CPU_UNITS_DEFINED),)

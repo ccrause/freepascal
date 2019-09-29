@@ -1,4 +1,4 @@
-unit ATmega4809;
+unit ATmega808;
 
 {$goto on}
 interface
@@ -378,8 +378,8 @@ type
     CHANNEL3: byte;  //Multiplexer Channel 3
     CHANNEL4: byte;  //Multiplexer Channel 4
     CHANNEL5: byte;  //Multiplexer Channel 5
-    CHANNEL6: byte;  //Multiplexer Channel 6
-    CHANNEL7: byte;  //Multiplexer Channel 7
+    Reserved22: byte;
+    Reserved23: byte;
     Reserved24: byte;
     Reserved25: byte;
     Reserved26: byte;
@@ -1269,14 +1269,12 @@ var
   USART0: TUSART absolute $0800;
   USART1: TUSART absolute $0820;
   USART2: TUSART absolute $0840;
-  USART3: TUSART absolute $0860;
   TWI0: TTWI absolute $08A0;
   SPI0: TSPI absolute $08C0;
   TCA0: TTCA absolute $0A00;
   TCB0: TTCB absolute $0A80;
   TCB1: TTCB absolute $0A90;
   TCB2: TTCB absolute $0AA0;
-  TCB3: TTCB absolute $0AB0;
   SYSCFG: TSYSCFG absolute $0F00;
   NVMCTRL: TNVMCTRL absolute $1000;
   SIGROW: TSIGROW absolute $1100;
@@ -1285,7 +1283,7 @@ var
   USERROW: TUSERROW absolute $1300;
 
 implementation
-
+{$define RELBRANCHES}
 {$i avrcommon.inc}
 
 procedure CRCSCAN_NMI_ISR; external name 'CRCSCAN_NMI_ISR'; // Interrupt 1 
@@ -1327,10 +1325,6 @@ procedure USART2_DRE_ISR; external name 'USART2_DRE_ISR'; // Interrupt 32
 procedure USART2_TXC_ISR; external name 'USART2_TXC_ISR'; // Interrupt 33 
 procedure PORTB_PORT_ISR; external name 'PORTB_PORT_ISR'; // Interrupt 34 
 procedure PORTE_PORT_ISR; external name 'PORTE_PORT_ISR'; // Interrupt 35 
-procedure TCB3_INT_ISR; external name 'TCB3_INT_ISR'; // Interrupt 36 
-procedure USART3_RXC_ISR; external name 'USART3_RXC_ISR'; // Interrupt 37 
-procedure USART3_DRE_ISR; external name 'USART3_DRE_ISR'; // Interrupt 38 
-procedure USART3_TXC_ISR; external name 'USART3_TXC_ISR'; // Interrupt 39 
 
 procedure _FPC_start; assembler; nostackframe;
 label
@@ -1339,50 +1333,46 @@ asm
   .init
   .globl _start
 
-  jmp _start
-  jmp CRCSCAN_NMI_ISR
-  jmp BOD_VLM_ISR
-  jmp RTC_CNT_ISR
-  jmp RTC_PIT_ISR
-  jmp CCL_CCL_ISR
-  jmp PORTA_PORT_ISR
-  jmp TCA0_LUNF_ISR
-//  jmp TCA0_OVF_ISR
-  jmp TCA0_HUNF_ISR
-  jmp TCA0_LCMP0_ISR
-//  jmp TCA0_CMP0_ISR
-  jmp TCA0_CMP1_ISR
-//  jmp TCA0_LCMP1_ISR
-  jmp TCA0_LCMP2_ISR
-//  jmp TCA0_CMP2_ISR
-  jmp TCB0_INT_ISR
-  jmp TCB1_INT_ISR
-  jmp TWI0_TWIS_ISR
-  jmp TWI0_TWIM_ISR
-  jmp SPI0_INT_ISR
-  jmp USART0_RXC_ISR
-  jmp USART0_DRE_ISR
-  jmp USART0_TXC_ISR
-  jmp PORTD_PORT_ISR
-  jmp AC0_AC_ISR
-  jmp ADC0_RESRDY_ISR
-  jmp ADC0_WCOMP_ISR
-  jmp PORTC_PORT_ISR
-  jmp TCB2_INT_ISR
-  jmp USART1_RXC_ISR
-  jmp USART1_DRE_ISR
-  jmp USART1_TXC_ISR
-  jmp PORTF_PORT_ISR
-  jmp NVMCTRL_EE_ISR
-  jmp USART2_RXC_ISR
-  jmp USART2_DRE_ISR
-  jmp USART2_TXC_ISR
-  jmp PORTB_PORT_ISR
-  jmp PORTE_PORT_ISR
-  jmp TCB3_INT_ISR
-  jmp USART3_RXC_ISR
-  jmp USART3_DRE_ISR
-  jmp USART3_TXC_ISR
+  rjmp _start
+  rjmp CRCSCAN_NMI_ISR
+  rjmp BOD_VLM_ISR
+  rjmp RTC_CNT_ISR
+  rjmp RTC_PIT_ISR
+  rjmp CCL_CCL_ISR
+  rjmp PORTA_PORT_ISR
+  rjmp TCA0_LUNF_ISR
+//  rjmp TCA0_OVF_ISR
+  rjmp TCA0_HUNF_ISR
+  rjmp TCA0_LCMP0_ISR
+//  rjmp TCA0_CMP0_ISR
+  rjmp TCA0_CMP1_ISR
+//  rjmp TCA0_LCMP1_ISR
+  rjmp TCA0_LCMP2_ISR
+//  rjmp TCA0_CMP2_ISR
+  rjmp TCB0_INT_ISR
+  rjmp TCB1_INT_ISR
+  rjmp TWI0_TWIS_ISR
+  rjmp TWI0_TWIM_ISR
+  rjmp SPI0_INT_ISR
+  rjmp USART0_RXC_ISR
+  rjmp USART0_DRE_ISR
+  rjmp USART0_TXC_ISR
+  rjmp PORTD_PORT_ISR
+  rjmp AC0_AC_ISR
+  rjmp ADC0_RESRDY_ISR
+  rjmp ADC0_WCOMP_ISR
+  rjmp PORTC_PORT_ISR
+  rjmp TCB2_INT_ISR
+  rjmp USART1_RXC_ISR
+  rjmp USART1_DRE_ISR
+  rjmp USART1_TXC_ISR
+  rjmp PORTF_PORT_ISR
+  rjmp NVMCTRL_EE_ISR
+  rjmp USART2_RXC_ISR
+  rjmp USART2_DRE_ISR
+  rjmp USART2_TXC_ISR
+  rjmp PORTB_PORT_ISR
+  rjmp PORTE_PORT_ISR
 
   {$i start.inc}
 
@@ -1425,10 +1415,6 @@ asm
   .weak USART2_TXC_ISR
   .weak PORTB_PORT_ISR
   .weak PORTE_PORT_ISR
-  .weak TCB3_INT_ISR
-  .weak USART3_RXC_ISR
-  .weak USART3_DRE_ISR
-  .weak USART3_TXC_ISR
 
   .set CRCSCAN_NMI_ISR, Default_IRQ_handler
   .set BOD_VLM_ISR, Default_IRQ_handler
@@ -1469,10 +1455,6 @@ asm
   .set USART2_TXC_ISR, Default_IRQ_handler
   .set PORTB_PORT_ISR, Default_IRQ_handler
   .set PORTE_PORT_ISR, Default_IRQ_handler
-  .set TCB3_INT_ISR, Default_IRQ_handler
-  .set USART3_RXC_ISR, Default_IRQ_handler
-  .set USART3_DRE_ISR, Default_IRQ_handler
-  .set USART3_TXC_ISR, Default_IRQ_handler
 end;
 
 end.

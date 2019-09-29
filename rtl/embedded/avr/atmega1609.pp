@@ -1,4 +1,4 @@
-unit ATmega4809;
+unit ATmega1609;
 
 {$goto on}
 interface
@@ -1301,8 +1301,8 @@ procedure TCA0_LCMP0_ISR; external name 'TCA0_LCMP0_ISR'; // Interrupt 9
 //procedure TCA0_CMP0_ISR; external name 'TCA0_CMP0_ISR'; // Interrupt 9 
 procedure TCA0_CMP1_ISR; external name 'TCA0_CMP1_ISR'; // Interrupt 10 
 //procedure TCA0_LCMP1_ISR; external name 'TCA0_LCMP1_ISR'; // Interrupt 10 
-procedure TCA0_LCMP2_ISR; external name 'TCA0_LCMP2_ISR'; // Interrupt 11 
-//procedure TCA0_CMP2_ISR; external name 'TCA0_CMP2_ISR'; // Interrupt 11 
+procedure TCA0_CMP2_ISR; external name 'TCA0_CMP2_ISR'; // Interrupt 11 
+//procedure TCA0_LCMP2_ISR; external name 'TCA0_LCMP2_ISR'; // Interrupt 11 
 procedure TCB0_INT_ISR; external name 'TCB0_INT_ISR'; // Interrupt 12 
 procedure TCB1_INT_ISR; external name 'TCB1_INT_ISR'; // Interrupt 13 
 procedure TWI0_TWIS_ISR; external name 'TWI0_TWIS_ISR'; // Interrupt 14 
@@ -1353,8 +1353,8 @@ asm
 //  jmp TCA0_CMP0_ISR
   jmp TCA0_CMP1_ISR
 //  jmp TCA0_LCMP1_ISR
-  jmp TCA0_LCMP2_ISR
-//  jmp TCA0_CMP2_ISR
+  jmp TCA0_CMP2_ISR
+//  jmp TCA0_LCMP2_ISR
   jmp TCB0_INT_ISR
   jmp TCB1_INT_ISR
   jmp TWI0_TWIS_ISR
@@ -1399,8 +1399,8 @@ asm
 //  .weak TCA0_CMP0_ISR
   .weak TCA0_CMP1_ISR
 //  .weak TCA0_LCMP1_ISR
-  .weak TCA0_LCMP2_ISR
-//  .weak TCA0_CMP2_ISR
+  .weak TCA0_CMP2_ISR
+//  .weak TCA0_LCMP2_ISR
   .weak TCB0_INT_ISR
   .weak TCB1_INT_ISR
   .weak TWI0_TWIS_ISR
@@ -1443,8 +1443,8 @@ asm
 //  .set TCA0_CMP0_ISR, Default_IRQ_handler
   .set TCA0_CMP1_ISR, Default_IRQ_handler
 //  .set TCA0_LCMP1_ISR, Default_IRQ_handler
-  .set TCA0_LCMP2_ISR, Default_IRQ_handler
-//  .set TCA0_CMP2_ISR, Default_IRQ_handler
+  .set TCA0_CMP2_ISR, Default_IRQ_handler
+//  .set TCA0_LCMP2_ISR, Default_IRQ_handler
   .set TCB0_INT_ISR, Default_IRQ_handler
   .set TCB1_INT_ISR, Default_IRQ_handler
   .set TWI0_TWIS_ISR, Default_IRQ_handler

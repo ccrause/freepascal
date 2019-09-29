@@ -205,6 +205,10 @@ Type
       ct_atmega169pa,
       ct_attiny261a,
       ct_attiny25,
+      ct_atmega808,
+      ct_atmega809,
+      ct_atmega1608,
+      ct_atmega1609,
       ct_atmega3208,
       ct_atmega3209,
       ct_atmega4808,
@@ -432,6 +436,11 @@ Const
         ,(controllertypestr:'ATMEGA169PA'; controllerunitstr:'ATMEGA169PA'; cputype: cpu_avr5; fputype:fpu_soft; flashbase:0; flashsize:16384; srambase:256; sramsize:1024; eeprombase:0; eepromsize:512)
         ,(controllertypestr:'ATTINY261A'; controllerunitstr:'ATTINY261A'; cputype: cpu_avr25; fputype:fpu_soft; flashbase:0; flashsize:2048; srambase:96; sramsize:128; eeprombase:0; eepromsize:128)
         ,(controllertypestr:'ATTINY25'; controllerunitstr:'ATTINY25'; cputype: cpu_avr25; fputype:fpu_soft; flashbase:0; flashsize:2048; srambase:96; sramsize:128; eeprombase:0; eepromsize:128)
+        // megaAVR0 series
+        ,(controllertypestr:'ATMEGA808'; controllerunitstr:'ATMEGA808'; cputype: cpu_avrxmega3; fputype:fpu_soft; flashbase:0; flashsize:8192; srambase:15360; sramsize:1024; eeprombase:5120; eepromsize:256)
+        ,(controllertypestr:'ATMEGA809'; controllerunitstr:'ATMEGA809'; cputype: cpu_avrxmega3; fputype:fpu_soft; flashbase:0; flashsize:8192; srambase:15360; sramsize:1024; eeprombase:5120; eepromsize:256)
+        ,(controllertypestr:'ATMEGA1608'; controllerunitstr:'ATMEGA1608'; cputype: cpu_avrxmega3; fputype:fpu_soft; flashbase:0; flashsize:16384; srambase:14336; sramsize:2048; eeprombase:5120; eepromsize:256)
+        ,(controllertypestr:'ATMEGA1609'; controllerunitstr:'ATMEGA1609'; cputype: cpu_avrxmega3; fputype:fpu_soft; flashbase:0; flashsize:16384; srambase:14336; sramsize:2048; eeprombase:5120; eepromsize:256)
         ,(controllertypestr:'ATMEGA3208'; controllerunitstr:'ATMEGA3208'; cputype: cpu_avrxmega3; fputype:fpu_soft; flashbase:0; flashsize:32768; srambase:12288; sramsize:4096; eeprombase:5120; eepromsize:256)
         ,(controllertypestr:'ATMEGA3209'; controllerunitstr:'ATMEGA3209'; cputype: cpu_avrxmega3; fputype:fpu_soft; flashbase:0; flashsize:32768; srambase:12288; sramsize:4096; eeprombase:5120; eepromsize:256)
         ,(controllertypestr:'ATMEGA4808'; controllerunitstr:'ATMEGA4808'; cputype: cpu_avrxmega3; fputype:fpu_soft; flashbase:0; flashsize:49152; srambase:10240; sramsize:6144; eeprombase:5120; eepromsize:256)

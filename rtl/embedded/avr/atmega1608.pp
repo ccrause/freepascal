@@ -1,4 +1,4 @@
-unit ATmega4809;
+unit ATmega1608;
 
 {$goto on}
 interface
@@ -378,8 +378,8 @@ type
     CHANNEL3: byte;  //Multiplexer Channel 3
     CHANNEL4: byte;  //Multiplexer Channel 4
     CHANNEL5: byte;  //Multiplexer Channel 5
-    CHANNEL6: byte;  //Multiplexer Channel 6
-    CHANNEL7: byte;  //Multiplexer Channel 7
+    Reserved22: byte;
+    Reserved23: byte;
     Reserved24: byte;
     Reserved25: byte;
     Reserved26: byte;
@@ -1269,14 +1269,12 @@ var
   USART0: TUSART absolute $0800;
   USART1: TUSART absolute $0820;
   USART2: TUSART absolute $0840;
-  USART3: TUSART absolute $0860;
   TWI0: TTWI absolute $08A0;
   SPI0: TSPI absolute $08C0;
   TCA0: TTCA absolute $0A00;
   TCB0: TTCB absolute $0A80;
   TCB1: TTCB absolute $0A90;
   TCB2: TTCB absolute $0AA0;
-  TCB3: TTCB absolute $0AB0;
   SYSCFG: TSYSCFG absolute $0F00;
   NVMCTRL: TNVMCTRL absolute $1000;
   SIGROW: TSIGROW absolute $1100;
@@ -1301,8 +1299,8 @@ procedure TCA0_LCMP0_ISR; external name 'TCA0_LCMP0_ISR'; // Interrupt 9
 //procedure TCA0_CMP0_ISR; external name 'TCA0_CMP0_ISR'; // Interrupt 9 
 procedure TCA0_CMP1_ISR; external name 'TCA0_CMP1_ISR'; // Interrupt 10 
 //procedure TCA0_LCMP1_ISR; external name 'TCA0_LCMP1_ISR'; // Interrupt 10 
-procedure TCA0_LCMP2_ISR; external name 'TCA0_LCMP2_ISR'; // Interrupt 11 
-//procedure TCA0_CMP2_ISR; external name 'TCA0_CMP2_ISR'; // Interrupt 11 
+procedure TCA0_CMP2_ISR; external name 'TCA0_CMP2_ISR'; // Interrupt 11 
+//procedure TCA0_LCMP2_ISR; external name 'TCA0_LCMP2_ISR'; // Interrupt 11 
 procedure TCB0_INT_ISR; external name 'TCB0_INT_ISR'; // Interrupt 12 
 procedure TCB1_INT_ISR; external name 'TCB1_INT_ISR'; // Interrupt 13 
 procedure TWI0_TWIS_ISR; external name 'TWI0_TWIS_ISR'; // Interrupt 14 
@@ -1327,10 +1325,6 @@ procedure USART2_DRE_ISR; external name 'USART2_DRE_ISR'; // Interrupt 32
 procedure USART2_TXC_ISR; external name 'USART2_TXC_ISR'; // Interrupt 33 
 procedure PORTB_PORT_ISR; external name 'PORTB_PORT_ISR'; // Interrupt 34 
 procedure PORTE_PORT_ISR; external name 'PORTE_PORT_ISR'; // Interrupt 35 
-procedure TCB3_INT_ISR; external name 'TCB3_INT_ISR'; // Interrupt 36 
-procedure USART3_RXC_ISR; external name 'USART3_RXC_ISR'; // Interrupt 37 
-procedure USART3_DRE_ISR; external name 'USART3_DRE_ISR'; // Interrupt 38 
-procedure USART3_TXC_ISR; external name 'USART3_TXC_ISR'; // Interrupt 39 
 
 procedure _FPC_start; assembler; nostackframe;
 label
@@ -1353,8 +1347,8 @@ asm
 //  jmp TCA0_CMP0_ISR
   jmp TCA0_CMP1_ISR
 //  jmp TCA0_LCMP1_ISR
-  jmp TCA0_LCMP2_ISR
-//  jmp TCA0_CMP2_ISR
+  jmp TCA0_CMP2_ISR
+//  jmp TCA0_LCMP2_ISR
   jmp TCB0_INT_ISR
   jmp TCB1_INT_ISR
   jmp TWI0_TWIS_ISR
@@ -1379,10 +1373,6 @@ asm
   jmp USART2_TXC_ISR
   jmp PORTB_PORT_ISR
   jmp PORTE_PORT_ISR
-  jmp TCB3_INT_ISR
-  jmp USART3_RXC_ISR
-  jmp USART3_DRE_ISR
-  jmp USART3_TXC_ISR
 
   {$i start.inc}
 
@@ -1399,8 +1389,8 @@ asm
 //  .weak TCA0_CMP0_ISR
   .weak TCA0_CMP1_ISR
 //  .weak TCA0_LCMP1_ISR
-  .weak TCA0_LCMP2_ISR
-//  .weak TCA0_CMP2_ISR
+  .weak TCA0_CMP2_ISR
+//  .weak TCA0_LCMP2_ISR
   .weak TCB0_INT_ISR
   .weak TCB1_INT_ISR
   .weak TWI0_TWIS_ISR
@@ -1425,10 +1415,6 @@ asm
   .weak USART2_TXC_ISR
   .weak PORTB_PORT_ISR
   .weak PORTE_PORT_ISR
-  .weak TCB3_INT_ISR
-  .weak USART3_RXC_ISR
-  .weak USART3_DRE_ISR
-  .weak USART3_TXC_ISR
 
   .set CRCSCAN_NMI_ISR, Default_IRQ_handler
   .set BOD_VLM_ISR, Default_IRQ_handler
@@ -1443,8 +1429,8 @@ asm
 //  .set TCA0_CMP0_ISR, Default_IRQ_handler
   .set TCA0_CMP1_ISR, Default_IRQ_handler
 //  .set TCA0_LCMP1_ISR, Default_IRQ_handler
-  .set TCA0_LCMP2_ISR, Default_IRQ_handler
-//  .set TCA0_CMP2_ISR, Default_IRQ_handler
+  .set TCA0_CMP2_ISR, Default_IRQ_handler
+//  .set TCA0_LCMP2_ISR, Default_IRQ_handler
   .set TCB0_INT_ISR, Default_IRQ_handler
   .set TCB1_INT_ISR, Default_IRQ_handler
   .set TWI0_TWIS_ISR, Default_IRQ_handler
@@ -1469,10 +1455,6 @@ asm
   .set USART2_TXC_ISR, Default_IRQ_handler
   .set PORTB_PORT_ISR, Default_IRQ_handler
   .set PORTE_PORT_ISR, Default_IRQ_handler
-  .set TCB3_INT_ISR, Default_IRQ_handler
-  .set USART3_RXC_ISR, Default_IRQ_handler
-  .set USART3_DRE_ISR, Default_IRQ_handler
-  .set USART3_TXC_ISR, Default_IRQ_handler
 end;
 
 end.
