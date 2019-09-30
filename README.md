@@ -20,5 +20,6 @@ Bit constants are postfixed with _idx_ to indicate bit index, while some bit con
 with a size of one bit are also postfixed with _bm_ to mark them as bitmapped.
 * Added avrxmega3 as new subarch and new units to compiler/avr/cpuinfo.pp
 * Added output architecture 103 to linker script in compiler/systems/t_embedded.pas
+* avrxmega3 doesn't map registers into data space so no offset to subtract when performing peephole optimizatiosn Sts2Out and Lds2In.
 
 Make cross compiler as usual. To compile the avrxmega3 RTL, specify SUBARCH=avrxmega3.
