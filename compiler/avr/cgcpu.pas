@@ -469,14 +469,14 @@ unit cgcpu;
              else
                b2 := a mod 8;
 
-             if b < tcgsize2size[size] then
+             if (b  > 0)  and (b < tcgsize2size[size]) then
                // copy from src to dst accounting for shift offset
                for i := 0 to (tcgsize2size[size]-b-1) do
                  if op = OP_SHL then
                    a_load_reg_reg(list, OS_8, OS_8,
                      GetOffsetReg64(src, NR_NO, i),
                      GetOffsetReg64(dst, NR_NO, i+b))
-                 else
+                 else if (op = OP_SHR) or (op = OP_SAR) then
                    a_load_reg_reg(list, OS_8, OS_8,
                      GetOffsetReg64(src, NR_NO, i+b),
                      GetOffsetReg64(dst, NR_NO, i));
@@ -500,8 +500,10 @@ unit cgcpu;
                      cg.a_label(list,l1);
                      if op = OP_SHL then
                        list.concat(taicpu.op_reg(A_LSL,GetOffsetReg64(dst, NR_NO, b)))
-                     else
-                       list.concat(taicpu.op_reg(A_LSR,GetOffsetReg64(dst, NR_NO, tcgsize2size[size]-1-b)));
+                     else if op = OP_SHR then
+                       list.concat(taicpu.op_reg(A_LSR,GetOffsetReg64(dst, NR_NO, tcgsize2size[size]-1-b)))
+                     else // OP_SAR
+                       list.concat(taicpu.op_reg(A_ASR,GetOffsetReg64(dst, NR_NO, tcgsize2size[size]-1-b)));
 
                      if size in [OS_S16,OS_16,OS_S32,OS_32,OS_S64,OS_64] then
                        begin
@@ -524,8 +526,11 @@ unit cgcpu;
                        if op = OP_SHL then
                          list.concat(taicpu.op_reg(A_LSL,
                          GetOffsetReg64(dst, NR_NO, b)))
-                       else
+                       else if op = OP_SHR then
                          list.concat(taicpu.op_reg(A_LSR,
+                           GetOffsetReg64(dst, NR_NO, tcgsize2size[size]-b-1)))
+                       else
+                         list.concat(taicpu.op_reg(A_ASR,
                            GetOffsetReg64(dst, NR_NO, tcgsize2size[size]-b-1)));
 
                        if not(size in [OS_8, OS_S8]) then
@@ -545,8 +550,18 @@ unit cgcpu;
                for i := 1 to b do
                  if op = OP_SHL then
                    emit_mov(list, GetOffsetReg64(dst, NR_NO, i-1), NR_R1)
-                 else
-                   emit_mov(list, GetOffsetReg64(dst, NR_NO, tcgsize2size[size]-i), NR_R1);
+                 else if op = OP_SHR then
+                   emit_mov(list, GetOffsetReg64(dst, NR_NO, tcgsize2size[size]-i), NR_R1)
+                 else // OP_SAR
+                 begin
+                   // sign check
+                   // and high(src), high(src)
+                   // mov rx, r1
+                   // brpl .+2
+                   // mov rx, 255
+                   // mov dst, rx
+
+                 end;
            end
          else
            inherited a_op_const_reg_reg(list,op,size,a,src,dst);
