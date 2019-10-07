@@ -14,29 +14,54 @@ type
     INTCTRL: byte;  //Interrupt Control
     STATUS: byte;  //Status
   const
-    ENABLEidx = $00;  ENABLEbm = $01;  // Enable
-    HYSMODE0idx = $01;  // Hysteresis Mode
-    HYSMODE1idx = $02;  // Hysteresis Mode
-    INTMODE0idx = $04;  // Interrupt Mode
-    INTMODE1idx = $05;  // Interrupt Mode
-    LPMODEidx = $03;  LPMODEbm = $08;  // Low Power Mode
-    OUTENidx = $06;  OUTENbm = $40;  // Output Buffer Enable
-    RUNSTDBYidx = $07;  RUNSTDBYbm = $80;  // Run in Standby Mode
-    DATA0idx = $00;  // DAC voltage reference
-    DATA1idx = $01;  // DAC voltage reference
-    DATA2idx = $02;  // DAC voltage reference
-    DATA3idx = $03;  // DAC voltage reference
-    DATA4idx = $04;  // DAC voltage reference
-    DATA5idx = $05;  // DAC voltage reference
-    DATA6idx = $06;  // DAC voltage reference
-    DATA7idx = $07;  // DAC voltage reference
-    CMPidx = $00;  CMPbm = $01;  // Analog Comparator 0 Interrupt Enable
-    INVERTidx = $07;  INVERTbm = $80;  // Invert AC Output
-    MUXNEG0idx = $00;  // Negative Input MUX Selection
-    MUXNEG1idx = $01;  // Negative Input MUX Selection
-    MUXPOS0idx = $03;  // Positive Input MUX Selection
-    MUXPOS1idx = $04;  // Positive Input MUX Selection
-    STATEidx = $04;  STATEbm = $10;  // Analog Comparator State
+    // Enable
+    ENABLEbm = $01;
+    // AC_HYSMODE
+    HYSMODEmask = $06;
+    HYSMODE_OFF = $00;
+    HYSMODE_10mV = $02;
+    HYSMODE_25mV = $04;
+    HYSMODE_50mV = $06;
+    // AC_INTMODE
+    INTMODEmask = $30;
+    INTMODE_BOTHEDGE = $00;
+    INTMODE_NEGEDGE = $20;
+    INTMODE_POSEDGE = $30;
+    // AC_LPMODE
+    LPMODEmask = $08;
+    LPMODE_DIS = $00;
+    LPMODE_EN = $08;
+    // Output Buffer Enable
+    OUTENbm = $40;
+    // Run in Standby Mode
+    RUNSTDBYbm = $80;
+    // DAC voltage reference
+    DATA0bm = $01;
+    DATA1bm = $02;
+    DATA2bm = $04;
+    DATA3bm = $08;
+    DATA4bm = $10;
+    DATA5bm = $20;
+    DATA6bm = $40;
+    DATA7bm = $80;
+    // Analog Comparator 0 Interrupt Enable
+    CMPbm = $01;
+    // Invert AC Output
+    INVERTbm = $80;
+    // AC_MUXNEG
+    MUXNEGmask = $03;
+    MUXNEG_PIN0 = $00;
+    MUXNEG_PIN1 = $01;
+    MUXNEG_PIN2 = $02;
+    MUXNEG_DACREF = $03;
+    // AC_MUXPOS
+    MUXPOSmask = $18;
+    MUXPOS_PIN0 = $00;
+    MUXPOS_PIN1 = $08;
+    MUXPOS_PIN2 = $10;
+    MUXPOS_PIN3 = $18;
+    // Analog Comparator State
+    STATEbm = $10;
   end;
 
   TADC = object //Analog to Digital Converter
@@ -61,54 +86,116 @@ type
     WINHT: word;  //Window comparator high threshold
     CALIB: byte;  //Calibration
   const
-    DUTYCYCidx = $00;  DUTYCYCbm = $01;  // Duty Cycle
-    STCONVidx = $00;  STCONVbm = $01;  // Start Conversion Operation
-    ENABLEidx = $00;  ENABLEbm = $01;  // ADC Enable
-    FREERUNidx = $01;  FREERUNbm = $02;  // ADC Freerun mode
-    RESSELidx = $02;  RESSELbm = $04;  // ADC Resolution
-    RUNSTBYidx = $07;  RUNSTBYbm = $80;  // Run standby mode
-    SAMPNUM0idx = $00;  // Accumulation Samples
-    SAMPNUM1idx = $01;  // Accumulation Samples
-    SAMPNUM2idx = $02;  // Accumulation Samples
-    PRESC0idx = $00;  // Clock Pre-scaler
-    PRESC1idx = $01;  // Clock Pre-scaler
-    PRESC2idx = $02;  // Clock Pre-scaler
-    REFSEL0idx = $04;  // Reference Selection
-    REFSEL1idx = $05;  // Reference Selection
-    SAMPCAPidx = $06;  SAMPCAPbm = $40;  // Sample Capacitance Selection
-    ASDVidx = $04;  ASDVbm = $10;  // Automatic Sampling Delay Variation
-    INITDLY0idx = $05;  // Initial Delay Selection
-    INITDLY1idx = $06;  // Initial Delay Selection
-    INITDLY2idx = $07;  // Initial Delay Selection
-    SAMPDLY0idx = $00;  // Sampling Delay Selection
-    SAMPDLY1idx = $01;  // Sampling Delay Selection
-    SAMPDLY2idx = $02;  // Sampling Delay Selection
-    SAMPDLY3idx = $03;  // Sampling Delay Selection
-    WINCM0idx = $00;  // Window Comparator Mode
-    WINCM1idx = $01;  // Window Comparator Mode
-    WINCM2idx = $02;  // Window Comparator Mode
-    DBGRUNidx = $00;  DBGRUNbm = $01;  // Debug run
-    STARTEIidx = $00;  STARTEIbm = $01;  // Start Event Input Enable
-    RESRDYidx = $00;  RESRDYbm = $01;  // Result Ready Interrupt Enable
-    WCMPidx = $01;  WCMPbm = $02;  // Window Comparator Interrupt Enable
-    MUXPOS0idx = $00;  // Analog Channel Selection Bits
-    MUXPOS1idx = $01;  // Analog Channel Selection Bits
-    MUXPOS2idx = $02;  // Analog Channel Selection Bits
-    MUXPOS3idx = $03;  // Analog Channel Selection Bits
-    MUXPOS4idx = $04;  // Analog Channel Selection Bits
-    SAMPLEN0idx = $00;  // Sample lenght
-    SAMPLEN1idx = $01;  // Sample lenght
-    SAMPLEN2idx = $02;  // Sample lenght
-    SAMPLEN3idx = $03;  // Sample lenght
-    SAMPLEN4idx = $04;  // Sample lenght
-    TEMP0idx = $00;  // Temporary
-    TEMP1idx = $01;  // Temporary
-    TEMP2idx = $02;  // Temporary
-    TEMP3idx = $03;  // Temporary
-    TEMP4idx = $04;  // Temporary
-    TEMP5idx = $05;  // Temporary
-    TEMP6idx = $06;  // Temporary
-    TEMP7idx = $07;  // Temporary
+    // ADC_DUTYCYC
+    DUTYCYCmask = $01;
+    DUTYCYC_DUTY50 = $00;
+    DUTYCYC_DUTY25 = $01;
+    // Start Conversion Operation
+    STCONVbm = $01;
+    // ADC Enable
+    ENABLEbm = $01;
+    // ADC Freerun mode
+    FREERUNbm = $02;
+    // ADC_RESSEL
+    RESSELmask = $04;
+    RESSEL_10BIT = $00;
+    RESSEL_8BIT = $04;
+    // Run standby mode
+    RUNSTBYbm = $80;
+    // ADC_SAMPNUM
+    SAMPNUMmask = $07;
+    SAMPNUM_ACC1 = $00;
+    SAMPNUM_ACC2 = $01;
+    SAMPNUM_ACC4 = $02;
+    SAMPNUM_ACC8 = $03;
+    SAMPNUM_ACC16 = $04;
+    SAMPNUM_ACC32 = $05;
+    SAMPNUM_ACC64 = $06;
+    // ADC_PRESC
+    PRESCmask = $07;
+    PRESC_DIV2 = $00;
+    PRESC_DIV4 = $01;
+    PRESC_DIV8 = $02;
+    PRESC_DIV16 = $03;
+    PRESC_DIV32 = $04;
+    PRESC_DIV64 = $05;
+    PRESC_DIV128 = $06;
+    PRESC_DIV256 = $07;
+    // ADC_REFSEL
+    REFSELmask = $30;
+    REFSEL_INTREF = $00;
+    REFSEL_VDDREF = $10;
+    REFSEL_VREFA = $20;
+    // Sample Capacitance Selection
+    SAMPCAPbm = $40;
+    // ADC_ASDV
+    ASDVmask = $10;
+    ASDV_ASVOFF = $00;
+    ASDV_ASVON = $10;
+    // ADC_INITDLY
+    INITDLYmask = $E0;
+    INITDLY_DLY0 = $00;
+    INITDLY_DLY16 = $20;
+    INITDLY_DLY32 = $40;
+    INITDLY_DLY64 = $60;
+    INITDLY_DLY128 = $80;
+    INITDLY_DLY256 = $A0;
+    // Sampling Delay Selection
+    SAMPDLY0bm = $01;
+    SAMPDLY1bm = $02;
+    SAMPDLY2bm = $04;
+    SAMPDLY3bm = $08;
+    // ADC_WINCM
+    WINCMmask = $07;
+    WINCM_NONE = $00;
+    WINCM_BELOW = $01;
+    WINCM_ABOVE = $02;
+    WINCM_INSIDE = $03;
+    WINCM_OUTSIDE = $04;
+    // Debug run
+    DBGRUNbm = $01;
+    // Start Event Input Enable
+    STARTEIbm = $01;
+    // Result Ready Interrupt Enable
+    RESRDYbm = $01;
+    // Window Comparator Interrupt Enable
+    WCMPbm = $02;
+    // ADC_MUXPOS
+    MUXPOSmask = $1F;
+    MUXPOS_AIN0 = $00;
+    MUXPOS_AIN1 = $01;
+    MUXPOS_AIN2 = $02;
+    MUXPOS_AIN3 = $03;
+    MUXPOS_AIN4 = $04;
+    MUXPOS_AIN5 = $05;
+    MUXPOS_AIN6 = $06;
+    MUXPOS_AIN7 = $07;
+    MUXPOS_AIN8 = $08;
+    MUXPOS_AIN9 = $09;
+    MUXPOS_AIN10 = $0A;
+    MUXPOS_AIN11 = $0B;
+    MUXPOS_AIN12 = $0C;
+    MUXPOS_AIN13 = $0D;
+    MUXPOS_AIN14 = $0E;
+    MUXPOS_AIN15 = $0F;
+    MUXPOS_DACREF = $1C;
+    MUXPOS_TEMPSENSE = $1E;
+    MUXPOS_GND = $1F;
+    // Sample lenght
+    SAMPLEN0bm = $01;
+    SAMPLEN1bm = $02;
+    SAMPLEN2bm = $04;
+    SAMPLEN3bm = $08;
+    SAMPLEN4bm = $10;
+    // Temporary
+    TEMP0bm = $01;
+    TEMP1bm = $02;
+    TEMP2bm = $04;
+    TEMP3bm = $08;
+    TEMP4bm = $10;
+    TEMP5bm = $20;
+    TEMP6bm = $40;
+    TEMP7bm = $80;
   end;
 
   TBOD = object //Bod interface
@@ -125,21 +212,42 @@ type
     INTFLAGS: byte;  //Voltage level monitor interrupt Flags
     STATUS: byte;  //Voltage level monitor status
   const
-    ACTIVE0idx = $02;  // Operation in active mode
-    ACTIVE1idx = $03;  // Operation in active mode
-    SAMPFREQidx = $04;  SAMPFREQbm = $10;  // Sample frequency
-    SLEEP0idx = $00;  // Operation in sleep mode
-    SLEEP1idx = $01;  // Operation in sleep mode
-    LVL0idx = $00;  // Bod level
-    LVL1idx = $01;  // Bod level
-    LVL2idx = $02;  // Bod level
-    VLMCFG0idx = $01;  // Configuration
-    VLMCFG1idx = $02;  // Configuration
-    VLMIEidx = $00;  VLMIEbm = $01;  // voltage level monitor interrrupt enable
-    VLMIFidx = $00;  VLMIFbm = $01;  // Voltage level monitor interrupt flag
-    VLMSidx = $00;  VLMSbm = $01;  // Voltage level monitor status
-    VLMLVL0idx = $00;  // voltage level monitor level
-    VLMLVL1idx = $01;  // voltage level monitor level
+    // BOD_ACTIVE
+    ACTIVEmask = $0C;
+    ACTIVE_DIS = $00;
+    ACTIVE_ENABLED = $04;
+    ACTIVE_SAMPLED = $08;
+    ACTIVE_ENWAKE = $0C;
+    // BOD_SAMPFREQ
+    SAMPFREQmask = $10;
+    SAMPFREQ_1KHZ = $00;
+    SAMPFREQ_125HZ = $10;
+    // BOD_SLEEP
+    SLEEPmask = $03;
+    SLEEP_DIS = $00;
+    SLEEP_ENABLED = $01;
+    SLEEP_SAMPLED = $02;
+    // BOD_LVL
+    LVLmask = $07;
+    LVL_BODLEVEL0 = $00;
+    LVL_BODLEVEL2 = $02;
+    LVL_BODLEVEL7 = $07;
+    // BOD_VLMCFG
+    VLMCFGmask = $06;
+    VLMCFG_BELOW = $00;
+    VLMCFG_ABOVE = $02;
+    VLMCFG_CROSS = $04;
+    // voltage level monitor interrrupt enable
+    VLMIEbm = $01;
+    // Voltage level monitor interrupt flag
+    VLMIFbm = $01;
+    // Voltage level monitor status
+    VLMSbm = $01;
+    // BOD_VLMLVL
+    VLMLVLmask = $03;
+    VLMLVL_5ABOVE = $00;
+    VLMLVL_15ABOVE = $01;
+    VLMLVL_25ABOVE = $02;
   end;
 
   TCCL = object //Configurable Custom Logic
@@ -168,45 +276,110 @@ type
     LUT3CTRLC: byte;  //LUT Control 3 C
     TRUTH3: byte;  //Truth 3
   const
-    ENABLEidx = $00;  ENABLEbm = $01;  // Enable
-    RUNSTDBYidx = $06;  RUNSTDBYbm = $40;  // Run in Standby
-    INTMODE00idx = $00;  // Interrupt Mode for LUT0
-    INTMODE01idx = $01;  // Interrupt Mode for LUT0
-    INTMODE10idx = $02;  // Interrupt Mode for LUT1
-    INTMODE11idx = $03;  // Interrupt Mode for LUT1
-    INTMODE20idx = $04;  // Interrupt Mode for LUT2
-    INTMODE21idx = $05;  // Interrupt Mode for LUT2
-    INTMODE30idx = $06;  // Interrupt Mode for LUT3
-    INTMODE31idx = $07;  // Interrupt Mode for LUT3
-    INT0idx = $00;  // Interrupt Flags
-    INT1idx = $01;  // Interrupt Flags
-    INT2idx = $02;  // Interrupt Flags
-    INT3idx = $03;  // Interrupt Flags
-    CLKSRC0idx = $01;  // Clock Source Selection
-    CLKSRC1idx = $02;  // Clock Source Selection
-    CLKSRC2idx = $03;  // Clock Source Selection
-    EDGEDETidx = $07;  EDGEDETbm = $80;  // Edge Detection Enable
-    FILTSEL0idx = $04;  // Filter Selection
-    FILTSEL1idx = $05;  // Filter Selection
-    OUTENidx = $06;  OUTENbm = $40;  // Output Enable
-    INSEL00idx = $00;  // LUT Input 0 Source Selection
-    INSEL01idx = $01;  // LUT Input 0 Source Selection
-    INSEL02idx = $02;  // LUT Input 0 Source Selection
-    INSEL03idx = $03;  // LUT Input 0 Source Selection
-    INSEL10idx = $04;  // LUT Input 1 Source Selection
-    INSEL11idx = $05;  // LUT Input 1 Source Selection
-    INSEL12idx = $06;  // LUT Input 1 Source Selection
-    INSEL13idx = $07;  // LUT Input 1 Source Selection
-    INSEL20idx = $00;  // LUT Input 2 Source Selection
-    INSEL21idx = $01;  // LUT Input 2 Source Selection
-    INSEL22idx = $02;  // LUT Input 2 Source Selection
-    INSEL23idx = $03;  // LUT Input 2 Source Selection
-    SEQSEL00idx = $00;  // Sequential Selection
-    SEQSEL01idx = $01;  // Sequential Selection
-    SEQSEL02idx = $02;  // Sequential Selection
-    SEQSEL10idx = $00;  // Sequential Selection
-    SEQSEL11idx = $01;  // Sequential Selection
-    SEQSEL12idx = $02;  // Sequential Selection
+    // Enable
+    ENABLEbm = $01;
+    // Run in Standby
+    RUNSTDBYbm = $40;
+    // CCL_INTMODE0
+    INTMODE0mask = $03;
+    INTMODE0_INTDISABLE = $00;
+    INTMODE0_RISING = $01;
+    INTMODE0_FALLING = $02;
+    INTMODE0_BOTH = $03;
+    // CCL_INTMODE1
+    INTMODE1mask = $0C;
+    INTMODE1_INTDISABLE = $00;
+    INTMODE1_RISING = $04;
+    INTMODE1_FALLING = $08;
+    INTMODE1_BOTH = $0C;
+    // CCL_INTMODE2
+    INTMODE2mask = $30;
+    INTMODE2_INTDISABLE = $00;
+    INTMODE2_RISING = $10;
+    INTMODE2_FALLING = $20;
+    INTMODE2_BOTH = $30;
+    // CCL_INTMODE3
+    INTMODE3mask = $C0;
+    INTMODE3_INTDISABLE = $00;
+    INTMODE3_RISING = $40;
+    INTMODE3_FALLING = $80;
+    INTMODE3_BOTH = $C0;
+    // Interrupt Flags
+    INT0bm = $01;
+    INT1bm = $02;
+    INT2bm = $04;
+    INT3bm = $08;
+    // CCL_CLKSRC
+    CLKSRCmask = $0E;
+    CLKSRC_CLKPER = $00;
+    CLKSRC_IN2 = $02;
+    CLKSRC_OSC20M = $08;
+    CLKSRC_OSCULP32K = $0A;
+    CLKSRC_OSCULP1K = $0C;
+    // CCL_EDGEDET
+    EDGEDETmask = $80;
+    EDGEDET_DIS = $00;
+    EDGEDET_EN = $80;
+    // CCL_FILTSEL
+    FILTSELmask = $30;
+    FILTSEL_DISABLE = $00;
+    FILTSEL_SYNCH = $10;
+    FILTSEL_FILTER = $20;
+    // Output Enable
+    OUTENbm = $40;
+    // CCL_INSEL0
+    INSEL0mask = $0F;
+    INSEL0_MASK = $00;
+    INSEL0_FEEDBACK = $01;
+    INSEL0_LINK = $02;
+    INSEL0_EVENTA = $03;
+    INSEL0_EVENTB = $04;
+    INSEL0_IO = $05;
+    INSEL0_AC0 = $06;
+    INSEL0_USART0 = $08;
+    INSEL0_SPI0 = $09;
+    INSEL0_TCA0 = $0A;
+    INSEL0_TCB0 = $0C;
+    // CCL_INSEL1
+    INSEL1mask = $F0;
+    INSEL1_MASK = $00;
+    INSEL1_FEEDBACK = $10;
+    INSEL1_LINK = $20;
+    INSEL1_EVENTA = $30;
+    INSEL1_EVENTB = $40;
+    INSEL1_IO = $50;
+    INSEL1_AC0 = $60;
+    INSEL1_USART1 = $80;
+    INSEL1_SPI0 = $90;
+    INSEL1_TCA0 = $A0;
+    INSEL1_TCB1 = $C0;
+    // CCL_INSEL2
+    INSEL2mask = $0F;
+    INSEL2_MASK = $00;
+    INSEL2_FEEDBACK = $01;
+    INSEL2_LINK = $02;
+    INSEL2_EVENTA = $03;
+    INSEL2_EVENTB = $04;
+    INSEL2_IO = $05;
+    INSEL2_AC0 = $06;
+    INSEL2_USART2 = $08;
+    INSEL2_SPI0 = $09;
+    INSEL2_TCA0 = $0A;
+    INSEL2_TCB2 = $0C;
+    // CCL_SEQSEL0
+    SEQSEL0mask = $07;
+    SEQSEL0_DISABLE = $00;
+    SEQSEL0_DFF = $01;
+    SEQSEL0_JK = $02;
+    SEQSEL0_LATCH = $03;
+    SEQSEL0_RS = $04;
+    // CCL_SEQSEL1
+    SEQSEL1mask = $07;
+    SEQSEL1_DISABLE = $00;
+    SEQSEL1_DFF = $01;
+    SEQSEL1_JK = $02;
+    SEQSEL1_LATCH = $03;
+    SEQSEL1_RS = $04;
   end;
 
   TCLKCTRL = object //Clock controller
@@ -240,37 +413,68 @@ type
     Reserved27: byte;
     XOSC32KCTRLA: byte;  //XOSC32K Control A
   const
-    CLKOUTidx = $07;  CLKOUTbm = $80;  // System clock out
-    CLKSEL0idx = $00;  // clock select
-    CLKSEL1idx = $01;  // clock select
-    PDIV0idx = $01;  // Prescaler division
-    PDIV1idx = $02;  // Prescaler division
-    PDIV2idx = $03;  // Prescaler division
-    PDIV3idx = $04;  // Prescaler division
-    PENidx = $00;  PENbm = $01;  // Prescaler enable
-    LOCKENidx = $00;  LOCKENbm = $01;  // lock ebable
-    EXTSidx = $07;  EXTSbm = $80;  // External Clock status
-    OSC20MSidx = $04;  OSC20MSbm = $10;  // 20MHz oscillator status
-    OSC32KSidx = $05;  OSC32KSbm = $20;  // 32KHz oscillator status
-    SOSCidx = $00;  SOSCbm = $01;  // System Oscillator changing
-    XOSC32KSidx = $06;  XOSC32KSbm = $40;  // 32.768 kHz Crystal Oscillator status
-    CAL20M0idx = $00;  // Calibration
-    CAL20M1idx = $01;  // Calibration
-    CAL20M2idx = $02;  // Calibration
-    CAL20M3idx = $03;  // Calibration
-    CAL20M4idx = $04;  // Calibration
-    CAL20M5idx = $05;  // Calibration
-    CAL20M6idx = $06;  // Calibration
-    LOCKidx = $07;  LOCKbm = $80;  // Lock
-    TEMPCAL20M0idx = $00;  // Oscillator temperature coefficient
-    TEMPCAL20M1idx = $01;  // Oscillator temperature coefficient
-    TEMPCAL20M2idx = $02;  // Oscillator temperature coefficient
-    TEMPCAL20M3idx = $03;  // Oscillator temperature coefficient
-    RUNSTDBYidx = $01;  RUNSTDBYbm = $02;  // Run standby
-    CSUT0idx = $04;  // Crystal startup time
-    CSUT1idx = $05;  // Crystal startup time
-    ENABLEidx = $00;  ENABLEbm = $01;  // Enable
-    SELidx = $02;  SELbm = $04;  // Select
+    // System clock out
+    CLKOUTbm = $80;
+    // CLKCTRL_CLKSEL
+    CLKSELmask = $03;
+    CLKSEL_OSC20M = $00;
+    CLKSEL_OSCULP32K = $01;
+    CLKSEL_XOSC32K = $02;
+    CLKSEL_EXTCLK = $03;
+    // CLKCTRL_PDIV
+    PDIVmask = $1E;
+    PDIV_2X = $00;
+    PDIV_4X = $02;
+    PDIV_8X = $04;
+    PDIV_16X = $06;
+    PDIV_32X = $08;
+    PDIV_64X = $0A;
+    PDIV_6X = $10;
+    PDIV_10X = $12;
+    PDIV_12X = $14;
+    PDIV_24X = $16;
+    PDIV_48X = $18;
+    // Prescaler enable
+    PENbm = $01;
+    // lock ebable
+    LOCKENbm = $01;
+    // External Clock status
+    EXTSbm = $80;
+    // 20MHz oscillator status
+    OSC20MSbm = $10;
+    // 32KHz oscillator status
+    OSC32KSbm = $20;
+    // System Oscillator changing
+    SOSCbm = $01;
+    // 32.768 kHz Crystal Oscillator status
+    XOSC32KSbm = $40;
+    // Calibration
+    CAL20M0bm = $01;
+    CAL20M1bm = $02;
+    CAL20M2bm = $04;
+    CAL20M3bm = $08;
+    CAL20M4bm = $10;
+    CAL20M5bm = $20;
+    CAL20M6bm = $40;
+    // Lock
+    LOCKbm = $80;
+    // Oscillator temperature coefficient
+    TEMPCAL20M0bm = $01;
+    TEMPCAL20M1bm = $02;
+    TEMPCAL20M2bm = $04;
+    TEMPCAL20M3bm = $08;
+    // Run standby
+    RUNSTDBYbm = $02;
+    // CLKCTRL_CSUT
+    CSUTmask = $30;
+    CSUT_1K = $00;
+    CSUT_16K = $10;
+    CSUT_32K = $20;
+    CSUT_64K = $30;
+    // Enable
+    ENABLEbm = $01;
+    // Select
+    SELbm = $04;
   end;
 
   TCPU = object //CPU
@@ -291,22 +495,26 @@ type
     SPH: byte;  //Stack Pointer High
     SREG: byte;  //Status Register
   const
-    CCP0idx = $00;  // CCP signature
-    CCP1idx = $01;  // CCP signature
-    CCP2idx = $02;  // CCP signature
-    CCP3idx = $03;  // CCP signature
-    CCP4idx = $04;  // CCP signature
-    CCP5idx = $05;  // CCP signature
-    CCP6idx = $06;  // CCP signature
-    CCP7idx = $07;  // CCP signature
-    Cidx = $00;  Cbm = $01;  // Carry Flag
-    Hidx = $05;  Hbm = $20;  // Half Carry Flag
-    Iidx = $07;  Ibm = $80;  // Global Interrupt Enable Flag
-    Nidx = $02;  Nbm = $04;  // Negative Flag
-    Sidx = $04;  Sbm = $10;  // N Exclusive Or V Flag
-    Tidx = $06;  Tbm = $40;  // Transfer Bit
-    Vidx = $03;  Vbm = $08;  // Two's Complement Overflow Flag
-    Zidx = $01;  Zbm = $02;  // Zero Flag
+    // CPU_CCP
+    CCPmask = $FF;
+    CCP_SPM = $9D;
+    CCP_IOREG = $D8;
+    // Carry Flag
+    Cbm = $01;
+    // Half Carry Flag
+    Hbm = $20;
+    // Global Interrupt Enable Flag
+    Ibm = $80;
+    // Negative Flag
+    Nbm = $04;
+    // N Exclusive Or V Flag
+    Sbm = $10;
+    // Transfer Bit
+    Tbm = $40;
+    // Two's Complement Overflow Flag
+    Vbm = $08;
+    // Zero Flag
+    Zbm = $02;
   end;
 
   TCPUINT = object //Interrupt Controller
@@ -315,28 +523,36 @@ type
     LVL0PRI: byte;  //Interrupt Level 0 Priority
     LVL1VEC: byte;  //Interrupt Level 1 Priority Vector
   const
-    CVTidx = $05;  CVTbm = $20;  // Compact Vector Table
-    IVSELidx = $06;  IVSELbm = $40;  // Interrupt Vector Select
-    LVL0RRidx = $00;  LVL0RRbm = $01;  // Round-robin Scheduling Enable
-    LVL0PRI0idx = $00;  // Interrupt Level Priority
-    LVL0PRI1idx = $01;  // Interrupt Level Priority
-    LVL0PRI2idx = $02;  // Interrupt Level Priority
-    LVL0PRI3idx = $03;  // Interrupt Level Priority
-    LVL0PRI4idx = $04;  // Interrupt Level Priority
-    LVL0PRI5idx = $05;  // Interrupt Level Priority
-    LVL0PRI6idx = $06;  // Interrupt Level Priority
-    LVL0PRI7idx = $07;  // Interrupt Level Priority
-    LVL1VEC0idx = $00;  // Interrupt Vector with High Priority
-    LVL1VEC1idx = $01;  // Interrupt Vector with High Priority
-    LVL1VEC2idx = $02;  // Interrupt Vector with High Priority
-    LVL1VEC3idx = $03;  // Interrupt Vector with High Priority
-    LVL1VEC4idx = $04;  // Interrupt Vector with High Priority
-    LVL1VEC5idx = $05;  // Interrupt Vector with High Priority
-    LVL1VEC6idx = $06;  // Interrupt Vector with High Priority
-    LVL1VEC7idx = $07;  // Interrupt Vector with High Priority
-    LVL0EXidx = $00;  LVL0EXbm = $01;  // Level 0 Interrupt Executing
-    LVL1EXidx = $01;  LVL1EXbm = $02;  // Level 1 Interrupt Executing
-    NMIEXidx = $07;  NMIEXbm = $80;  // Non-maskable Interrupt Executing
+    // Compact Vector Table
+    CVTbm = $20;
+    // Interrupt Vector Select
+    IVSELbm = $40;
+    // Round-robin Scheduling Enable
+    LVL0RRbm = $01;
+    // Interrupt Level Priority
+    LVL0PRI0bm = $01;
+    LVL0PRI1bm = $02;
+    LVL0PRI2bm = $04;
+    LVL0PRI3bm = $08;
+    LVL0PRI4bm = $10;
+    LVL0PRI5bm = $20;
+    LVL0PRI6bm = $40;
+    LVL0PRI7bm = $80;
+    // Interrupt Vector with High Priority
+    LVL1VEC0bm = $01;
+    LVL1VEC1bm = $02;
+    LVL1VEC2bm = $04;
+    LVL1VEC3bm = $08;
+    LVL1VEC4bm = $10;
+    LVL1VEC5bm = $20;
+    LVL1VEC6bm = $40;
+    LVL1VEC7bm = $80;
+    // Level 0 Interrupt Executing
+    LVL0EXbm = $01;
+    // Level 1 Interrupt Executing
+    LVL1EXbm = $02;
+    // Non-maskable Interrupt Executing
+    NMIEXbm = $80;
   end;
 
   TCRCSCAN = object //CRCSCAN
@@ -344,15 +560,21 @@ type
     CTRLB: byte;  //Control B
     STATUS: byte;  //Status
   const
-    ENABLEidx = $00;  ENABLEbm = $01;  // Enable CRC scan
-    NMIENidx = $01;  NMIENbm = $02;  // Enable NMI Trigger
-    RESETidx = $07;  RESETbm = $80;  // Reset CRC scan
-    MODE0idx = $04;  // CRC Flash Access Mode
-    MODE1idx = $05;  // CRC Flash Access Mode
-    SRC0idx = $00;  // CRC Source
-    SRC1idx = $01;  // CRC Source
-    BUSYidx = $00;  BUSYbm = $01;  // CRC Busy
-    OKidx = $01;  OKbm = $02;  // CRC Ok
+    // Enable CRC scan
+    ENABLEbm = $01;
+    // Enable NMI Trigger
+    NMIENbm = $02;
+    // Reset CRC scan
+    RESETbm = $80;
+    // CRCSCAN_SRC
+    SRCmask = $03;
+    SRC_FLASH = $00;
+    SRC_APPLICATION = $01;
+    SRC_BOOT = $02;
+    // CRC Busy
+    BUSYbm = $01;
+    // CRC Ok
+    OKbm = $02;
   end;
 
   TEVSYS = object //Event System
@@ -413,30 +635,71 @@ type
     USERTCB2: byte;  //User TCB2
     USERTCB3: byte;  //User TCB3
   const
-    GENERATOR0idx = $00;  // Generator selector
-    GENERATOR1idx = $01;  // Generator selector
-    GENERATOR2idx = $02;  // Generator selector
-    GENERATOR3idx = $03;  // Generator selector
-    GENERATOR4idx = $04;  // Generator selector
-    GENERATOR5idx = $05;  // Generator selector
-    GENERATOR6idx = $06;  // Generator selector
-    GENERATOR7idx = $07;  // Generator selector
-    STROBE00idx = $00;  // Software event on channels
-    STROBE01idx = $01;  // Software event on channels
-    STROBE02idx = $02;  // Software event on channels
-    STROBE03idx = $03;  // Software event on channels
-    STROBE04idx = $04;  // Software event on channels
-    STROBE05idx = $05;  // Software event on channels
-    STROBE06idx = $06;  // Software event on channels
-    STROBE07idx = $07;  // Software event on channels
-    CHANNEL0idx = $00;  // Channel selector
-    CHANNEL1idx = $01;  // Channel selector
-    CHANNEL2idx = $02;  // Channel selector
-    CHANNEL3idx = $03;  // Channel selector
-    CHANNEL4idx = $04;  // Channel selector
-    CHANNEL5idx = $05;  // Channel selector
-    CHANNEL6idx = $06;  // Channel selector
-    CHANNEL7idx = $07;  // Channel selector
+    // EVSYS_GENERATOR
+    GENERATORmask = $FF;
+    GENERATOR_OFF = $00;
+    GENERATOR_UPDI = $01;
+    GENERATOR_RTC_OVF = $06;
+    GENERATOR_RTC_CMP = $07;
+    GENERATOR_RTC_PIT0 = $08;
+    GENERATOR_RTC_PIT1 = $09;
+    GENERATOR_RTC_PIT2 = $0A;
+    GENERATOR_RTC_PIT3 = $0B;
+    GENERATOR_CCL_LUT0 = $10;
+    GENERATOR_CCL_LUT1 = $11;
+    GENERATOR_CCL_LUT2 = $12;
+    GENERATOR_CCL_LUT3 = $13;
+    GENERATOR_AC0_OUT = $20;
+    GENERATOR_ADC0_RESRDY = $24;
+    GENERATOR_PORT0_PIN0 = $40;
+    GENERATOR_PORT0_PIN1 = $41;
+    GENERATOR_PORT0_PIN2 = $42;
+    GENERATOR_PORT0_PIN3 = $43;
+    GENERATOR_PORT0_PIN4 = $44;
+    GENERATOR_PORT0_PIN5 = $45;
+    GENERATOR_PORT0_PIN6 = $46;
+    GENERATOR_PORT0_PIN7 = $47;
+    GENERATOR_PORT1_PIN0 = $48;
+    GENERATOR_PORT1_PIN1 = $49;
+    GENERATOR_PORT1_PIN2 = $4A;
+    GENERATOR_PORT1_PIN3 = $4B;
+    GENERATOR_PORT1_PIN4 = $4C;
+    GENERATOR_PORT1_PIN5 = $4D;
+    GENERATOR_PORT1_PIN6 = $4E;
+    GENERATOR_PORT1_PIN7 = $4F;
+    GENERATOR_USART0_XCK = $60;
+    GENERATOR_USART1_XCK = $61;
+    GENERATOR_USART2_XCK = $62;
+    GENERATOR_USART3_XCK = $63;
+    GENERATOR_SPI0_SCK = $68;
+    GENERATOR_TCA0_OVF_LUNF = $80;
+    GENERATOR_TCA0_HUNF = $81;
+    GENERATOR_TCA0_CMP0 = $84;
+    GENERATOR_TCA0_CMP1 = $85;
+    GENERATOR_TCA0_CMP2 = $86;
+    GENERATOR_TCB0_CAPT = $A0;
+    GENERATOR_TCB1_CAPT = $A2;
+    GENERATOR_TCB2_CAPT = $A4;
+    GENERATOR_TCB3_CAPT = $A6;
+    // EVSYS_STROBE0
+    STROBE0mask = $FF;
+    STROBE0_EV_STROBE_CH0 = $01;
+    STROBE0_EV_STROBE_CH1 = $02;
+    STROBE0_EV_STROBE_CH2 = $04;
+    STROBE0_EV_STROBE_CH3 = $08;
+    STROBE0_EV_STROBE_CH4 = $10;
+    STROBE0_EV_STROBE_CH5 = $20;
+    STROBE0_EV_STROBE_CH6 = $40;
+    STROBE0_EV_STROBE_CH7 = $80;
+    // EVSYS_CHANNEL
+    CHANNELmask = $FF;
+    CHANNEL_OFF = $00;
+    CHANNEL_CHANNEL0 = $01;
+    CHANNEL_CHANNEL1 = $02;
+    CHANNEL_CHANNEL2 = $03;
+    CHANNEL_CHANNEL3 = $04;
+    CHANNEL_CHANNEL4 = $05;
+    CHANNEL_CHANNEL5 = $06;
   end;
 
   TFUSE = object //Fuses
@@ -450,32 +713,82 @@ type
     APPEND: byte;  //Application Code Section End
     BOOTEND: byte;  //Boot Section End
   const
-    ACTIVE0idx = $02;  // BOD Operation in Active Mode
-    ACTIVE1idx = $03;  // BOD Operation in Active Mode
-    LVL0idx = $05;  // BOD Level
-    LVL1idx = $06;  // BOD Level
-    LVL2idx = $07;  // BOD Level
-    SAMPFREQidx = $04;  SAMPFREQbm = $10;  // BOD Sample Frequency
-    SLEEP0idx = $00;  // BOD Operation in Sleep Mode
-    SLEEP1idx = $01;  // BOD Operation in Sleep Mode
-    FREQSEL0idx = $00;  // Frequency Select
-    FREQSEL1idx = $01;  // Frequency Select
-    OSCLOCKidx = $07;  OSCLOCKbm = $80;  // Oscillator Lock
-    CRCSRC0idx = $06;  // CRC Source
-    CRCSRC1idx = $07;  // CRC Source
-    EESAVEidx = $00;  EESAVEbm = $01;  // EEPROM Save
-    RSTPINCFGidx = $03;  RSTPINCFGbm = $08;  // Reset Pin Configuration
-    SUT0idx = $00;  // Startup Time
-    SUT1idx = $01;  // Startup Time
-    SUT2idx = $02;  // Startup Time
-    PERIOD0idx = $00;  // Watchdog Timeout Period
-    PERIOD1idx = $01;  // Watchdog Timeout Period
-    PERIOD2idx = $02;  // Watchdog Timeout Period
-    PERIOD3idx = $03;  // Watchdog Timeout Period
-    WINDOW0idx = $04;  // Watchdog Window Timeout Period
-    WINDOW1idx = $05;  // Watchdog Window Timeout Period
-    WINDOW2idx = $06;  // Watchdog Window Timeout Period
-    WINDOW3idx = $07;  // Watchdog Window Timeout Period
+    // FUSE_ACTIVE
+    ACTIVEmask = $0C;
+    ACTIVE_DIS = $00;
+    ACTIVE_ENABLED = $04;
+    ACTIVE_SAMPLED = $08;
+    ACTIVE_ENWAKE = $0C;
+    // FUSE_LVL
+    LVLmask = $E0;
+    LVL_BODLEVEL0 = $00;
+    LVL_BODLEVEL2 = $40;
+    LVL_BODLEVEL7 = $E0;
+    // FUSE_SAMPFREQ
+    SAMPFREQmask = $10;
+    SAMPFREQ_1KHZ = $00;
+    SAMPFREQ_125HZ = $10;
+    // FUSE_SLEEP
+    SLEEPmask = $03;
+    SLEEP_DIS = $00;
+    SLEEP_ENABLED = $01;
+    SLEEP_SAMPLED = $02;
+    // FUSE_FREQSEL
+    FREQSELmask = $03;
+    FREQSEL_16MHZ = $01;
+    FREQSEL_20MHZ = $02;
+    // Oscillator Lock
+    OSCLOCKbm = $80;
+    // FUSE_CRCSRC
+    CRCSRCmask = $C0;
+    CRCSRC_FLASH = $00;
+    CRCSRC_BOOT = $40;
+    CRCSRC_BOOTAPP = $80;
+    CRCSRC_NOCRC = $C0;
+    // EEPROM Save
+    EESAVEbm = $01;
+    // FUSE_RSTPINCFG
+    RSTPINCFGmask = $08;
+    RSTPINCFG_GPIO = $00;
+    RSTPINCFG_RST = $08;
+    // FUSE_SUT
+    SUTmask = $07;
+    SUT_0MS = $00;
+    SUT_1MS = $01;
+    SUT_2MS = $02;
+    SUT_4MS = $03;
+    SUT_8MS = $04;
+    SUT_16MS = $05;
+    SUT_32MS = $06;
+    SUT_64MS = $07;
+    // FUSE_PERIOD
+    PERIODmask = $0F;
+    PERIOD_OFF = $00;
+    PERIOD_8CLK = $01;
+    PERIOD_16CLK = $02;
+    PERIOD_32CLK = $03;
+    PERIOD_64CLK = $04;
+    PERIOD_128CLK = $05;
+    PERIOD_256CLK = $06;
+    PERIOD_512CLK = $07;
+    PERIOD_1KCLK = $08;
+    PERIOD_2KCLK = $09;
+    PERIOD_4KCLK = $0A;
+    PERIOD_8KCLK = $0B;
+    // FUSE_WINDOW
+    WINDOWmask = $F0;
+    WINDOW_OFF = $00;
+    WINDOW_8CLK = $10;
+    WINDOW_16CLK = $20;
+    WINDOW_32CLK = $30;
+    WINDOW_64CLK = $40;
+    WINDOW_128CLK = $50;
+    WINDOW_256CLK = $60;
+    WINDOW_512CLK = $70;
+    WINDOW_1KCLK = $80;
+    WINDOW_2KCLK = $90;
+    WINDOW_4KCLK = $A0;
+    WINDOW_8KCLK = $B0;
   end;
 
   TGPIO = object //General Purpose IO
@@ -488,14 +801,10 @@ type
   TLOCKBIT = object //Lockbit
     LOCKBIT: byte;  //Lock Bits
   const
-    LB0idx = $00;  // Lock Bits
-    LB1idx = $01;  // Lock Bits
-    LB2idx = $02;  // Lock Bits
-    LB3idx = $03;  // Lock Bits
-    LB4idx = $04;  // Lock Bits
-    LB5idx = $05;  // Lock Bits
-    LB6idx = $06;  // Lock Bits
-    LB7idx = $07;  // Lock Bits
+    // LOCKBIT_LB
+    LBmask = $FF;
+    LB_RWLOCK = $3A;
+    LB_NOLOCK = $C5;
   end;
 
   TNVMCTRL = object //Non-volatile Memory Controller
@@ -508,15 +817,28 @@ type
     DATA: word;  //Data
     ADDR: word;  //Address
   const
-    CMD0idx = $00;  // Command
-    CMD1idx = $01;  // Command
-    CMD2idx = $02;  // Command
-    APCWPidx = $00;  APCWPbm = $01;  // Application code write protect
-    BOOTLOCKidx = $01;  BOOTLOCKbm = $02;  // Boot Lock
-    EEREADYidx = $00;  EEREADYbm = $01;  // EEPROM Ready
-    EEBUSYidx = $01;  EEBUSYbm = $02;  // EEPROM busy
-    FBUSYidx = $00;  FBUSYbm = $01;  // Flash busy
-    WRERRORidx = $02;  WRERRORbm = $04;  // Write error
+    // NVMCTRL_CMD
+    CMDmask = $07;
+    CMD_NONE = $00;
+    CMD_PAGEWRITE = $01;
+    CMD_PAGEERASE = $02;
+    CMD_PAGEERASEWRITE = $03;
+    CMD_PAGEBUFCLR = $04;
+    CMD_CHIPERASE = $05;
+    CMD_EEERASE = $06;
+    CMD_FUSEWRITE = $07;
+    // Application code write protect
+    APCWPbm = $01;
+    // Boot Lock
+    BOOTLOCKbm = $02;
+    // EEPROM Ready
+    EEREADYbm = $01;
+    // EEPROM busy
+    EEBUSYbm = $02;
+    // Flash busy
+    FBUSYbm = $01;
+    // Write error
+    WRERRORbm = $04;
   end;
 
   TPORT = object //I/O Ports
@@ -545,20 +867,29 @@ type
     PIN6CTRL: byte;  //Pin 6 Control
     PIN7CTRL: byte;  //Pin 7 Control
   const
-    INT0idx = $00;  // Pin Interrupt
-    INT1idx = $01;  // Pin Interrupt
-    INT2idx = $02;  // Pin Interrupt
-    INT3idx = $03;  // Pin Interrupt
-    INT4idx = $04;  // Pin Interrupt
-    INT5idx = $05;  // Pin Interrupt
-    INT6idx = $06;  // Pin Interrupt
-    INT7idx = $07;  // Pin Interrupt
-    INVENidx = $07;  INVENbm = $80;  // Inverted I/O Enable
-    ISC0idx = $00;  // Input/Sense Configuration
-    ISC1idx = $01;  // Input/Sense Configuration
-    ISC2idx = $02;  // Input/Sense Configuration
-    PULLUPENidx = $03;  PULLUPENbm = $08;  // Pullup enable
-    SRLidx = $00;  SRLbm = $01;  // Slew Rate Limit Enable
+    // Pin Interrupt
+    INT0bm = $01;
+    INT1bm = $02;
+    INT2bm = $04;
+    INT3bm = $08;
+    INT4bm = $10;
+    INT5bm = $20;
+    INT6bm = $40;
+    INT7bm = $80;
+    // Inverted I/O Enable
+    INVENbm = $80;
+    // PORT_ISC
+    ISCmask = $07;
+    ISC_INTDISABLE = $00;
+    ISC_BOTHEDGES = $01;
+    ISC_RISING = $02;
+    ISC_FALLING = $03;
+    ISC_INPUT_DISABLE = $04;
+    ISC_LEVEL = $05;
+    // Pullup enable
+    PULLUPENbm = $08;
+    // Slew Rate Limit Enable
+    SRLbm = $01;
   end;
 
   TPORTMUX = object //Port Multiplexer
@@ -569,48 +900,94 @@ type
     TCAROUTEA: byte;  //Port Multiplexer TCA
     TCBROUTEA: byte;  //Port Multiplexer TCB
   const
-    LUT0idx = $00;  LUT0bm = $01;  // CCL LUT0
-    LUT1idx = $01;  LUT1bm = $02;  // CCL LUT1
-    LUT2idx = $02;  LUT2bm = $04;  // CCL LUT2
-    LUT3idx = $03;  LUT3bm = $08;  // CCL LUT3
-    EVOUT0idx = $00;  EVOUT0bm = $01;  // Event Output 0
-    EVOUT1idx = $01;  EVOUT1bm = $02;  // Event Output 1
-    EVOUT2idx = $02;  EVOUT2bm = $04;  // Event Output 2
-    EVOUT3idx = $03;  EVOUT3bm = $08;  // Event Output 3
-    EVOUT4idx = $04;  EVOUT4bm = $10;  // Event Output 4
-    EVOUT5idx = $05;  EVOUT5bm = $20;  // Event Output 5
-    TCA00idx = $00;  // Port Multiplexer TCA0
-    TCA01idx = $01;  // Port Multiplexer TCA0
-    TCA02idx = $02;  // Port Multiplexer TCA0
-    TCB0idx = $00;  TCB0bm = $01;  // Port Multiplexer TCB0
-    TCB1idx = $01;  TCB1bm = $02;  // Port Multiplexer TCB1
-    TCB2idx = $02;  TCB2bm = $04;  // Port Multiplexer TCB2
-    TCB3idx = $03;  TCB3bm = $08;  // Port Multiplexer TCB3
-    SPI00idx = $00;  // Port Multiplexer SPI0
-    SPI01idx = $01;  // Port Multiplexer SPI0
-    TWI00idx = $04;  // Port Multiplexer TWI0
-    TWI01idx = $05;  // Port Multiplexer TWI0
-    USART00idx = $00;  // Port Multiplexer USART0
-    USART01idx = $01;  // Port Multiplexer USART0
-    USART10idx = $02;  // Port Multiplexer USART1
-    USART11idx = $03;  // Port Multiplexer USART1
-    USART20idx = $04;  // Port Multiplexer USART2
-    USART21idx = $05;  // Port Multiplexer USART2
-    USART30idx = $06;  // Port Multiplexer USART3
-    USART31idx = $07;  // Port Multiplexer USART3
+    // CCL LUT0
+    LUT0bm = $01;
+    // CCL LUT1
+    LUT1bm = $02;
+    // CCL LUT2
+    LUT2bm = $04;
+    // CCL LUT3
+    LUT3bm = $08;
+    // Event Output 0
+    EVOUT0bm = $01;
+    // Event Output 1
+    EVOUT1bm = $02;
+    // Event Output 2
+    EVOUT2bm = $04;
+    // Event Output 3
+    EVOUT3bm = $08;
+    // Event Output 4
+    EVOUT4bm = $10;
+    // Event Output 5
+    EVOUT5bm = $20;
+    // PORTMUX_TCA0
+    TCA0mask = $07;
+    TCA0_PORTA = $00;
+    TCA0_PORTB = $01;
+    TCA0_PORTC = $02;
+    TCA0_PORTD = $03;
+    TCA0_PORTE = $04;
+    TCA0_PORTF = $05;
+    // Port Multiplexer TCB0
+    TCB0bm = $01;
+    // Port Multiplexer TCB1
+    TCB1bm = $02;
+    // Port Multiplexer TCB2
+    TCB2bm = $04;
+    // Port Multiplexer TCB3
+    TCB3bm = $08;
+    // PORTMUX_SPI0
+    SPI0mask = $03;
+    SPI0_DEFAULT = $00;
+    SPI0_ALT1 = $01;
+    SPI0_ALT2 = $02;
+    SPI0_NONE = $03;
+    // PORTMUX_TWI0
+    TWI0mask = $30;
+    TWI0_DEFAULT = $00;
+    TWI0_ALT1 = $10;
+    TWI0_ALT2 = $20;
+    TWI0_NONE = $30;
+    // PORTMUX_USART0
+    USART0mask = $03;
+    USART0_DEFAULT = $00;
+    USART0_ALT1 = $01;
+    USART0_NONE = $03;
+    // PORTMUX_USART1
+    USART1mask = $0C;
+    USART1_DEFAULT = $00;
+    USART1_ALT1 = $04;
+    USART1_NONE = $0C;
+    // PORTMUX_USART2
+    USART2mask = $30;
+    USART2_DEFAULT = $00;
+    USART2_ALT1 = $10;
+    USART2_NONE = $30;
+    // PORTMUX_USART3
+    USART3mask = $C0;
+    USART3_DEFAULT = $00;
+    USART3_ALT1 = $40;
+    USART3_NONE = $C0;
   end;
 
   TRSTCTRL = object //Reset controller
     RSTFR: byte;  //Reset Flags
     SWRR: byte;  //Software Reset
   const
-    BORFidx = $01;  BORFbm = $02;  // Brown out detector Reset flag
-    EXTRFidx = $02;  EXTRFbm = $04;  // External Reset flag
-    PORFidx = $00;  PORFbm = $01;  // Power on Reset flag
-    SWRFidx = $04;  SWRFbm = $10;  // Software Reset flag
-    UPDIRFidx = $05;  UPDIRFbm = $20;  // UPDI Reset flag
-    WDRFidx = $03;  WDRFbm = $08;  // Watch dog Reset flag
-    SWREidx = $00;  SWREbm = $01;  // Software reset enable
+    // Brown out detector Reset flag
+    BORFbm = $02;
+    // External Reset flag
+    EXTRFbm = $04;
+    // Power on Reset flag
+    PORFbm = $01;
+    // Software Reset flag
+    SWRFbm = $10;
+    // UPDI Reset flag
+    UPDIRFbm = $20;
+    // Watch dog Reset flag
+    WDRFbm = $08;
+    // Software reset enable
+    SWREbm = $01;
   end;
 
   TRTC = object //Real-Time Counter
@@ -634,36 +1011,83 @@ type
     Reserved20: byte;
     PITDBGCTRL: byte;  //PIT Debug control
   const
-    ERROR0idx = $00;  // Error Correction Value
-    ERROR1idx = $01;  // Error Correction Value
-    ERROR2idx = $02;  // Error Correction Value
-    ERROR3idx = $03;  // Error Correction Value
-    ERROR4idx = $04;  // Error Correction Value
-    ERROR5idx = $05;  // Error Correction Value
-    ERROR6idx = $06;  // Error Correction Value
-    SIGNidx = $07;  SIGNbm = $80;  // Error Correction Sign Bit
-    CLKSEL0idx = $00;  // Clock Select
-    CLKSEL1idx = $01;  // Clock Select
-    PRESCALER0idx = $03;  // Prescaling Factor
-    PRESCALER1idx = $04;  // Prescaling Factor
-    PRESCALER2idx = $05;  // Prescaling Factor
-    PRESCALER3idx = $06;  // Prescaling Factor
-    RTCENidx = $00;  RTCENbm = $01;  // Enable
-    RUNSTDBYidx = $07;  RUNSTDBYbm = $80;  // Run In Standby
-    DBGRUNidx = $00;  DBGRUNbm = $01;  // Run in debug
-    CMPidx = $01;  CMPbm = $02;  // Compare Match Interrupt enable
-    OVFidx = $00;  OVFbm = $01;  // Overflow Interrupt enable
-    PERIOD0idx = $03;  // Period
-    PERIOD1idx = $04;  // Period
-    PERIOD2idx = $05;  // Period
-    PERIOD3idx = $06;  // Period
-    PITENidx = $00;  PITENbm = $01;  // Enable
-    PIidx = $00;  PIbm = $01;  // Periodic Interrupt
-    CTRLBUSYidx = $00;  CTRLBUSYbm = $01;  // CTRLA Synchronization Busy Flag
-    CMPBUSYidx = $03;  CMPBUSYbm = $08;  // Comparator Synchronization Busy Flag
-    CNTBUSYidx = $01;  CNTBUSYbm = $02;  // Count Synchronization Busy Flag
-    CTRLABUSYidx = $00;  CTRLABUSYbm = $01;  // CTRLA Synchronization Busy Flag
-    PERBUSYidx = $02;  PERBUSYbm = $04;  // Period Synchronization Busy Flag
+    // Error Correction Value
+    ERROR0bm = $01;
+    ERROR1bm = $02;
+    ERROR2bm = $04;
+    ERROR3bm = $08;
+    ERROR4bm = $10;
+    ERROR5bm = $20;
+    ERROR6bm = $40;
+    // Error Correction Sign Bit
+    SIGNbm = $80;
+    // RTC_CLKSEL
+    CLKSELmask = $03;
+    CLKSEL_INT32K = $00;
+    CLKSEL_INT1K = $01;
+    CLKSEL_TOSC32K = $02;
+    CLKSEL_EXTCLK = $03;
+    // Correction enable
+    CORRENbm = $04;
+    // RTC_PRESCALER
+    PRESCALERmask = $78;
+    PRESCALER_DIV1 = $00;
+    PRESCALER_DIV2 = $08;
+    PRESCALER_DIV4 = $10;
+    PRESCALER_DIV8 = $18;
+    PRESCALER_DIV16 = $20;
+    PRESCALER_DIV32 = $28;
+    PRESCALER_DIV64 = $30;
+    PRESCALER_DIV128 = $38;
+    PRESCALER_DIV256 = $40;
+    PRESCALER_DIV512 = $48;
+    PRESCALER_DIV1024 = $50;
+    PRESCALER_DIV2048 = $58;
+    PRESCALER_DIV4096 = $60;
+    PRESCALER_DIV8192 = $68;
+    PRESCALER_DIV16384 = $70;
+    PRESCALER_DIV32768 = $78;
+    // Enable
+    RTCENbm = $01;
+    // Run In Standby
+    RUNSTDBYbm = $80;
+    // Run in debug
+    DBGRUNbm = $01;
+    // Compare Match Interrupt enable
+    CMPbm = $02;
+    // Overflow Interrupt enable
+    OVFbm = $01;
+    // RTC_PERIOD
+    PERIODmask = $78;
+    PERIOD_OFF = $00;
+    PERIOD_CYC4 = $08;
+    PERIOD_CYC8 = $10;
+    PERIOD_CYC16 = $18;
+    PERIOD_CYC32 = $20;
+    PERIOD_CYC64 = $28;
+    PERIOD_CYC128 = $30;
+    PERIOD_CYC256 = $38;
+    PERIOD_CYC512 = $40;
+    PERIOD_CYC1024 = $48;
+    PERIOD_CYC2048 = $50;
+    PERIOD_CYC4096 = $58;
+    PERIOD_CYC8192 = $60;
+    PERIOD_CYC16384 = $68;
+    PERIOD_CYC32768 = $70;
+    // Enable
+    PITENbm = $01;
+    // Periodic Interrupt
+    PIbm = $01;
+    // CTRLA Synchronization Busy Flag
+    CTRLBUSYbm = $01;
+    // Comparator Synchronization Busy Flag
+    CMPBUSYbm = $08;
+    // Count Synchronization Busy Flag
+    CNTBUSYbm = $02;
+    // CTRLA Synchronization Busy Flag
+    CTRLABUSYbm = $01;
+    // Period Synchronization Busy Flag
+    PERBUSYbm = $04;
   end;
 
   TSIGROW = object //Signature row
@@ -720,9 +1144,13 @@ type
   TSLPCTRL = object //Sleep Controller
     CTRLA: byte;  //Control
   const
-    SENidx = $00;  SENbm = $01;  // Sleep enable
-    SMODE0idx = $01;  // Sleep mode
-    SMODE1idx = $02;  // Sleep mode
+    // Sleep enable
+    SENbm = $01;
+    // SLPCTRL_SMODE
+    SMODEmask = $06;
+    SMODE_IDLE = $00;
+    SMODE_STDBY = $02;
+    SMODE_PDOWN = $04;
   end;
 
   TSPI = object //Serial Peripheral Interface
@@ -732,22 +1160,56 @@ type
     INTFLAGS: byte;  //Interrupt Flags
     DATA: byte;  //Data
   const
-    CLK2Xidx = $04;  CLK2Xbm = $10;  // Enable Double Speed
-    DORDidx = $06;  DORDbm = $40;  // Data Order Setting
-    ENABLEidx = $00;  ENABLEbm = $01;  // Enable Module
-    MASTERidx = $05;  MASTERbm = $20;  // Master Operation Enable
-    PRESC0idx = $01;  // Prescaler
-    PRESC1idx = $02;  // Prescaler
-    BUFENidx = $07;  BUFENbm = $80;  // Buffer Mode Enable
-    BUFWRidx = $06;  BUFWRbm = $40;  // Buffer Write Mode
-    MODE0idx = $00;  // SPI Mode
-    MODE1idx = $01;  // SPI Mode
-    SSDidx = $02;  SSDbm = $04;  // Slave Select Disable
-    DREIEidx = $05;  DREIEbm = $20;  // Data Register Empty Interrupt Enable
-    IEidx = $00;  IEbm = $01;  // Interrupt Enable
-    RXCIEidx = $07;  RXCIEbm = $80;  // Receive Complete Interrupt Enable
-    SSIEidx = $04;  SSIEbm = $10;  // Slave Select Trigger Interrupt Enable
-    TXCIEidx = $06;  TXCIEbm = $40;  // Transfer Complete Interrupt Enable
+    // Enable Double Speed
+    CLK2Xbm = $10;
+    // Data Order Setting
+    DORDbm = $40;
+    // Enable Module
+    ENABLEbm = $01;
+    // Master Operation Enable
+    MASTERbm = $20;
+    // SPI_PRESC
+    PRESCmask = $06;
+    PRESC_DIV4 = $00;
+    PRESC_DIV16 = $02;
+    PRESC_DIV64 = $04;
+    PRESC_DIV128 = $06;
+    // Buffer Mode Enable
+    BUFENbm = $80;
+    // Buffer Write Mode
+    BUFWRbm = $40;
+    // SPI_MODE
+    MODEmask = $03;
+    MODE_0 = $00;
+    MODE_1 = $01;
+    MODE_2 = $02;
+    MODE_3 = $03;
+    // Slave Select Disable
+    SSDbm = $04;
+    // Data Register Empty Interrupt Enable
+    DREIEbm = $20;
+    // Interrupt Enable
+    IEbm = $01;
+    // Receive Complete Interrupt Enable
+    RXCIEbm = $80;
+    // Slave Select Trigger Interrupt Enable
+    SSIEbm = $10;
+    // Transfer Complete Interrupt Enable
+    TXCIEbm = $40;
+    // Buffer Overflow
+    BUFOVFbm = $01;
+    // Data Register Empty Interrupt Flag
+    DREIFbm = $20;
+    // Receive Complete Interrupt Flag
+    RXCIFbm = $80;
+    // Slave Select Trigger Interrupt Flag
+    SSIFbm = $10;
+    // Transfer Complete Interrupt Flag
+    TXCIFbm = $40;
+    // Interrupt Flag
+    IFbm = $80;
+    // Write Collision
+    WRCOLbm = $40;
   end;
 
   TSYSCFG = object //System Configuration Registers
@@ -778,8 +1240,10 @@ type
     OCDM: byte;  //OCD Message Register
     OCDMS: byte;  //OCD Message Status
   const
-    ENEXTBRKidx = $00;  ENEXTBRKbm = $01;  // External break enable
-    OCDMRidx = $00;  OCDMRbm = $01;  // OCD Message Read
+    // External break enable
+    ENEXTBRKbm = $01;
+    // OCD Message Read
+    OCDMRbm = $01;
   end;
 
   TTCA_SINGLE = object //16-bit Timer/Counter Type A - Single Mode
@@ -837,37 +1301,78 @@ type
     CMP1BUF: word;  //Compare 1 Buffer
     CMP2BUF: word;  //Compare 2 Buffer
   const
-    CLKSEL0idx = $01;  // Clock Selection
-    CLKSEL1idx = $02;  // Clock Selection
-    CLKSEL2idx = $03;  // Clock Selection
-    ENABLEidx = $00;  ENABLEbm = $01;  // Module Enable
-    ALUPDidx = $03;  ALUPDbm = $08;  // Auto Lock Update
-    CMP0ENidx = $04;  CMP0ENbm = $10;  // Compare 0 Enable
-    CMP1ENidx = $05;  CMP1ENbm = $20;  // Compare 1 Enable
-    CMP2ENidx = $06;  CMP2ENbm = $40;  // Compare 2 Enable
-    WGMODE0idx = $00;  // Waveform generation mode
-    WGMODE1idx = $01;  // Waveform generation mode
-    WGMODE2idx = $02;  // Waveform generation mode
-    CMP0OVidx = $00;  CMP0OVbm = $01;  // Compare 0 Waveform Output Value
-    CMP1OVidx = $01;  CMP1OVbm = $02;  // Compare 1 Waveform Output Value
-    CMP2OVidx = $02;  CMP2OVbm = $04;  // Compare 2 Waveform Output Value
-    SPLITMidx = $00;  SPLITMbm = $01;  // Split Mode Enable
-    CMD0idx = $02;  // Command
-    CMD1idx = $03;  // Command
-    DIRidx = $00;  DIRbm = $01;  // Direction
-    LUPDidx = $01;  LUPDbm = $02;  // Lock Update
-    CMP0BVidx = $01;  CMP0BVbm = $02;  // Compare 0 Buffer Valid
-    CMP1BVidx = $02;  CMP1BVbm = $04;  // Compare 1 Buffer Valid
-    CMP2BVidx = $03;  CMP2BVbm = $08;  // Compare 2 Buffer Valid
-    PERBVidx = $00;  PERBVbm = $01;  // Period Buffer Valid
-    DBGRUNidx = $00;  DBGRUNbm = $01;  // Debug Run
-    CNTEIidx = $00;  CNTEIbm = $01;  // Count on Event Input
-    EVACT0idx = $01;  // Event Action
-    EVACT1idx = $02;  // Event Action
-    CMP0idx = $04;  CMP0bm = $10;  // Compare 0 Interrupt
-    CMP1idx = $05;  CMP1bm = $20;  // Compare 1 Interrupt
-    CMP2idx = $06;  CMP2bm = $40;  // Compare 2 Interrupt
-    OVFidx = $00;  OVFbm = $01;  // Overflow Interrupt
+    // TCA_SINGLE_CLKSEL
+    SINGLE_CLKSELmask = $0E;
+    SINGLE_CLKSEL_DIV1 = $00;
+    SINGLE_CLKSEL_DIV2 = $02;
+    SINGLE_CLKSEL_DIV4 = $04;
+    SINGLE_CLKSEL_DIV8 = $06;
+    SINGLE_CLKSEL_DIV16 = $08;
+    SINGLE_CLKSEL_DIV64 = $0A;
+    SINGLE_CLKSEL_DIV256 = $0C;
+    SINGLE_CLKSEL_DIV1024 = $0E;
+    // Module Enable
+    ENABLEbm = $01;
+    // Auto Lock Update
+    ALUPDbm = $08;
+    // Compare 0 Enable
+    CMP0ENbm = $10;
+    // Compare 1 Enable
+    CMP1ENbm = $20;
+    // Compare 2 Enable
+    CMP2ENbm = $40;
+    // TCA_SINGLE_WGMODE
+    SINGLE_WGMODEmask = $07;
+    SINGLE_WGMODE_NORMAL = $00;
+    SINGLE_WGMODE_FRQ = $01;
+    SINGLE_WGMODE_SINGLESLOPE = $03;
+    SINGLE_WGMODE_DSTOP = $05;
+    SINGLE_WGMODE_DSBOTH = $06;
+    SINGLE_WGMODE_DSBOTTOM = $07;
+    // Compare 0 Waveform Output Value
+    CMP0OVbm = $01;
+    // Compare 1 Waveform Output Value
+    CMP1OVbm = $02;
+    // Compare 2 Waveform Output Value
+    CMP2OVbm = $04;
+    // Split Mode Enable
+    SPLITMbm = $01;
+    // TCA_SINGLE_CMD
+    SINGLE_CMDmask = $0C;
+    SINGLE_CMD_NONE = $00;
+    SINGLE_CMD_UPDATE = $04;
+    SINGLE_CMD_RESTART = $08;
+    SINGLE_CMD_RESET = $0C;
+    // Direction
+    DIRbm = $01;
+    // Lock Update
+    LUPDbm = $02;
+    // Compare 0 Buffer Valid
+    CMP0BVbm = $02;
+    // Compare 1 Buffer Valid
+    CMP1BVbm = $04;
+    // Compare 2 Buffer Valid
+    CMP2BVbm = $08;
+    // Period Buffer Valid
+    PERBVbm = $01;
+    // Debug Run
+    DBGRUNbm = $01;
+    // Count on Event Input
+    CNTEIbm = $01;
+    // TCA_SINGLE_EVACT
+    SINGLE_EVACTmask = $06;
+    SINGLE_EVACT_POSEDGE = $00;
+    SINGLE_EVACT_ANYEDGE = $02;
+    SINGLE_EVACT_HIGHLVL = $04;
+    SINGLE_EVACT_UPDOWN = $06;
+    // Compare 0 Interrupt
+    CMP0bm = $10;
+    // Compare 1 Interrupt
+    CMP1bm = $20;
+    // Compare 2 Interrupt
+    CMP2bm = $40;
+    // Overflow Interrupt
+    OVFbm = $01;
   end;
 
   TTCA_SPLIT = object //16-bit Timer/Counter Type A - Split Mode
@@ -918,38 +1423,69 @@ type
     LCMP2: byte;  //Low Compare
     HCMP2: byte;  //High Compare
   const
-    CLKSEL0idx = $01;  // Clock Selection
-    CLKSEL1idx = $02;  // Clock Selection
-    CLKSEL2idx = $03;  // Clock Selection
-    ENABLEidx = $00;  ENABLEbm = $01;  // Module Enable
-    HCMP0ENidx = $04;  HCMP0ENbm = $10;  // High Compare 0 Enable
-    HCMP1ENidx = $05;  HCMP1ENbm = $20;  // High Compare 1 Enable
-    HCMP2ENidx = $06;  HCMP2ENbm = $40;  // High Compare 2 Enable
-    LCMP0ENidx = $00;  LCMP0ENbm = $01;  // Low Compare 0 Enable
-    LCMP1ENidx = $01;  LCMP1ENbm = $02;  // Low Compare 1 Enable
-    LCMP2ENidx = $02;  LCMP2ENbm = $04;  // Low Compare 2 Enable
-    HCMP0OVidx = $04;  HCMP0OVbm = $10;  // High Compare 0 Output Value
-    HCMP1OVidx = $05;  HCMP1OVbm = $20;  // High Compare 1 Output Value
-    HCMP2OVidx = $06;  HCMP2OVbm = $40;  // High Compare 2 Output Value
-    LCMP0OVidx = $00;  LCMP0OVbm = $01;  // Low Compare 0 Output Value
-    LCMP1OVidx = $01;  LCMP1OVbm = $02;  // Low Compare 1 Output Value
-    LCMP2OVidx = $02;  LCMP2OVbm = $04;  // Low Compare 2 Output Value
-    SPLITMidx = $00;  SPLITMbm = $01;  // Split Mode Enable
-    CMD0idx = $02;  // Command
-    CMD1idx = $03;  // Command
-    DBGRUNidx = $00;  DBGRUNbm = $01;  // Debug Run
-    HUNFidx = $01;  HUNFbm = $02;  // High Underflow Interrupt Enable
-    LCMP0idx = $04;  LCMP0bm = $10;  // Low Compare 0 Interrupt Enable
-    LCMP1idx = $05;  LCMP1bm = $20;  // Low Compare 1 Interrupt Enable
-    LCMP2idx = $06;  LCMP2bm = $40;  // Low Compare 2 Interrupt Enable
-    LUNFidx = $00;  LUNFbm = $01;  // Low Underflow Interrupt Enable
+    // TCA_SPLIT_CLKSEL
+    SPLIT_CLKSELmask = $0E;
+    SPLIT_CLKSEL_DIV1 = $00;
+    SPLIT_CLKSEL_DIV2 = $02;
+    SPLIT_CLKSEL_DIV4 = $04;
+    SPLIT_CLKSEL_DIV8 = $06;
+    SPLIT_CLKSEL_DIV16 = $08;
+    SPLIT_CLKSEL_DIV64 = $0A;
+    SPLIT_CLKSEL_DIV256 = $0C;
+    SPLIT_CLKSEL_DIV1024 = $0E;
+    // Module Enable
+    ENABLEbm = $01;
+    // High Compare 0 Enable
+    HCMP0ENbm = $10;
+    // High Compare 1 Enable
+    HCMP1ENbm = $20;
+    // High Compare 2 Enable
+    HCMP2ENbm = $40;
+    // Low Compare 0 Enable
+    LCMP0ENbm = $01;
+    // Low Compare 1 Enable
+    LCMP1ENbm = $02;
+    // Low Compare 2 Enable
+    LCMP2ENbm = $04;
+    // High Compare 0 Output Value
+    HCMP0OVbm = $10;
+    // High Compare 1 Output Value
+    HCMP1OVbm = $20;
+    // High Compare 2 Output Value
+    HCMP2OVbm = $40;
+    // Low Compare 0 Output Value
+    LCMP0OVbm = $01;
+    // Low Compare 1 Output Value
+    LCMP1OVbm = $02;
+    // Low Compare 2 Output Value
+    LCMP2OVbm = $04;
+    // Split Mode Enable
+    SPLITMbm = $01;
+    // TCA_SPLIT_CMD
+    SPLIT_CMDmask = $0C;
+    SPLIT_CMD_NONE = $00;
+    SPLIT_CMD_UPDATE = $04;
+    SPLIT_CMD_RESTART = $08;
+    SPLIT_CMD_RESET = $0C;
+    // Debug Run
+    DBGRUNbm = $01;
+    // High Underflow Interrupt Enable
+    HUNFbm = $02;
+    // Low Compare 0 Interrupt Enable
+    LCMP0bm = $10;
+    // Low Compare 1 Interrupt Enable
+    LCMP1bm = $20;
+    // Low Compare 2 Interrupt Enable
+    LCMP2bm = $40;
+    // Low Underflow Interrupt Enable
+    LUNFbm = $01;
   end;
 
   TTCA = record //16-bit Timer/Counter Type A
     case byte of
       0: (SINGLE: TTCA_SINGLE);
       1: (SPLIT: TTCA_SPLIT);
-    end;
+  end;
 
   TTCB = object //16-bit Timer Type B
     CTRLA: byte;  //Control A
@@ -965,23 +1501,45 @@ type
     CNT: word;  //Count
     CCMP: word;  //Compare or Capture
   const
-    CLKSEL0idx = $01;  // Clock Select
-    CLKSEL1idx = $02;  // Clock Select
-    ENABLEidx = $00;  ENABLEbm = $01;  // Enable
-    RUNSTDBYidx = $06;  RUNSTDBYbm = $40;  // Run Standby
-    SYNCUPDidx = $04;  SYNCUPDbm = $10;  // Synchronize Update
-    ASYNCidx = $06;  ASYNCbm = $40;  // Asynchronous Enable
-    CCMPENidx = $04;  CCMPENbm = $10;  // Pin Output Enable
-    CCMPINITidx = $05;  CCMPINITbm = $20;  // Pin Initial State
-    CNTMODE0idx = $00;  // Timer Mode
-    CNTMODE1idx = $01;  // Timer Mode
-    CNTMODE2idx = $02;  // Timer Mode
-    DBGRUNidx = $00;  DBGRUNbm = $01;  // Debug Run
-    CAPTEIidx = $00;  CAPTEIbm = $01;  // Event Input Enable
-    EDGEidx = $04;  EDGEbm = $10;  // Event Edge
-    FILTERidx = $06;  FILTERbm = $40;  // Input Capture Noise Cancellation Filter
-    CAPTidx = $00;  CAPTbm = $01;  // Capture or Timeout
-    RUNidx = $00;  RUNbm = $01;  // Run
+    // TCB_CLKSEL
+    CLKSELmask = $06;
+    CLKSEL_CLKDIV1 = $00;
+    CLKSEL_CLKDIV2 = $02;
+    CLKSEL_CLKTCA = $04;
+    // Enable
+    ENABLEbm = $01;
+    // Run Standby
+    RUNSTDBYbm = $40;
+    // Synchronize Update
+    SYNCUPDbm = $10;
+    // Asynchronous Enable
+    ASYNCbm = $40;
+    // Pin Output Enable
+    CCMPENbm = $10;
+    // Pin Initial State
+    CCMPINITbm = $20;
+    // TCB_CNTMODE
+    CNTMODEmask = $07;
+    CNTMODE_INT = $00;
+    CNTMODE_TIMEOUT = $01;
+    CNTMODE_CAPT = $02;
+    CNTMODE_FRQ = $03;
+    CNTMODE_PW = $04;
+    CNTMODE_FRQPW = $05;
+    CNTMODE_SINGLE = $06;
+    CNTMODE_PWM8 = $07;
+    // Debug Run
+    DBGRUNbm = $01;
+    // Event Input Enable
+    CAPTEIbm = $01;
+    // Event Edge
+    EDGEbm = $10;
+    // Input Capture Noise Cancellation Filter
+    FILTERbm = $40;
+    // Capture or Timeout
+    CAPTbm = $01;
+    // Run
+    RUNbm = $01;
   end;
 
   TTWI = object //Two-Wire Interface
@@ -1001,44 +1559,101 @@ type
     SDATA: byte;  //Slave Data
     SADDRMASK: byte;  //Slave Address Mask
   const
-    ENABLEidx = $00;  ENABLEbm = $01;  // Enable TWI Master
-    QCENidx = $04;  QCENbm = $10;  // Quick Command Enable
-    RIENidx = $07;  RIENbm = $80;  // Read Interrupt Enable
-    SMENidx = $01;  SMENbm = $02;  // Smart Mode Enable
-    TIMEOUT0idx = $02;  // Inactive Bus Timeout
-    TIMEOUT1idx = $03;  // Inactive Bus Timeout
-    WIENidx = $06;  WIENbm = $40;  // Write Interrupt Enable
-    ACKACTidx = $02;  ACKACTbm = $04;  // Acknowledge Action
-    FLUSHidx = $03;  FLUSHbm = $08;  // Flush
-    MCMD0idx = $00;  // Command
-    MCMD1idx = $01;  // Command
-    ARBLOSTidx = $03;  ARBLOSTbm = $08;  // Arbitration Lost
-    BUSERRidx = $02;  BUSERRbm = $04;  // Bus Error
-    BUSSTATE0idx = $00;  // Bus State
-    BUSSTATE1idx = $01;  // Bus State
-    CLKHOLDidx = $05;  CLKHOLDbm = $20;  // Clock Hold
-    RIFidx = $07;  RIFbm = $80;  // Read Interrupt Flag
-    RXACKidx = $04;  RXACKbm = $10;  // Received Acknowledge
-    WIFidx = $06;  WIFbm = $40;  // Write Interrupt Flag
-    ADDRENidx = $00;  ADDRENbm = $01;  // Address Enable
-    ADDRMASK0idx = $01;  // Address Mask
-    ADDRMASK1idx = $02;  // Address Mask
-    ADDRMASK2idx = $03;  // Address Mask
-    ADDRMASK3idx = $04;  // Address Mask
-    ADDRMASK4idx = $05;  // Address Mask
-    ADDRMASK5idx = $06;  // Address Mask
-    ADDRMASK6idx = $07;  // Address Mask
-    APIENidx = $06;  APIENbm = $40;  // Address/Stop Interrupt Enable
-    DIENidx = $07;  DIENbm = $80;  // Data Interrupt Enable
-    PIENidx = $05;  PIENbm = $20;  // Stop Interrupt Enable
-    PMENidx = $02;  PMENbm = $04;  // Promiscuous Mode Enable
-    SCMD0idx = $00;  // Command
-    SCMD1idx = $01;  // Command
-    APidx = $00;  APbm = $01;  // Slave Address or Stop
-    APIFidx = $06;  APIFbm = $40;  // Address/Stop Interrupt Flag
-    COLLidx = $03;  COLLbm = $08;  // Collision
-    DIFidx = $07;  DIFbm = $80;  // Data Interrupt Flag
-    DIRidx = $01;  DIRbm = $02;  // Read/Write Direction
+    // FM Plus Enable
+    FMPENbm = $02;
+    // TWI_DEFAULT_SDAHOLD
+    DEFAULT_SDAHOLDmask = $0C;
+    DEFAULT_SDAHOLD_OFF = $00;
+    DEFAULT_SDAHOLD_50NS = $04;
+    DEFAULT_SDAHOLD_300NS = $08;
+    DEFAULT_SDAHOLD_500NS = $0C;
+    // TWI_DEFAULT_SDASETUP
+    DEFAULT_SDASETUPmask = $10;
+    DEFAULT_SDASETUP_4CYC = $00;
+    DEFAULT_SDASETUP_8CYC = $10;
+    // Debug Run
+    DBGRUNbm = $01;
+    // Dual Control Enable
+    ENABLEbm = $01;
+    // Quick Command Enable
+    QCENbm = $10;
+    // Read Interrupt Enable
+    RIENbm = $80;
+    // Smart Mode Enable
+    SMENbm = $02;
+    // TWI_TIMEOUT
+    TIMEOUTmask = $0C;
+    TIMEOUT_DISABLED = $00;
+    TIMEOUT_50US = $04;
+    TIMEOUT_100US = $08;
+    TIMEOUT_200US = $0C;
+    // Write Interrupt Enable
+    WIENbm = $40;
+    // TWI_ACKACT
+    ACKACTmask = $04;
+    ACKACT_ACK = $00;
+    ACKACT_NACK = $04;
+    // Flush
+    FLUSHbm = $08;
+    // TWI_MCMD
+    MCMDmask = $03;
+    MCMD_NOACT = $00;
+    MCMD_REPSTART = $01;
+    MCMD_RECVTRANS = $02;
+    MCMD_STOP = $03;
+    // Arbitration Lost
+    ARBLOSTbm = $08;
+    // Bus Error
+    BUSERRbm = $04;
+    // TWI_BUSSTATE
+    BUSSTATEmask = $03;
+    BUSSTATE_UNKNOWN = $00;
+    BUSSTATE_IDLE = $01;
+    BUSSTATE_OWNER = $02;
+    BUSSTATE_BUSY = $03;
+    // Clock Hold
+    CLKHOLDbm = $20;
+    // Read Interrupt Flag
+    RIFbm = $80;
+    // Received Acknowledge
+    RXACKbm = $10;
+    // Write Interrupt Flag
+    WIFbm = $40;
+    // Address Enable
+    ADDRENbm = $01;
+    // Address Mask
+    ADDRMASK0bm = $02;
+    ADDRMASK1bm = $04;
+    ADDRMASK2bm = $08;
+    ADDRMASK3bm = $10;
+    ADDRMASK4bm = $20;
+    ADDRMASK5bm = $40;
+    ADDRMASK6bm = $80;
+    // Address/Stop Interrupt Enable
+    APIENbm = $40;
+    // Data Interrupt Enable
+    DIENbm = $80;
+    // Stop Interrupt Enable
+    PIENbm = $20;
+    // Promiscuous Mode Enable
+    PMENbm = $04;
+    // TWI_SCMD
+    SCMDmask = $03;
+    SCMD_NOACT = $00;
+    SCMD_COMPTRANS = $02;
+    SCMD_RESPONSE = $03;
+    // TWI_AP
+    APmask = $01;
+    AP_STOP = $00;
+    AP_ADR = $01;
+    // Address/Stop Interrupt Flag
+    APIFbm = $40;
+    // Collision
+    COLLbm = $08;
+    // Data Interrupt Flag
+    DIFbm = $80;
+    // Read/Write Direction
+    DIRbm = $02;
   end;
 
   TUSART = object //Universal Synchronous and Asynchronous Receiver and Transmitter
@@ -1057,60 +1672,132 @@ type
     TXPLCTRL: byte;  //IRCOM Transmitter Pulse Length Control
     RXPLCTRL: byte;  //IRCOM Receiver Pulse Length Control
   const
-    ABEIEidx = $02;  ABEIEbm = $04;  // Auto-baud Error Interrupt Enable
-    DREIEidx = $05;  DREIEbm = $20;  // Data Register Empty Interrupt Enable
-    LBMEidx = $03;  LBMEbm = $08;  // Loop-back Mode Enable
-    RS4850idx = $00;  // RS485 Mode internal transmitter
-    RS4851idx = $01;  // RS485 Mode internal transmitter
-    RXCIEidx = $07;  RXCIEbm = $80;  // Receive Complete Interrupt Enable
-    RXSIEidx = $04;  RXSIEbm = $10;  // Receiver Start Frame Interrupt Enable
-    TXCIEidx = $06;  TXCIEbm = $40;  // Transmit Complete Interrupt Enable
-    MPCMidx = $00;  MPCMbm = $01;  // Multi-processor Communication Mode
-    ODMEidx = $03;  ODMEbm = $08;  // Open Drain Mode Enable
-    RXENidx = $07;  RXENbm = $80;  // Reciever enable
-    RXMODE0idx = $01;  // Receiver Mode
-    RXMODE1idx = $02;  // Receiver Mode
-    SFDENidx = $04;  SFDENbm = $10;  // Start Frame Detection Enable
-    TXENidx = $06;  TXENbm = $40;  // Transmitter Enable
-    ABW0idx = $06;  // Auto Baud Window
-    ABW1idx = $07;  // Auto Baud Window
-    ABMBPidx = $07;  ABMBPbm = $80;  // Autobaud majority voter bypass
-    DBGRUNidx = $00;  DBGRUNbm = $01;  // Debug Run
-    IREIidx = $00;  IREIbm = $01;  // IrDA Event Input Enable
-    BUFOVFidx = $06;  BUFOVFbm = $40;  // Buffer Overflow
-    DATA8idx = $00;  DATA8bm = $01;  // Receiver Data Register
-    FERRidx = $02;  FERRbm = $04;  // Frame Error
-    PERRidx = $01;  PERRbm = $02;  // Parity Error
-    RXCIFidx = $07;  RXCIFbm = $80;  // Receive Complete Interrupt Flag
-    DATA0idx = $00;  // RX Data
-    DATA1idx = $01;  // RX Data
-    DATA2idx = $02;  // RX Data
-    DATA3idx = $03;  // RX Data
-    DATA4idx = $04;  // RX Data
-    DATA5idx = $05;  // RX Data
-    DATA6idx = $06;  // RX Data
-    DATA7idx = $07;  // RX Data
-    RXPL0idx = $00;  // Receiver Pulse Lenght
-    RXPL1idx = $01;  // Receiver Pulse Lenght
-    RXPL2idx = $02;  // Receiver Pulse Lenght
-    RXPL3idx = $03;  // Receiver Pulse Lenght
-    RXPL4idx = $04;  // Receiver Pulse Lenght
-    RXPL5idx = $05;  // Receiver Pulse Lenght
-    RXPL6idx = $06;  // Receiver Pulse Lenght
-    BDFidx = $01;  BDFbm = $02;  // Break Detected Flag
-    DREIFidx = $05;  DREIFbm = $20;  // Data Register Empty Flag
-    ISFIFidx = $03;  ISFIFbm = $08;  // Inconsistent Sync Field Interrupt Flag
-    RXSIFidx = $04;  RXSIFbm = $10;  // Receive Start Interrupt
-    TXCIFidx = $06;  TXCIFbm = $40;  // Transmit Interrupt Flag
-    WFBidx = $00;  WFBbm = $01;  // Wait For Break
-    TXPL0idx = $00;  // Transmit pulse length
-    TXPL1idx = $01;  // Transmit pulse length
-    TXPL2idx = $02;  // Transmit pulse length
-    TXPL3idx = $03;  // Transmit pulse length
-    TXPL4idx = $04;  // Transmit pulse length
-    TXPL5idx = $05;  // Transmit pulse length
-    TXPL6idx = $06;  // Transmit pulse length
-    TXPL7idx = $07;  // Transmit pulse length
+    // Auto-baud Error Interrupt Enable
+    ABEIEbm = $04;
+    // Data Register Empty Interrupt Enable
+    DREIEbm = $20;
+    // Loop-back Mode Enable
+    LBMEbm = $08;
+    // USART_RS485
+    RS485mask = $03;
+    RS485_OFF = $00;
+    RS485_EXT = $01;
+    RS485_INT = $02;
+    // Receive Complete Interrupt Enable
+    RXCIEbm = $80;
+    // Receiver Start Frame Interrupt Enable
+    RXSIEbm = $10;
+    // Transmit Complete Interrupt Enable
+    TXCIEbm = $40;
+    // Multi-processor Communication Mode
+    MPCMbm = $01;
+    // Open Drain Mode Enable
+    ODMEbm = $08;
+    // Reciever enable
+    RXENbm = $80;
+    // USART_RXMODE
+    RXMODEmask = $06;
+    RXMODE_NORMAL = $00;
+    RXMODE_CLK2X = $02;
+    RXMODE_GENAUTO = $04;
+    RXMODE_LINAUTO = $06;
+    // Start Frame Detection Enable
+    SFDENbm = $10;
+    // Transmitter Enable
+    TXENbm = $40;
+    // USART_MSPI_CMODE
+    MSPI_CMODEmask = $C0;
+    MSPI_CMODE_ASYNCHRONOUS = $00;
+    MSPI_CMODE_SYNCHRONOUS = $40;
+    MSPI_CMODE_IRCOM = $80;
+    MSPI_CMODE_MSPI = $C0;
+    // SPI Master Mode, Clock Phase
+    UCPHAbm = $02;
+    // SPI Master Mode, Data Order
+    UDORDbm = $04;
+    // USART_NORMAL_CHSIZE
+    NORMAL_CHSIZEmask = $07;
+    NORMAL_CHSIZE_5BIT = $00;
+    NORMAL_CHSIZE_6BIT = $01;
+    NORMAL_CHSIZE_7BIT = $02;
+    NORMAL_CHSIZE_8BIT = $03;
+    NORMAL_CHSIZE_9BITL = $06;
+    NORMAL_CHSIZE_9BITH = $07;
+    // USART_NORMAL_CMODE
+    NORMAL_CMODEmask = $C0;
+    NORMAL_CMODE_ASYNCHRONOUS = $00;
+    NORMAL_CMODE_SYNCHRONOUS = $40;
+    NORMAL_CMODE_IRCOM = $80;
+    NORMAL_CMODE_MSPI = $C0;
+    // USART_NORMAL_PMODE
+    NORMAL_PMODEmask = $30;
+    NORMAL_PMODE_DISABLED = $00;
+    NORMAL_PMODE_EVEN = $20;
+    NORMAL_PMODE_ODD = $30;
+    // USART_NORMAL_SBMODE
+    NORMAL_SBMODEmask = $08;
+    NORMAL_SBMODE_1BIT = $00;
+    NORMAL_SBMODE_2BIT = $08;
+    // USART_ABW
+    ABWmask = $C0;
+    ABW_WDW0 = $00;
+    ABW_WDW1 = $40;
+    ABW_WDW2 = $80;
+    ABW_WDW3 = $C0;
+    // Autobaud majority voter bypass
+    ABMBPbm = $80;
+    // Debug Run
+    DBGRUNbm = $01;
+    // IrDA Event Input Enable
+    IREIbm = $01;
+    // Buffer Overflow
+    BUFOVFbm = $40;
+    // Receiver Data Register
+    DATA8bm = $01;
+    // Frame Error
+    FERRbm = $04;
+    // Parity Error
+    PERRbm = $02;
+    // Receive Complete Interrupt Flag
+    RXCIFbm = $80;
+    // RX Data
+    DATA0bm = $01;
+    DATA1bm = $02;
+    DATA2bm = $04;
+    DATA3bm = $08;
+    DATA4bm = $10;
+    DATA5bm = $20;
+    DATA6bm = $40;
+    DATA7bm = $80;
+    // Receiver Pulse Lenght
+    RXPL0bm = $01;
+    RXPL1bm = $02;
+    RXPL2bm = $04;
+    RXPL3bm = $08;
+    RXPL4bm = $10;
+    RXPL5bm = $20;
+    RXPL6bm = $40;
+    // Break Detected Flag
+    BDFbm = $02;
+    // Data Register Empty Flag
+    DREIFbm = $20;
+    // Inconsistent Sync Field Interrupt Flag
+    ISFIFbm = $08;
+    // Receive Start Interrupt
+    RXSIFbm = $10;
+    // Transmit Interrupt Flag
+    TXCIFbm = $40;
+    // Wait For Break
+    WFBbm = $01;
+    // Transmit pulse length
+    TXPL0bm = $01;
+    TXPL1bm = $02;
+    TXPL2bm = $04;
+    TXPL3bm = $08;
+    TXPL4bm = $10;
+    TXPL5bm = $20;
+    TXPL6bm = $40;
+    TXPL7bm = $80;
   end;
 
   TUSERROW = object //User Row
@@ -1186,44 +1873,78 @@ type
     IN_: byte;  //Input Value
     INTFLAGS: byte;  //Interrupt Flags
   const
-    INT0idx = $00;  // Pin Interrupt
-    INT1idx = $01;  // Pin Interrupt
-    INT2idx = $02;  // Pin Interrupt
-    INT3idx = $03;  // Pin Interrupt
-    INT4idx = $04;  // Pin Interrupt
-    INT5idx = $05;  // Pin Interrupt
-    INT6idx = $06;  // Pin Interrupt
-    INT7idx = $07;  // Pin Interrupt
+    // Pin Interrupt
+    INT0bm = $01;
+    INT1bm = $02;
+    INT2bm = $04;
+    INT3bm = $08;
+    INT4bm = $10;
+    INT5bm = $20;
+    INT6bm = $40;
+    INT7bm = $80;
   end;
 
   TVREF = object //Voltage reference
     CTRLA: byte;  //Control A
     CTRLB: byte;  //Control B
   const
-    AC0REFSEL0idx = $00;  // AC0 reference select
-    AC0REFSEL1idx = $01;  // AC0 reference select
-    AC0REFSEL2idx = $02;  // AC0 reference select
-    ADC0REFSEL0idx = $04;  // ADC0 reference select
-    ADC0REFSEL1idx = $05;  // ADC0 reference select
-    ADC0REFSEL2idx = $06;  // ADC0 reference select
-    AC0REFENidx = $00;  AC0REFENbm = $01;  // AC0 DACREF reference enable
-    ADC0REFENidx = $01;  ADC0REFENbm = $02;  // ADC0 reference enable
+    // VREF_AC0REFSEL
+    AC0REFSELmask = $07;
+    AC0REFSEL_0V55 = $00;
+    AC0REFSEL_1V1 = $01;
+    AC0REFSEL_2V5 = $02;
+    AC0REFSEL_4V34 = $03;
+    AC0REFSEL_1V5 = $04;
+    AC0REFSEL_AVDD = $07;
+    // VREF_ADC0REFSEL
+    ADC0REFSELmask = $70;
+    ADC0REFSEL_0V55 = $00;
+    ADC0REFSEL_1V1 = $10;
+    ADC0REFSEL_2V5 = $20;
+    ADC0REFSEL_4V34 = $30;
+    ADC0REFSEL_1V5 = $40;
+    // AC0 DACREF reference enable
+    AC0REFENbm = $01;
+    // ADC0 reference enable
+    ADC0REFENbm = $02;
   end;
 
   TWDT = object //Watch-Dog Timer
     CTRLA: byte;  //Control A
     STATUS: byte;  //Status
   const
-    PERIOD0idx = $00;  // Period
-    PERIOD1idx = $01;  // Period
-    PERIOD2idx = $02;  // Period
-    PERIOD3idx = $03;  // Period
-    WINDOW0idx = $04;  // Window
-    WINDOW1idx = $05;  // Window
-    WINDOW2idx = $06;  // Window
-    WINDOW3idx = $07;  // Window
-    LOCKidx = $07;  LOCKbm = $80;  // Lock enable
-    SYNCBUSYidx = $00;  SYNCBUSYbm = $01;  // Syncronization busy
+    // WDT_PERIOD
+    PERIODmask = $0F;
+    PERIOD_OFF = $00;
+    PERIOD_8CLK = $01;
+    PERIOD_16CLK = $02;
+    PERIOD_32CLK = $03;
+    PERIOD_64CLK = $04;
+    PERIOD_128CLK = $05;
+    PERIOD_256CLK = $06;
+    PERIOD_512CLK = $07;
+    PERIOD_1KCLK = $08;
+    PERIOD_2KCLK = $09;
+    PERIOD_4KCLK = $0A;
+    PERIOD_8KCLK = $0B;
+    // WDT_WINDOW
+    WINDOWmask = $F0;
+    WINDOW_OFF = $00;
+    WINDOW_8CLK = $10;
+    WINDOW_16CLK = $20;
+    WINDOW_32CLK = $30;
+    WINDOW_64CLK = $40;
+    WINDOW_128CLK = $50;
+    WINDOW_256CLK = $60;
+    WINDOW_512CLK = $70;
+    WINDOW_1KCLK = $80;
+    WINDOW_2KCLK = $90;
+    WINDOW_4KCLK = $A0;
+    WINDOW_8KCLK = $B0;
+    // Lock enable
+    LOCKbm = $80;
+    // Syncronization busy
+    SYNCBUSYbm = $01;
   end;
 
 
