@@ -7,17 +7,14 @@
 
 { This reduces the memory requirements a lot }
 {$PACKENUM 1}
-{$ifndef FPC_BIG_ENDIAN}
-{ $define USE_PACKSET1}
-{$endif}
-
-{$ifdef USE_PACKSET1}
 {$PACKSET 1}
-{$endif USE_PACKSET1}
 
 { We don't use exceptions, so turn off the implicit
   exceptions in the constructors }
 {$IMPLICITEXCEPTIONS OFF}
+
+{ We don't want C operators to be used inside the compiler }
+{$COPERATORS OFF}
 
 { This define enables codepage-aware compiler messages handling. Turning it on
   forces code page conversion from the codepage, specified in the .msg file to

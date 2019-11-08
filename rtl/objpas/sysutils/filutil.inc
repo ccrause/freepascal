@@ -133,8 +133,13 @@ begin
   if Result then
     begin
       SymLinkRec.TargetName := UnicodeString(sr.TargetName);
+      SymLinkRec.Size := sr.Size;
+      SymLinkRec.Attr := sr.Attr;
 {$ifdef SYMLINKREC_USEFINDDATA}
       SymLinkRec.FindData := sr.FindData;
+{$endif}
+{$ifdef unix}
+      SymLinkRec.Mode := sr.Mode;
 {$endif}
     end;
 end;
@@ -343,8 +348,13 @@ begin
   if Result then
     begin
       SymLinkRec.TargetName := ToSingleByteFileSystemEncodedFileName(sr.TargetName);
+      SymLinkRec.Size := sr.Size;
+      SymLinkRec.Attr := sr.Attr;
 {$ifdef SYMLINKREC_USEFINDDATA}
       SymLinkRec.FindData := sr.FindData;
+{$endif}
+{$ifdef unix}
+      SymLinkRec.Mode := sr.Mode;
 {$endif}
     end;
 end;

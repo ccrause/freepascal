@@ -184,11 +184,12 @@ implementation
 
     uses
       verbose,globtype,globals,systems,constexp,compinnr,
+      ppu,
       symtable,
       defutil,defcmp,
       cpuinfo,
       htypechk,pass_1,procinfo,paramgr,
-      ncon,ninl,ncnv,nmem,ncal,nutils,
+      ncon,nflw,ninl,ncnv,nmem,ncal,nutils,
       cgbase
       ;
 
@@ -231,7 +232,7 @@ implementation
         ppufile.getderef(symtableentryderef);
         symtable:=nil;
         ppufile.getderef(fprocdefderef);
-        ppufile.getsmallset(loadnodeflags);
+        ppufile.getset(tppuset1(loadnodeflags));
       end;
 
 
@@ -240,7 +241,7 @@ implementation
         inherited ppuwrite(ppufile);
         ppufile.putderef(symtableentryderef);
         ppufile.putderef(fprocdefderef);
-        ppufile.putsmallset(loadnodeflags);
+        ppufile.putset(tppuset1(loadnodeflags));
       end;
 
 
@@ -273,12 +274,28 @@ implementation
     function tloadnode.dogetcopy : tnode;
       var
          n : tloadnode;
+         orglabel,
+         labelcopy : tlabelnode;
       begin
          n:=tloadnode(inherited dogetcopy);
          n.symtable:=symtable;
          n.symtableentry:=symtableentry;
          n.fprocdef:=fprocdef;
          n.loadnodeflags:=loadnodeflags;
+         if symtableentry.typ=labelsym then
+           begin
+             { see the comments for the tgotonode.labelsym field }
+             orglabel:=tlabelnode(tlabelsym(symtableentry).code);
+             labelcopy:=tlabelnode(orglabel.dogetcopy);
+             if not assigned(labelcopy.labsym) then
+               begin
+                 if not assigned(orglabel.labsym) then
+                   internalerror(2019091301);
+                 labelcopy.labsym:=clabelsym.create('$copiedlabelfrom$'+orglabel.labsym.RealName);
+                 labelcopy.labsym.code:=labelcopy;
+               end;
+             n.symtableentry:=labelcopy.labsym;
+           end;
          result:=n;
       end;
 
