@@ -49,6 +49,7 @@ unit agarmgas;
 
       TArmAppleGNUAssembler=class(TAppleGNUassembler)
         constructor CreateWithWriter(info: pasminfo; wr: TExternalAssemblerOutputFile; freewriter, smart: boolean); override;
+        function MakeCmdLine: TCmdStr; override;
         procedure WriteExtraHeader; override;
       end;
 
@@ -160,6 +161,18 @@ unit agarmgas;
       end;
 
 
+    function TArmAppleGNUAssembler.MakeCmdLine: TCmdStr;
+      begin
+        result:=inherited MakeCmdLine;
+	if (asminfo^.id = as_clang) then
+          begin
+            if fputypestrllvm[current_settings.fputype] <> '' then
+              result:='-m'+fputypestrllvm[current_settings.fputype]+' '+result;
+            { Apple arm always uses softfp floating point ABI }
+            result:='-mfloat-abi=softfp '+result;
+          end;
+      end;
+
     procedure TArmAppleGNUAssembler.WriteExtraHeader;
       begin
         inherited WriteExtraHeader;
@@ -194,7 +207,9 @@ unit agarmgas;
                 if offset<>0 then
                   s:=s+tostr_with_plus(offset);
                 if refaddr=addr_pic then
-                  s:=s+'(PLT)';
+                  s:=s+'(PLT)'
+                else if refaddr=addr_tlscall then
+                  s:=s+'(tlscall)';
               end
             else
               begin
