@@ -1593,7 +1593,7 @@ implementation
               begin
                 if check_proc_directive(true) then
                   begin
-                    newtype:=ctypesym.create('unnamed',result,true);
+                    newtype:=ctypesym.create('unnamed',result);
                     parse_var_proc_directives(tsym(newtype));
                     newtype.typedef:=nil;
                     result.typesym:=nil;
@@ -1718,6 +1718,8 @@ implementation
                     begin
                       storepos:=current_tokenpos;
                       current_tokenpos:=defpos;
+                      if (l.svalue<low(longint)) or (l.svalue>high(longint)) then
+                        Message(parser_e_enumeration_out_of_range);
                       tenumsymtable(aktenumdef.symtable).insert(cenumsym.create(s,aktenumdef,longint(l.svalue)));
                       if not (cs_scopedenums in current_settings.localswitches) then
                         tstoredsymtable(aktenumdef.owner).insert(cenumsym.create(s,aktenumdef,longint(l.svalue)));

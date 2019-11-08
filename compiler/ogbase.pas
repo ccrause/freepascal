@@ -60,12 +60,16 @@ interface
          { PIC }
          RELOC_GOTPCREL,
          RELOC_PLT32,
+         RELOC_TLSGD,
+         RELOC_TPOFF,
 {$endif x86_64}
 {$ifdef i386}
          { PIC }
          RELOC_GOTPC,
          RELOC_GOT32,
          RELOC_PLT32,
+         RELOC_TLSGD,
+         RELOC_NTPOFF,
 {$endif i386}
 {$ifdef i8086}
          RELOC_ABSOLUTE32,
@@ -87,6 +91,11 @@ interface
          RELOC_RELATIVE_24_THUMB,
          RELOC_RELATIVE_CALL_THUMB,
          RELOC_GOT32,
+         RELOC_TPOFF,
+         RELOC_TLSGD,
+         RELOC_TLSDESC,
+         RELOC_TLS_CALL,
+         RELOC_ARM_CALL,
 {$endif arm}
          { Relative relocation }
          RELOC_RELATIVE,
@@ -106,7 +115,9 @@ interface
          { Relative to GOT/gp }
          RELOC_GOTOFF,
          { Untranslated target-specific value }
-         RELOC_RAW
+         RELOC_RAW,
+         { offset in TLS block }
+         RELOC_DTPOFF
       );
 
 {$if defined(x86_64)}
@@ -176,7 +187,13 @@ interface
        { Supports bss-like allocation of data, even though it is written in file (i.e. also has oso_Data) }
        oso_sparse_data,
        { Section to support the resolution of multiple symbols with the same name }
-       oso_comdat
+       oso_comdat,
+       { section containing thread variables }
+       oso_threadvar,
+       { being a notes section }
+       oso_note,
+       { arm attributes section }
+       oso_arm_attributes
      );
 
      TObjSectionOptions = set of TObjSectionOption;
@@ -378,9 +395,11 @@ interface
        destructor  destroy;override;
        { Sections }
        function  sectionname(atype:TAsmSectiontype;const aname:string;aorder:TAsmSectionOrder):string;virtual;abstract;
-       function  sectiontype2options(atype:TAsmSectiontype):TObjSectionOptions;virtual;
+       class function sectiontype2options(atype:TAsmSectiontype):TObjSectionOptions;virtual;
        function  sectiontype2align(atype:TAsmSectiontype):longint;virtual;
+       class procedure sectiontype2progbitsandflags(atype:TAsmSectiontype;out progbits:TSectionProgbits;out flags:TSectionFlags);virtual;
        function  createsection(atype:TAsmSectionType;const aname:string='';aorder:TAsmSectionOrder=secorder_default):TObjSection;virtual;
+       function  createsection(atype:TAsmSectionType;secflags:TSectionFlags;aprogbits:TSectionProgbits;const aname:string='';aorder:TAsmSectionOrder=secorder_default):TObjSection;virtual;
        function  createsection(const aname:string;aalign:longint;aoptions:TObjSectionOptions;DiscardDuplicate:boolean=true):TObjSection;virtual;
        function  createsectiongroup(const aname:string):TObjSectionGroup;
        procedure CreateDebugSections;virtual;
@@ -1183,7 +1202,7 @@ implementation
       end;
 
 
-    function TObjData.sectiontype2options(atype:TAsmSectiontype):TObjSectionOptions;
+    class function TObjData.sectiontype2options(atype:TAsmSectiontype):TObjSectionOptions;
       const
         secoptions : array[TAsmSectiontype] of TObjSectionOptions = ([],
           {user} [oso_Data,oso_load,oso_write],
@@ -1196,7 +1215,7 @@ implementation
           {roData} [oso_Data,oso_load,oso_write],
           {roData_norel} [oso_Data,oso_load],
           {bss} [oso_load,oso_write],
-          {threadvar} [oso_load,oso_write],
+          {threadvar} [oso_load,oso_write,oso_threadvar],
           {pdata} [oso_data,oso_load],
           {stub} [oso_Data,oso_load,oso_executable],
           {data_nonlazy}  [oso_Data,oso_load,oso_write],
@@ -1258,7 +1277,8 @@ implementation
           {sec_objc_protolist'} [oso_data,oso_load],
           {stack} [oso_load,oso_write],
           {heap} [oso_load,oso_write],
-          {gcc_except_table} [oso_data,oso_load]
+          {gcc_except_table} [oso_data,oso_load],
+          {arm_attribute} [oso_data]
         );
       begin
         result:=secoptions[atype];
@@ -1268,7 +1288,8 @@ implementation
     function TObjData.sectiontype2align(atype:TAsmSectiontype):longint;
       begin
         case atype of
-          sec_stabstr,sec_debug_info,sec_debug_line,sec_debug_abbrev,sec_debug_aranges,sec_debug_ranges:
+          sec_stabstr,sec_debug_info,sec_debug_line,sec_debug_abbrev,sec_debug_aranges,sec_debug_ranges,
+          sec_arm_attribute:
             result:=1;
           sec_code,
           sec_bss,
@@ -1288,9 +1309,53 @@ implementation
       end;
 
 
+    class procedure TObjData.sectiontype2progbitsandflags(atype:TAsmSectiontype;out progbits:TSectionProgbits;out flags:TSectionFlags);
+      var
+        options : TObjSectionOptions;
+      begin
+        { this is essentially the inverse of the createsection overload that takes
+          both progbits and flags as parameters }
+        options:=sectiontype2options(atype);
+        flags:=[];
+        if oso_load in options then
+          include(flags,SF_A);
+        if oso_write in options then
+          include(flags,SF_W);
+        if oso_executable in options then
+          include(flags,SF_X);
+        if not (oso_data in options) then
+          progbits:=SPB_NOBITS
+        else if oso_note in options then
+          progbits:=SPB_NOTE
+        else if oso_arm_attributes in options then
+          progbits:=SPB_ARM_ATTRIBUTES;
+      end;
+
+
     function TObjData.createsection(atype:TAsmSectionType;const aname:string;aorder:TAsmSectionOrder):TObjSection;
       begin
         result:=createsection(sectionname(atype,aname,aorder),sectiontype2align(atype),sectiontype2options(atype));
+      end;
+
+
+    function TObjData.createsection(atype: TAsmSectionType; secflags: TSectionFlags; aprogbits: TSectionProgbits; const aname: string; aorder: TAsmSectionOrder): TObjSection;
+      var
+        flags : TObjSectionOptions;
+      begin
+        flags:=[oso_data];
+        if SF_A in secflags then
+          Include(flags,oso_load);
+        if SF_W in secflags then
+          Include(flags,oso_write);
+        if SF_X in secflags then
+          Include(flags,oso_executable);
+        if aprogbits=SPB_NOBITS then
+          Exclude(flags,oso_data);
+        if aprogbits=SPB_NOTE then
+          Include(flags,oso_note);
+        if aprogbits=SPB_ARM_ATTRIBUTES then
+          Include(flags,oso_arm_attributes);
+        result:=createsection(sectionname(atype,aname,aorder),sectiontype2align(atype),flags);
       end;
 
 
@@ -1406,6 +1471,9 @@ implementation
             { The weak bit could have been removed from asmsym. }
             if (asmsym.bind=AB_EXTERNAL) and (result.bind=AB_WEAK_EXTERNAL) then
               result.bind:=AB_EXTERNAL;
+            { the TLS type needs to be inherited }
+            if asmsym.typ=AT_TLS then
+              result.typ:=AT_TLS;
           end
         else
           result:=nil;
@@ -2480,8 +2548,10 @@ implementation
           j      : longint;
           hs     : string;
           exesym : TExeSymbol;
+          tmpsym,
           objsym : TObjSymbol;
           grp    : TObjSectionGroup;
+          makeexternal : boolean;
         begin
           for j:=0 to ObjData.ObjSymbolList.Count-1 do
             begin
@@ -2539,26 +2609,20 @@ implementation
                 begin
                   exesym:=texesymbol.Create(FExeSymbolList,objsym.name);
                   exesym.ObjSymbol:=objsym;
-                end;
-              objsym.ExeSymbol:=exesym;
-              case objsym.bind of
-                AB_GLOBAL,
-                AB_PRIVATE_EXTERN:
-                  begin
-                    if exesym.State<>symstate_defined then
-                      begin
-                        exesym.ObjSymbol:=objsym;
-                        exesym.State:=symstate_defined;
-                      end
-                    else
+                end
+              else
+                begin
+                  if assigned(objsym.objsection) and assigned(exesym.objsymbol.objsection) then
+                    begin
                       if (oso_comdat in exesym.ObjSymbol.objsection.SecOptions) and
                          (oso_comdat in objsym.objsection.SecOptions) then
                         begin
                           if exesym.ObjSymbol.objsection.ComdatSelection=objsym.objsection.ComdatSelection then
                             begin
+                              makeexternal:=true;
                               case objsym.objsection.ComdatSelection of
                                 oscs_none:
-                                  Message1(link_e_duplicate_symbol,objsym.name);
+                                  makeexternal:=false;
                                 oscs_any:
                                   Message1(link_d_comdat_discard_any,objsym.name);
                                 oscs_same_size:
@@ -2573,22 +2637,48 @@ implementation
                                     Message1(link_d_comdat_discard_content,objsym.name);
                                 oscs_associative:
                                   { this is handled in a different way }
-                                  Message1(link_e_duplicate_symbol,objsym.name);
+                                  makeexternal:=false;
                                 oscs_largest:
                                   if objsym.size>exesym.ObjSymbol.size then
                                     begin
                                       Message1(link_d_comdat_replace_size,objsym.name);
-                                      exesym.ObjSymbol.exesymbol:=nil;
-                                      exesym.ObjSymbol:=objsym;
+                                      { we swap the symbols and turn the smaller one to an external
+                                        symbol }
+                                      tmpsym:=exesym.objsymbol;
+                                      exesym.objsymbol:=objsym;
+                                      objsym.exesymbol:=exesym;
+                                      objsym:=tmpsym;
                                     end;
                               end;
+                              if makeexternal then
+                                begin
+                                  { Undefine the symbol, causing relocations to it from same
+                                    objdata to be redirected to the symbol that is actually
+                                    used }
+                                  if objsym.bind=AB_GLOBAL then
+                                    objsym.bind:=AB_EXTERNAL;
+                                  { AB_WEAK_EXTERNAL remains unchanged }
+                                  objsym.objsection:=nil;
+                                end;
                             end
                           else
                             Message1(link_e_comdat_selection_differs,objsym.name);
-                        end
-                      else
-                        { specific error if ComDat flags are different? }
-                        Message1(link_e_duplicate_symbol,objsym.name);
+                        end;
+                    end;
+                end;
+
+              objsym.ExeSymbol:=exesym;
+              case objsym.bind of
+                AB_GLOBAL,
+                AB_PRIVATE_EXTERN:
+                  begin
+                    if exesym.State<>symstate_defined then
+                      begin
+                        exesym.ObjSymbol:=objsym;
+                        exesym.State:=symstate_defined;
+                      end
+                    else
+                      Message1(link_e_duplicate_symbol,objsym.name);
 
                     { hidden symbols must become local symbols in the executable }
                     if objsym.bind=AB_PRIVATE_EXTERN then

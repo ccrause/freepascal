@@ -228,6 +228,8 @@ Works:
   - destructor forbidden
   - constructor must not be virtual
   - constructor 'new' -> new extclass(params)
+  - constructor Name -> new extclass.name(params)
+  - constructor Name external name '{}' -> {}
   - identifiers are renamed to avoid clashes with external names
   - call inherited
   - Pascal descendant can override newinstance
@@ -398,22 +400,24 @@ Works:
   - pass class property, static class property
   - pass array property
 - array of const, TVarRec
+- attributes
+- overflow check:
+  -Co   : Overflow checking of integer operations
+- generics
 
 ToDos:
 - range check:
    type helper self:=
-- overflow check:
-   ?
 - cmd line param to set modeswitch
 - Result:=inherited;
 - asm-block annotate/reference
   - pas()  test or use or read or write
+  - trailing [,,,]
 - bug: DoIt(typeinfo(i))  where DoIt is in another unit and has TTypeInfo
 - $OPTIMIZATION ON|OFF
 - $optimization REMOVEEMPTYPROCS
 - $optimization REMOVEEMPTYPROCS,RemoveNotUsedDeclarations-
 - setlength(dynarray)  modeswitch to not create a copy
-- 'new', 'Function' -> class var use .prototype
 - static arrays
   - clone multi dim static array
 - RTTI
@@ -426,50 +430,22 @@ ToDos:
 - stdcall of methods: pass original 'this' as first parameter
 - property read Arr[0]  https://bugs.freepascal.org/view.php?id=33416
 - write, writeln
-- array of const
 - call array of proc element without ()
 - enums with custom values
 - library
 - constref
 - option overflow checking -Co
   +, -, *, Succ, Pred, Inc, Dec
-  -Co   : Overflow checking of integer operations
   -CO   : Check for possible overflow of integer operations
 -C3 : Turn on ieee error checking for constants
 - optimizations:
-  - move rtl.js functions to system.pp
-  - add $mod only if needed
-  - add Self only if needed
-  - use a number for small sets
-  - put set literals into constants
-  - shortcut for test set is empty  a=[]  a<>[]
-  - set operators on literals without temporary arrays, a in [b], [a]*b<>[]
-  - combine multiple var a=0,b=0
-  - init a local var with the first assignment
-  - skip clone array for new array and arraysetlength
-  - SetLength(scope.a,l) -> read scope only once, same for
-    Include, Exclude, Inc, Dec, +=, -=, *=, /=
-  - inline  -Si
-  - autoinline
-  -O1 insert unit vars for complex literals
-  -O1 no function Result var when assigned only once
-  -O1 replace constant expression with result
-  -O1 pass array element by ref: when index is constant, use that directly
-  -O1 case-of with 6+ elements as binary tree
-  -O2 insert local/unit vars for global type references:
-      at start of intf var $r1=null;
-      at end of impl: $r1=path;
-  -O2 removeemptyprocs
-  -O2 skip dead code If(false){...}
-  -O2 CSE
-  -O3 DFA
+  see https://wiki.lazarus.freepascal.org/Pas2js_optimizations
 - objects
 - generics
 - operator overloading
   - operator enumerator
 - inline
 - extended RTTI
-- attributes
 
 Debugging this unit: -d<x>
    VerbosePas2JS
@@ -508,7 +484,7 @@ const
   nVirtualMethodNameMustMatchExternal = 4013;
   nPublishedNameMustMatchExternal = 4014;
   nInvalidVariableModifier = 4015;
-  nExternalObjectConstructorMustBeNamedNew = 4016;
+  // was nExternalObjectConstructorMustBeNamedNew = 4016;
   nNewInstanceFunctionMustBeVirtual = 4017;
   nNewInstanceFunctionMustHaveTwoParameters = 4018;
   nNewInstanceFunctionMustNotHaveOverloadAtX = 4019;
@@ -540,7 +516,7 @@ resourcestring
   sVirtualMethodNameMustMatchExternal = 'Virtual method name must match external';
   sInvalidVariableModifier = 'Invalid variable modifier "%s"';
   sPublishedNameMustMatchExternal = 'Published name must match external';
-  sExternalObjectConstructorMustBeNamedNew = 'external object constructor must be named "new"';
+  // was sExternalObjectConstructorMustBeNamedNew = 'external object constructor must be named "new"';
   sNewInstanceFunctionMustBeVirtual = 'NewInstance function must be virtual';
   sNewInstanceFunctionMustHaveTwoParameters = 'NewInstance function must have two parameters';
   sNewInstanceFunctionMustNotHaveOverloadAtX = 'NewInstance function must not have overload at %s';
@@ -560,6 +536,7 @@ const
   ExtClassBracketAccessor = '[]'; // external name '[]' marks the array param getter/setter
   IsExtModePasClassInstance = 1;
   IsExtModePasClass = 2;
+  LocalVarHide = '-';
 
 type
   TPas2JSBuiltInName = (
@@ -643,6 +620,7 @@ type
     pbifnRTTINewClassRef,// typeinfo of tkClassRef $ClassRef
     pbifnRTTINewDynArray,// typeinfo of tkDynArray $DynArray
     pbifnRTTINewEnum,// typeinfo of tkEnumeration $Enum
+    pbifnRTTINewExtClass,// typeinfo creator of tkExtClass $ExtClass
     pbifnRTTINewInt,// typeinfo of tkInt $Int
     pbifnRTTINewInterface,// typeinfo creator of tkInterface $Interface
     pbifnRTTINewMethodVar,// typeinfo of tkMethod $MethodVar
@@ -699,16 +677,18 @@ type
     pbivnRTTIInt_MinValue,
     pbivnRTTIInt_OrdType,
     pbivnRTTILocal, // $r
-    pbivnRTTIMemberAttributes,
+    pbivnRTTIMemberAttributes, // attr
     pbivnRTTIMethodKind, // tTypeInfoMethodVar has methodkind
-    pbivnRTTIPointer_RefType,
-    pbivnRTTIProcFlags,
-    pbivnRTTIProcVar_ProcSig,
-    pbivnRTTIPropDefault,
-    pbivnRTTIPropIndex,
-    pbivnRTTIPropStored,
-    pbivnRTTISet_CompType,
-    pbivnRTTITypeAttributes,
+    pbivnRTTIPointer_RefType, // reftype
+    pbivnRTTIProcFlags, // flags
+    pbivnRTTIProcVar_ProcSig, // procsig
+    pbivnRTTIPropDefault, // Default
+    pbivnRTTIPropIndex, // index
+    pbivnRTTIPropStored, // stored
+    pbivnRTTISet_CompType, // comptype
+    pbivnRTTITypeAttributes, // attr
+    pbivnRTTIExtClass_Ancestor, // ancestor
+    pbivnRTTIExtClass_JSClass, // jsclass
     pbivnSelf,
     pbivnTObjectDestroy,
     pbivnWith,
@@ -720,6 +700,7 @@ type
     pbitnTIClassRef,
     pbitnTIDynArray,
     pbitnTIEnum,
+    pbitnTIExtClass,
     pbitnTIHelper,
     pbitnTIInteger,
     pbitnTIInterface,
@@ -814,6 +795,7 @@ const
     '$ClassRef',
     '$DynArray',
     '$Enum',
+    '$ExtClass',
     '$Int',
     '$Interface',
     '$MethodVar',
@@ -879,6 +861,8 @@ const
     'stored', // pbivnRTTIPropStored
     'comptype', // pbivnRTTISet_CompType
     'attr', // pbivnRTTITypeAttributes
+    'ancestor', // pbivnRTTIExtClass_Ancestor
+    'jsclass', // pbivnRTTIExtClass_JSClass
     '$Self', // pbivnSelf
     'tObjectDestroy', // rtl.tObjectDestroy  pbivnTObjectDestroy
     '$with', // pbivnWith
@@ -889,6 +873,7 @@ const
     'tTypeInfoClassRef', // pbitnTIClassRef
     'tTypeInfoDynArray', // pbitnTIDynArray
     'tTypeInfoEnum', // pbitnTIEnum
+    'tTypeInfoExtClass', // pbitnTIExtClass
     'tTypeInfoHelper', // pbitnTIHelper
     'tTypeInfoInteger', // pbitnTIInteger
     'tTypeInfoInterface', // pbitnTIInterface
@@ -1107,18 +1092,27 @@ type
     SystemVarRecs: TPasFunction;
   end;
 
+  { TPas2jsElevatedLocals }
+
+  TPas2jsElevatedLocals = class
+  private
+    FElevatedLocals: TPasResHashList; // list of TPasIdentifier, case insensitive
+    procedure InternalAdd(Item: TPasIdentifier);
+    procedure OnClear(Item, Dummy: pointer);
+  public
+    constructor Create;
+    destructor Destroy; override;
+    function Find(const Identifier: String): TPasIdentifier; inline;
+    function Add(const Identifier: String; El: TPasElement): TPasIdentifier; virtual;
+  end;
+
   { TPas2JSSectionScope }
 
   TPas2JSSectionScope = class(TPasSectionScope)
-  private
-    FElevatedLocals: TPasResHashList; // list of TPasIdentifier, case insensitive
-    procedure InternalAddElevatedLocal(Item: TPasIdentifier);
-    procedure OnClearElevatedLocal(Item, Dummy: pointer);
   public
+    ElevatedLocals: TPas2jsElevatedLocals;
     constructor Create; override;
     destructor Destroy; override;
-    function FindElevatedLocal(const Identifier: String): TPasIdentifier; inline;
-    function AddElevatedLocal(const Identifier: String; El: TPasElement): TPasIdentifier; virtual;
     procedure WriteElevatedLocals(Prefix: string); virtual;
   end;
 
@@ -1141,7 +1135,9 @@ type
     DispatchField: String;
     DispatchStrField: String;
     MsgIntToProc, MsgStrToProc: TMessageIdToProc_List; // // not stored by filer
+    ElevatedLocals: TPas2jsElevatedLocals;
   public
+    constructor Create; override;
     destructor Destroy; override;
   end;
 
@@ -1165,10 +1161,10 @@ type
     WithVarName: string;
   end;
 
-  { TPas2JSOverloadSkipScope
+  { TPas2JSOverloadChgThisScope
     Dummy scope to signal a change of the "this" on the overload scope stack }
 
-  TPas2JSOverloadSkipScope = class(TPasIdentifierScope)
+  TPas2JSOverloadChgThisScope = class(TPasIdentifierScope)
   end;
 
   { TResElDataPas2JSBaseType - CustomData for compiler built-in types (TPasUnresolvedSymbolRef), e.g. jsvalue }
@@ -1204,7 +1200,8 @@ const
     msArrayOperators,
     msPrefixedAttributes,
     msOmitRTTI,
-    msMultiHelpers];
+    msMultiHelpers,
+    msImplicitFunctionSpec];
 
   bsAllPas2jsBoolSwitchesReadOnly = [
     bsLongStrings
@@ -1335,6 +1332,7 @@ type
     function GetOverloadAt(Identifier: TPasIdentifier; var Index: integer): TPasIdentifier;
     function GetOverloadIndex(El: TPasElement): integer;
     function GetOverloadAt(const aName: String; Index: integer): TPasIdentifier;
+    function GetElevatedLocals(Scope: TPasScope): TPas2jsElevatedLocals;
     function RenameOverload(El: TPasElement): boolean;
     procedure RenameOverloadsInSection(aSection: TPasSection);
     procedure RenameOverloads(DeclEl: TPasElement; Declarations: TFPList);
@@ -1856,7 +1854,7 @@ type
     Function CreateCloneStaticArray(El: TPasElement; ArrTypeEl: TPasArrayType;
       ArrayExpr: TJSElement; AContext: TConvertContext): TJSElement; virtual;
     // class
-    Procedure AddInstanceMemberFunction(El: TPasClassType; Src: TJSSourceElements;
+    Procedure AddClassConDestructorFunction(El: TPasClassType; Src: TJSSourceElements;
       ClassContext: TConvertContext; IsTObject: boolean; Ancestor: TPasType;
       Kind: TMemberFunc);
     Procedure AddClassRTTI(El: TPasClassType; Src: TJSSourceElements;
@@ -1888,6 +1886,7 @@ type
       AContext: TConvertContext): TJSElement; virtual;
     Procedure AddRTTIArgument(Arg: TPasArgument; TargetParams: TJSArrayLiteral;
       AContext: TConvertContext); virtual;
+    Function GetClassBIName(El: TPasClassType): string; virtual;
     Function CreateRTTINewType(El: TPasType; const CallFuncName: string;
       IsForward: boolean; AContext: TConvertContext; out ObjLit: TJSObjectLiteral): TJSCallExpression; virtual;
     Function CreateRTTIAttributes(const Attr: TPasExprArray; PosEl: TPasElement; aContext: TConvertContext): TJSElement; virtual;
@@ -2023,6 +2022,7 @@ type
     Function ConvertClassType(El: TPasClassType; AContext: TConvertContext): TJSElement; virtual;
     Function ConvertClassForwardType(El: TPasClassType; AContext: TConvertContext): TJSElement; virtual;
     Function ConvertClassOfType(El: TPasClassOfType; AContext: TConvertContext): TJSElement; virtual;
+    Function ConvertExtClassType(El: TPasClassType; AContext: TConvertContext): TJSElement; virtual;
     Function ConvertEnumType(El: TPasEnumType; AContext: TConvertContext): TJSElement; virtual;
     Function ConvertSetType(El: TPasSetType; AContext: TConvertContext): TJSElement; virtual;
     Function ConvertRangeType(El: TPasRangeType; AContext: TConvertContext): TJSElement; virtual;
@@ -2194,8 +2194,15 @@ end;
 
 { TPas2JSClassScope }
 
+constructor TPas2JSClassScope.Create;
+begin
+  inherited Create;
+  ElevatedLocals:=TPas2jsElevatedLocals.Create;
+end;
+
 destructor TPas2JSClassScope.Destroy;
 begin
+  FreeAndNil(ElevatedLocals);
   FreeAndNil(MsgIntToProc);
   FreeAndNil(MsgStrToProc);
   inherited Destroy;
@@ -2242,9 +2249,9 @@ begin
     BuiltInNames[n]:=Pas2JSBuiltInNames[n];
 end;
 
-{ TPas2JSSectionScope }
+{ TPas2jsElevatedLocals }
 
-procedure TPas2JSSectionScope.InternalAddElevatedLocal(Item: TPasIdentifier);
+procedure TPas2jsElevatedLocals.InternalAdd(Item: TPasIdentifier);
 var
   {$IFDEF fpc}
   Index: Integer;
@@ -2291,12 +2298,12 @@ begin
     end;
   {$ENDIF}
   {$IFDEF VerbosePasResolver}
-  if FindElevatedLocal(Item.Identifier)<>Item then
+  if Find(Item.Identifier)<>Item then
     raise Exception.Create('20160925183849');
   {$ENDIF}
 end;
 
-procedure TPas2JSSectionScope.OnClearElevatedLocal(Item, Dummy: pointer);
+procedure TPas2jsElevatedLocals.OnClear(Item, Dummy: pointer);
 var
   PasIdentifier: TPasIdentifier absolute Item;
   Ident: TPasIdentifier;
@@ -2311,15 +2318,15 @@ begin
     end;
 end;
 
-constructor TPas2JSSectionScope.Create;
+constructor TPas2jsElevatedLocals.Create;
 begin
   inherited Create;
   FElevatedLocals:=TPasResHashList.Create;
 end;
 
-destructor TPas2JSSectionScope.Destroy;
+destructor TPas2jsElevatedLocals.Destroy;
 begin
-  FElevatedLocals.ForEachCall(@OnClearElevatedLocal,nil);
+  FElevatedLocals.ForEachCall(@OnClear,nil);
   {$IFDEF pas2js}
   FElevatedLocals:=nil;
   {$ELSE}
@@ -2329,31 +2336,45 @@ begin
 end;
 
 // inline
-function TPas2JSSectionScope.FindElevatedLocal(const Identifier: String
+function TPas2jsElevatedLocals.Find(const Identifier: String
   ): TPasIdentifier;
 begin
   Result:=TPasIdentifier(FElevatedLocals.Find(lowercase(Identifier)));
 end;
 
-function TPas2JSSectionScope.AddElevatedLocal(const Identifier: String;
+function TPas2jsElevatedLocals.Add(const Identifier: String;
   El: TPasElement): TPasIdentifier;
 var
   Item: TPasIdentifier;
 begin
-  //writeln('TPasIdentifierScope.AddIdentifier Identifier="',Identifier,'" El=',GetObjName(El));
+  //writeln('TPas2jsElevatedLocals.Add Identifier="',Identifier,'" El=',GetObjName(El));
   Item:=TPasIdentifier.Create;
   Item.Identifier:=Identifier;
   Item.Element:=El;
 
-  InternalAddElevatedLocal(Item);
-  //writeln('TPasIdentifierScope.AddIdentifier END');
+  InternalAdd(Item);
+  //writeln('TPas2jsElevatedLocals.Add END');
   Result:=Item;
+end;
+
+{ TPas2JSSectionScope }
+
+constructor TPas2JSSectionScope.Create;
+begin
+  inherited Create;
+  ElevatedLocals:=TPas2jsElevatedLocals.Create;
+end;
+
+destructor TPas2JSSectionScope.Destroy;
+begin
+  FreeAndNil(ElevatedLocals);
+  inherited Destroy;
 end;
 
 procedure TPas2JSSectionScope.WriteElevatedLocals(Prefix: string);
 begin
   Prefix:=Prefix+'  ';
-  FElevatedLocals.ForEachCall(@OnWriteItem,Pointer(Prefix));
+  ElevatedLocals.FElevatedLocals.ForEachCall(@OnWriteItem,Pointer(Prefix));
 end;
 
 { TPas2JSProcedureScope }
@@ -2807,7 +2828,7 @@ begin
       or C.InheritsFrom(TPasType) then
     begin
     if (not WithElevatedLocal) and (El.Parent is TProcedureBody) then
-      exit(false); // local const/type counted via TPas2JSSectionScope.FElevatedLocals
+      exit(false); // local const/type is counted via ElevatedLocals
     if (C=TPasClassType) and TPasClassType(El).IsForward then
       exit(false);
     end
@@ -2822,6 +2843,8 @@ begin
     ProcScope:=TPasProcedureScope(El.CustomData);
     if ProcScope.DeclarationProc<>nil then
       // implementation proc -> only count the header -> skip
+      exit(false);
+    if ProcScope.SpecializedFromItem<>nil then
       exit(false);
     end;
   Result:=true;
@@ -2895,51 +2918,59 @@ end;
 
 function TPas2JSResolver.GetOverloadIndex(El: TPasElement): integer;
 var
-  i, j: Integer;
+  i, j, MaxDepth: Integer;
   Identifier: TPasIdentifier;
   Scope: TPasIdentifierScope;
   CurEl: TPasElement;
-  Skip: Boolean;
+  ThisChanged: Boolean;
+  ElevatedLocals: TPas2jsElevatedLocals;
 begin
   Result:=0;
   if not HasOverloadIndex(El,true) then exit;
-  Skip:=false;
-  for i:=FOverloadScopes.Count-1 downto 0 do
+
+  ThisChanged:=false;
+  MaxDepth:=FOverloadScopes.Count-1;
+  for i:=MaxDepth downto 0 do
     begin
     Scope:=TPasIdentifierScope(FOverloadScopes[i]);
-    if Scope.ClassType=TPas2JSOverloadSkipScope then
+    if Scope.ClassType=TPas2JSOverloadChgThisScope then
       begin
-      Skip:=true;
+      ThisChanged:=true;
       continue;
       end;
-    if (Scope.ClassType=TPas2JSSectionScope) and (i<FOverloadScopes.Count-1) then
+    if i<MaxDepth then
       begin
-      // Note: the elevated locals have their index after the section scope and
-      //       before the next deeper scope
+      // Reason for "if i<MaxDepth":
+      // Because the elevated locals have their index after their global scope
+      // and before the next deeper (local) scope
 
       // check elevated locals
-      Identifier:=TPas2JSSectionScope(Scope).FindElevatedLocal(El.Name);
-      j:=0;
-      // add count or index
-      while Identifier<>nil do
+      ElevatedLocals:=GetElevatedLocals(Scope);
+      if ElevatedLocals<>nil then
         begin
-        CurEl:=Identifier.Element;
-        Identifier:=Identifier.NextSameIdentifier;
-        if CurEl=El then
-          j:=0
-        else
-          inc(j);
+        Identifier:=ElevatedLocals.Find(El.Name);
+        j:=0;
+        // add count or index
+        while Identifier<>nil do
+          begin
+          CurEl:=Identifier.Element;
+          Identifier:=Identifier.NextSameIdentifier;
+          if CurEl=El then
+            j:=0
+          else
+            inc(j);
+          end;
+        inc(Result,j);
         end;
-      inc(Result,j);
       end;
-    if not Skip then
+    if not ThisChanged then
       begin
       // add count or index of this scope
       Identifier:=Scope.FindLocalIdentifier(El.Name);
       inc(Result,GetOverloadIndex(Identifier,El));
       end;
     end;
-  if Skip then exit;
+  if ThisChanged then exit;
   // finally add count or index of the external scope
   Identifier:=FindExternalName(El.Name);
   inc(Result,GetOverloadIndex(Identifier,El));
@@ -2948,30 +2979,36 @@ end;
 function TPas2JSResolver.GetOverloadAt(const aName: String; Index: integer
   ): TPasIdentifier;
 var
-  i: Integer;
+  i, MaxDepth: Integer;
   Scope: TPasIdentifierScope;
   Skip: Boolean;
+  ElevatedLocals: TPas2jsElevatedLocals;
 begin
   Result:=nil;
   Skip:=false;
-  for i:=FOverloadScopes.Count-1 downto 0 do
+  MaxDepth:=FOverloadScopes.Count-1;
+  for i:=MaxDepth downto 0 do
     begin
     // find last added
     Scope:=TPasIdentifierScope(FOverloadScopes[i]);
-    if Scope.ClassType=TPas2JSOverloadSkipScope then
+    if Scope.ClassType=TPas2JSOverloadChgThisScope then
       begin
       Skip:=true;
       continue;
       end;
-    if (Scope.ClassType=TPas2JSSectionScope) and (i<FOverloadScopes.Count-1) then
+    if i<MaxDepth then
       begin
-      // Note: the elevated locals are after the section scope and before the next deeper scope
-
       // check elevated locals
-      Result:=TPas2JSSectionScope(Scope).FindElevatedLocal(aName);
-      Result:=GetOverloadAt(Result,Index);
-      if Result<>nil then
-        exit;
+      // Note: the elevated locals are after the section scope and
+      //       before the next deeper scope
+      ElevatedLocals:=GetElevatedLocals(Scope);
+      if ElevatedLocals<>nil then
+        begin
+        Result:=ElevatedLocals.Find(aName);
+        Result:=GetOverloadAt(Result,Index);
+        if Result<>nil then
+          exit;
+        end;
       end;
     if not Skip then
       begin
@@ -2985,6 +3022,20 @@ begin
   // find in external names
   Result:=FindExternalName(aName);
   Result:=GetOverloadAt(Result,Index);
+end;
+
+function TPas2JSResolver.GetElevatedLocals(Scope: TPasScope
+  ): TPas2jsElevatedLocals;
+var
+  C: TClass;
+begin
+  C:=Scope.ClassType;
+  if C=TPas2JSSectionScope then
+    Result:=TPas2JSSectionScope(Scope).ElevatedLocals
+  else if C=TPas2JSClassScope then
+    Result:=TPas2JSClassScope(Scope).ElevatedLocals
+  else
+    Result:=nil;
 end;
 
 function TPas2JSResolver.RenameOverload(El: TPasElement): boolean;
@@ -3139,6 +3190,7 @@ var
   ClassScope, aScope: TPasClassScope;
   ClassEl: TPasClassType;
   C: TClass;
+  ProcBody: TProcedureBody;
 begin
   for i:=0 to Declarations.Count-1 do
     begin
@@ -3148,16 +3200,24 @@ begin
       begin
       Proc:=TPasProcedure(El);
       ProcScope:=Proc.CustomData as TPasProcedureScope;
+      if ProcScope.DeclarationProc<>nil then
+        continue;
+      if ProcScope.ImplProc<>nil then
+        begin
+        Proc:=ProcScope.ImplProc;
+        ProcScope:=TPasProcedureScope(Proc.CustomData);
+        end;
       {$IFDEF VerbosePas2JS}
       //writeln('TPas2JSResolver.RenameSubOverloads Proc=',Proc.Name,' DeclarationProc=',GetObjName(ProcScope.DeclarationProc),' ImplProc=',GetObjName(ProcScope.ImplProc),' ClassScope=',GetObjName(ProcScope.ClassOrRecordScope));
       {$ENDIF}
-      if Proc.Body<>nil then
+      ProcBody:=Proc.Body;
+      if ProcBody<>nil then
         begin
         PushOverloadScope(ProcScope);
         // first rename all overloads on this level
-        RenameOverloads(Proc.Body,Proc.Body.Declarations);
+        RenameOverloads(ProcBody,ProcBody.Declarations);
         // then process nested procedures
-        RenameSubOverloads(Proc.Body.Declarations);
+        RenameSubOverloads(ProcBody.Declarations);
         PopOverloadScope;
         end;
       end
@@ -3201,7 +3261,7 @@ end;
 
 procedure TPas2JSResolver.PushOverloadScopeSkip;
 begin
-  FOverloadScopes.Add(TPas2JSOverloadSkipScope.Create);
+  FOverloadScopes.Add(TPas2JSOverloadChgThisScope.Create);
 end;
 
 procedure TPas2JSResolver.PushOverloadScope(Scope: TPasIdentifierScope);
@@ -3216,7 +3276,7 @@ var
 begin
   i:=FOverloadScopes.Count-1;
   Scope:=TPasIdentifierScope(FOverloadScopes[i]);
-  if Scope.ClassType=TPas2JSOverloadSkipScope then
+  if Scope.ClassType=TPas2JSOverloadChgThisScope then
     Scope.Free;
   FOverloadScopes.Delete(i);
 end;
@@ -3809,9 +3869,9 @@ begin
     begin
     // local var
     RaiseVarModifierNotSupported(LocalVarModifiersAllowed);
-    if (El.ClassType=TPasConst) and TPasConst(El).IsConst then
+    if El.ClassType=TPasConst then
       begin
-      // local const
+      // local const. Can be writable!
       AddElevatedLocal(El);
       end;
     end
@@ -4003,16 +4063,7 @@ begin
               // constructor of external class can't be overriden -> forbid virtual
               RaiseMsg(20170323100447,nInvalidXModifierY,sInvalidXModifierY,
                 [Proc.ElementTypeName,'virtual,external'],Proc);
-            if CompareText(Proc.Name,'new')=0 then
-              begin
-              ExtName:=ComputeConstString(Proc.LibrarySymbolName,true,true);
-              if ExtName<>Proc.Name then
-                RaiseMsg(20170323083511,nVirtualMethodNameMustMatchExternal,
-                  sVirtualMethodNameMustMatchExternal,[],Proc.LibrarySymbolName);
-              end
-            else
-              RaiseMsg(20190116211019,nExternalObjectConstructorMustBeNamedNew,
-                sExternalObjectConstructorMustBeNamedNew,[],El);
+            ComputeConstString(Proc.LibrarySymbolName,true,true);
             end
           else
             RaiseMsg(20170322163210,nPasElementNotSupported,sPasElementNotSupported,
@@ -4054,10 +4105,10 @@ begin
               if TPasClassType(HelperForType).IsExternal then
                 begin
                 // method of a class helper for external class
-                if IsClassMethod(El) and not (ptmStatic in El.Modifiers) then
+                if IsClassMethod(Proc) and not (ptmStatic in El.Modifiers) then
                   RaiseMsg(20190201165259,nHelperClassMethodForExtClassMustBeStatic,
                     sHelperClassMethodForExtClassMustBeStatic,[],El);
-                if El.ClassType=TPasConstructor then
+                if Proc.ClassType=TPasConstructor then
                   RaiseNotYetImplemented(20190206153655,El);
                 end;
               end;
@@ -4393,14 +4444,29 @@ end;
 procedure TPas2JSResolver.AddElevatedLocal(El: TPasElement);
 var
   i: Integer;
-  SectionScope: TPas2JSSectionScope;
+  ElevatedLocals: TPas2jsElevatedLocals;
+  Scope: TPasScope;
+  ProcScope: TPas2JSProcedureScope;
 begin
   i:=ScopeCount-1;
-  while (i>=0) and not (Scopes[i] is TPas2JSSectionScope) do dec(i);
-  if i<0 then
-    RaiseNotYetImplemented(20180420131358,El);
-  SectionScope:=TPas2JSSectionScope(Scopes[i]);
-  SectionScope.AddElevatedLocal(El.Name,El);
+  while (i>=0) do
+    begin
+    Scope:=Scopes[i];
+    if Scope is TPas2JSProcedureScope then
+      begin
+      ProcScope:=TPas2JSProcedureScope(Scope);
+      if ProcScope.ClassRecScope<>nil then
+        Scope:=ProcScope.ClassRecScope;
+      end;
+    ElevatedLocals:=GetElevatedLocals(Scope);
+    if ElevatedLocals<>nil then
+      begin
+      ElevatedLocals.Add(El.Name,El);
+      exit;
+      end;
+    dec(i);
+    end;
+  RaiseNotYetImplemented(20180420131358,El);
 end;
 
 procedure TPas2JSResolver.ClearElementData;
@@ -4797,6 +4863,9 @@ var
   TypeEl: TPasType;
   FoundClass: TPasClassType;
   ScopeDepth: Integer;
+  TemplType: TPasGenericTemplateType;
+  ConEl: TPasElement;
+  ConToken: TToken;
 begin
   Param:=Params.Params[0];
   ComputeElement(Param,ParamResolved,[rcNoImplicitProc]);
@@ -4855,7 +4924,11 @@ begin
       TIName:=Pas2JSBuiltInNames[pbitnTIRecord]
     else if C=TPasClassType then
       case TPasClassType(TypeEl).ObjKind of
-      okClass: TIName:=Pas2JSBuiltInNames[pbitnTIClass];
+      okClass:
+        if TPasClassType(TypeEl).IsExternal then
+          TIName:=Pas2JSBuiltInNames[pbitnTIExtClass]
+        else
+          TIName:=Pas2JSBuiltInNames[pbitnTIClass];
       okInterface: TIName:=Pas2JSBuiltInNames[pbitnTIInterface];
       okClassHelper,okRecordHelper,okTypeHelper: TIName:=Pas2JSBuiltInNames[pbitnTIHelper];
       else
@@ -4876,7 +4949,37 @@ begin
         TIName:=Pas2JSBuiltInNames[pbitnTIDynArray];
       end
     else if C=TPasPointerType then
-      TIName:=Pas2JSBuiltInNames[pbitnTIPointer];
+      TIName:=Pas2JSBuiltInNames[pbitnTIPointer]
+    else if C=TPasGenericTemplateType then
+      begin
+      TemplType:=TPasGenericTemplateType(TypeEl);
+      if length(TemplType.Constraints)>0 then
+        begin
+        ConEl:=TemplType.Constraints[0];
+        ConToken:=GetGenericConstraintKeyword(ConEl);
+        case ConToken of
+        tkrecord: TIName:=Pas2JSBuiltInNames[pbitnTIRecord];
+        tkclass,tkConstructor: TIName:=Pas2JSBuiltInNames[pbitnTIClass];
+        else
+          if not (ConEl is TPasType) then
+            RaiseNotYetImplemented(20191018180031,ConEl,GetObjPath(Param));
+          if ConEl is TPasClassType then
+            begin
+            if TPasClassType(ConEl).IsExternal then
+              TIName:=Pas2JSBuiltInNames[pbitnTIExtClass]
+            else
+              TIName:=Pas2JSBuiltInNames[pbitnTIClass];
+            end
+          else
+            RaiseNotYetImplemented(20191018180131,ConEl,GetObjPath(Param));
+        end;
+        end;
+      if TIName='' then
+        begin
+        // generic template without constraints
+        TIName:=Pas2JSBuiltInNames[pbitnTI];
+        end;
+      end;
     end
   else if ParamResolved.BaseType=btSet then
     begin
@@ -4905,7 +5008,7 @@ begin
     else if ParamResolved.BaseType in [btChar,btBoolean] then
       TIName:=Pas2JSBuiltInNames[pbitnTI]
     end;
-  //writeln('TPas2JSResolver.BI_TypeInfo_OnGetCallResult TIName=',TIName);
+  //writeln('TPas2JSResolver.BI_TypeInfo_OnGetCallResult TIName=',TIName,' ',GetObjName(TypeEl));
   if TIName='' then
     begin
     {$IFDEF VerbosePas2JS}
@@ -5734,12 +5837,30 @@ end;
 function TPas2JSResolver.GetOverloadName(El: TPasElement): string;
 var
   Data: TObject;
+  ProcScope, GenScope: TPas2JSProcedureScope;
+  GenEl: TPasElement;
 begin
   Data:=El.CustomData;
   if Data is TPas2JSProcedureScope then
     begin
-    Result:=TPas2JSProcedureScope(Data).OverloadName;
-    if Result<>'' then exit;
+    ProcScope:=TPas2JSProcedureScope(Data);
+    if ProcScope.SpecializedFromItem<>nil then
+      begin
+      // specialized proc -> generic name + 's' + index
+      GenEl:=ProcScope.SpecializedFromItem.GenericEl;
+      GenScope:=TPas2JSProcedureScope(GenEl.CustomData);
+      Result:=GenScope.OverloadName;
+      if Result='' then
+        Result:=GenEl.Name+'$';
+      Result:=Result+'s'+IntToStr(ProcScope.SpecializedFromItem.Index);
+      end
+    else
+      begin
+      Result:=ProcScope.OverloadName;
+      if Result='' then
+        Result:=El.Name;
+      end;
+    exit;
     end;
   Result:=El.Name;
 end;
@@ -5757,8 +5878,6 @@ function TPas2JSResolver.HasTypeInfo(El: TPasType): boolean;
 begin
   Result:=inherited HasTypeInfo(El);
   if not Result then exit;
-  if (El.ClassType=TPasClassType) and TPasClassType(El).IsExternal then
-    exit(false);
   if El.Parent is TProcedureBody then
     Result:=false;
 end;
@@ -6107,7 +6226,11 @@ begin
   if El=nil then exit('');
   V:=FindLocalIdentifier(El);
   if V<>nil then
-    Result:=V.Name
+    begin
+    Result:=V.Name;
+    if Result=LocalVarHide then
+      Result:='';
+    end
   else if ThisPas=El then
     Result:='this'
   else
@@ -6231,12 +6354,17 @@ end;
 function TConvertContext.GetSelfContext: TFunctionContext;
 var
   Ctx: TConvertContext;
+  FuncContext: TFunctionContext;
 begin
   Ctx:=Self;
   while Ctx<>nil do
     begin
-    if (Ctx is TFunctionContext) and (TFunctionContext(Ctx).ThisPas is TPasMembersType) then
-      exit(TFunctionContext(Ctx));
+    if (Ctx is TFunctionContext) then
+      begin
+      FuncContext:=TFunctionContext(Ctx);
+      if FuncContext.ThisPas is TPasMembersType then
+        exit(FuncContext);
+      end;
     Ctx:=Ctx.Parent;
     end;
   Result:=nil;
@@ -6859,21 +6987,8 @@ end;
 
 function TPasToJSConverter.ConvertInlineSpecializeExpr(
   El: TInlineSpecializeExpr; AContext: TConvertContext): TJSElement;
-var
-  aResolver: TPas2JSResolver;
-  DestType: TPasType;
-  GenType: TPasGenericType;
-  Name: String;
 begin
-  aResolver:=AContext.Resolver;
-  DestType:=aResolver.ResolveAliasType(El.DestType);
-  if not (DestType is TPasGenericType) then
-    RaiseNotSupported(El,AContext,20190826143203,GetObjPath(DestType));
-  GenType:=TPasGenericType(DestType);
-  if (GenType.GenericTemplateTypes<>nil) and (GenType.GenericTemplateTypes.Count>0) then
-    RaiseNotSupported(El,AContext,20190826143508,GetObjName(GenType));
-  Name:=CreateReferencePath(GenType,AContext,rpkPathAndName);
-  Result:=CreatePrimitiveDotExpr(Name,El);
+  Result:=ConvertElement(El.NameExpr,AContext);
 end;
 
 function TPasToJSConverter.GetExpressionValueType(El: TPasExpr;
@@ -9880,6 +9995,13 @@ begin
     DotBin:=TBinaryExpr(Value);
     Value:=DotBin.right;
     end;
+  if (not (Value.CustomData is TResolvedReference))
+      and (aResolver<>nil)
+      and (Value is TInlineSpecializeExpr) then
+    begin
+    //  Value<>()
+    Value:=TInlineSpecializeExpr(Value).NameExpr;
+    end;
 
   if Value.CustomData is TResolvedReference then
     begin
@@ -10010,6 +10132,22 @@ begin
         ArgName:=TransformArgName(TPasArgument(ParamResolved.IdentEl),AContext);
         Result:=CreatePrimitiveDotExpr(ArgName,El);
         exit;
+        end
+      else if (C=TPasClassType)
+          and aResolver.IsExternalClass_Name(TPasClassType(Decl),'Function') then
+        begin
+        // TJSFunction(param)
+        if (Param is TPasExpr) and (TPasExpr(Param).OpCode=eopAddress) then
+          begin
+          aResolver.ComputeElement(TUnaryExpr(Param).Operand,ValueResolved,[rcNoImplicitProc]);
+          if (ValueResolved.BaseType=btProc)
+              and (ValueResolved.IdentEl is TPasProcedure) then
+            begin
+            // TJSFunction(@procname)  -> procname
+            Result:=CreateReferencePathExpr(TPasProcedure(ValueResolved.IdentEl),AContext);
+            exit;
+            end;
+          end;
         end;
 
       Result:=ConvertExpression(Param,AContext);
@@ -10114,7 +10252,7 @@ begin
       if bsObjectChecks in AContext.ScannerBoolSwitches then
         begin
         if (C=TPasClassType)
-           or (C=TPasClassOfType) then
+            or (C=TPasClassOfType) then
           begin
           // TObject(param) -> rtl.asExt(param,type,mode)
           if C=TPasClassOfType then
@@ -10283,68 +10421,90 @@ var
   OldAccess: TCtxAccess;
   ExtNameEl: TJSElement;
   WithData: TPas2JSWithExprScope;
+  PosEl: TPasElement;
+  aResolver: TPas2JSResolver;
 begin
   Result:=nil;
+  aResolver:=AContext.Resolver;
   NewExpr:=nil;
+  ExtName:='';
   ExtNameEl:=nil;
   try
     Proc:=Ref.Declaration as TPasConstructor;
-    ExtNameEl:=nil;
-
-    if Left<>nil then
-      begin
-      if AContext.Resolver<>nil then
-        begin
-        AContext.Resolver.ComputeElement(Left,LeftResolved,[]);
-        if LeftResolved.BaseType=btModule then
-          begin
-          // e.g. Unit.TExtA
-          // ExtName is global -> omit unit
-          Left:=nil;
-          end
-        else ;
-        end;
-      if Left<>nil then
-        begin
-        // convert left side
-        OldAccess:=AContext.Access;
-        AContext.Access:=caRead;
-        ExtNameEl:=ConvertExpression(Left,AContext);
-        AContext.Access:=OldAccess;
-        end;
-      end;
-    if ExtNameEl=nil then
-      begin
-      if Ref.WithExprScope<>nil then
-        begin
-        // using local WITH var
-        WithData:=Ref.WithExprScope as TPas2JSWithExprScope;
-        ExtName:=WithData.WithVarName;
-        if ExtName='' then
-          RaiseNotSupported(ParamsExpr,AContext,20190209092049);
-        end
-      else
-        // use external class name
-        ExtName:=(Proc.Parent as TPasClassType).ExternalName;
-      if ExtName='' then
-        DoError(20180511163944,nJSNewNotSupported,sJSNewNotSupported,[],ParamsExpr);
-      ExtNameEl:=CreatePrimitiveDotExpr(ExtName,Ref.Element);
-      end;
+    PosEl:=Ref.Element;
 
     if CompareText(Proc.Name,'new')=0 then
       begin
-      // create "new ExtName(params)"
-      NewExpr:=TJSNewMemberExpression(CreateElement(TJSNewMemberExpression,Ref.Element));
-      NewExpr.MExpr:=ExtNameEl;
-      NewExpr.Args:=TJSArguments(CreateElement(TJSArguments,Ref.Element));
-      ExtNameEl:=nil;
-      if ParamsExpr<>nil then
-        CreateProcedureCallArgs(NewExpr.Args.Elements,ParamsExpr,Proc.ProcType,AContext);
-      Result:=NewExpr;
-      NewExpr:=nil;
+      if Proc.LibrarySymbolName<>nil then
+        begin
+        ExtName:=ComputeConstString(Proc.LibrarySymbolName,AContext,true);
+        if not SameText(ExtName,'new') then
+          ExtNameEl:=CreatePrimitiveDotExpr(ExtName,PosEl);
+        end;
+      if (ExtNameEl=nil) and (Left<>nil) then
+        begin
+        if aResolver<>nil then
+          begin
+          aResolver.ComputeElement(Left,LeftResolved,[]);
+          if LeftResolved.BaseType=btModule then
+            begin
+            // e.g. Unit.TExtA
+            // ExtName is global -> omit unit
+            Left:=nil;
+            end
+          else ;
+          end;
+        if Left<>nil then
+          begin
+          // convert left side
+          OldAccess:=AContext.Access;
+          AContext.Access:=caRead;
+          ExtNameEl:=ConvertExpression(Left,AContext);
+          AContext.Access:=OldAccess;
+          end;
+        end;
+      if ExtNameEl=nil then
+        begin
+        if Ref.WithExprScope<>nil then
+          begin
+          // using local WITH var
+          WithData:=Ref.WithExprScope as TPas2JSWithExprScope;
+          ExtName:=WithData.WithVarName;
+          if ExtName='' then
+            RaiseNotSupported(ParamsExpr,AContext,20190209092049);
+          end
+        else
+          // use external class name
+          ExtName:=(Proc.Parent as TPasClassType).ExternalName;
+        if ExtName='' then
+          DoError(20180511163944,nJSNewNotSupported,sJSNewNotSupported,[],ParamsExpr);
+        ExtNameEl:=CreatePrimitiveDotExpr(ExtName,PosEl);
+        end;
       end
     else
-      RaiseNotSupported(Ref.Element,AContext,20190116210204);
+      begin
+      // external constructor ProcName
+      ExtName:='';
+      if aResolver<>nil then
+        ExtName:=aResolver.ComputeConstString(Proc.LibrarySymbolName,true,true);
+      if ExtName='{}' then
+        begin
+        // external constructor {} -> "{}"
+        Result:=TJSObjectLiteral(CreateElement(TJSObjectLiteral,PosEl));
+        exit;
+        end;
+      // external constructor ProcName -> "new ExtA.ProcName()"
+      ExtNameEl:=CreateReferencePathExpr(Proc,AContext,true);
+      end;
+
+    NewExpr:=TJSNewMemberExpression(CreateElement(TJSNewMemberExpression,PosEl));
+    NewExpr.MExpr:=ExtNameEl;
+    ExtNameEl:=nil;
+    NewExpr.Args:=TJSArguments(CreateElement(TJSArguments,PosEl));
+    if ParamsExpr<>nil then
+      CreateProcedureCallArgs(NewExpr.Args.Elements,ParamsExpr,Proc.ProcType,AContext);
+    Result:=NewExpr;
+    NewExpr:=nil;
   finally
     ExtNameEl.Free;
     NewExpr.Free;
@@ -13296,7 +13456,7 @@ begin
       begin
       P:=TPasElement(El.Declarations[i]);
       {$IFDEF VerbosePas2JS}
-      //writeln('TPasToJSConverter.ConvertDeclarations El[',i,']=',GetObjName(P));
+      writeln('TPasToJSConverter.ConvertDeclarations El[',i,']=',GetObjName(P));
       {$ENDIF}
       if not IsElementUsed(P) then continue;
 
@@ -13450,12 +13610,9 @@ begin
   if El.Parent is TProcedureBody then
     RaiseNotSupported(El,AContext,20181231004355);
   if El.IsForward then
-    begin
-    Result:=ConvertClassForwardType(El,AContext);
-    exit;
-    end;
-
-  if El.IsExternal then exit;
+    exit(ConvertClassForwardType(El,AContext))
+  else if El.IsExternal then
+    exit(ConvertExtClassType(El,AContext));
 
   if El.CustomData is TPas2JSClassScope then
     begin
@@ -13614,9 +13771,9 @@ begin
       if El.ObjKind in [okClass] then
         begin
         // instance initialization function
-        AddInstanceMemberFunction(El,Src,FuncContext,IsTObject,Ancestor,mfInit);
+        AddClassConDestructorFunction(El,Src,FuncContext,IsTObject,Ancestor,mfInit);
         // instance finalization function
-        AddInstanceMemberFunction(El,Src,FuncContext,IsTObject,Ancestor,mfFinalize);
+        AddClassConDestructorFunction(El,Src,FuncContext,IsTObject,Ancestor,mfFinalize);
         end;
 
       if El.ObjKind in ([okClass]+okAllHelpers) then
@@ -13703,7 +13860,7 @@ begin
   if IsClassRTTICreatedBefore(aClass,El,AContext) then exit;
   // module.$rtti.$Class("classname");
   case aClass.ObjKind of
-  okClass: Creator:=GetBIName(pbifnRTTINewClass);
+  okClass: Creator:=GetClassBIName(aClass);
   okInterface: Creator:=GetBIName(pbifnRTTINewInterface);
   else
     RaiseNotSupported(El,AContext,20190128102749);
@@ -13726,7 +13883,7 @@ var
   Call: TJSCallExpression;
   ok: Boolean;
   List: TJSStatementList;
-  DestType: TPasType;
+  DestType: TPasClassType;
 begin
   Result:=nil;
   if not HasTypeInfo(El,AContext) then exit;
@@ -13739,16 +13896,16 @@ begin
   try
     Prop:=ObjLit.Elements.AddElement;
     Prop.Name:=TJSString(GetBIName(pbivnRTTIClassRef_InstanceType));
-    DestType:=AContext.Resolver.ResolveAliasType(El.DestType);
+    DestType:=AContext.Resolver.ResolveAliasType(El.DestType) as TPasClassType;
     Prop.Expr:=CreateTypeInfoRef(DestType,AContext,El);
 
-    if not IsClassRTTICreatedBefore(DestType as TPasClassType,El,AContext) then
+    if not IsClassRTTICreatedBefore(DestType,El,AContext) then
       begin
       // class rtti must be forward registered
       if not (AContext is TFunctionContext) then
         RaiseNotSupported(El,AContext,20170412102916);
       // prepend   module.$rtti.$Class("classname");
-      Call:=CreateRTTINewType(DestType,GetBIName(pbifnRTTINewClass),true,AContext,ObjLit);
+      Call:=CreateRTTINewType(DestType,GetClassBIName(DestType),true,AContext,ObjLit);
       if ObjLit<>nil then
         RaiseInconsistency(20170412102654,El);
       List:=TJSStatementList(CreateElement(TJSStatementList,El));
@@ -13763,6 +13920,59 @@ begin
   end;
 end;
 
+function TPasToJSConverter.ConvertExtClassType(El: TPasClassType;
+  AContext: TConvertContext): TJSElement;
+//   module.$rtti.$ExtClass("TJSObject",{
+//     ancestor: ancestortypeinfo,
+//     jsclass: "Object"
+//   });
+var
+  TIObj: TJSObjectLiteral;
+  Call: TJSCallExpression;
+  TIProp: TJSObjectLiteralElement;
+  ClassScope: TPas2JSClassScope;
+  AncestorType: TPasClassType;
+begin
+  Result:=nil;
+  if not El.IsExternal then
+    RaiseNotSupported(El,AContext,20191027183236);
+
+  if not HasTypeInfo(El,AContext) then
+    exit;
+  // create typeinfo
+  if not (AContext is TFunctionContext) then
+    RaiseNotSupported(El,AContext,20191027182023,'typeinfo');
+  if El.Parent is TProcedureBody then
+    RaiseNotSupported(El,AContext,20191027182019);
+
+  ClassScope:=El.CustomData as TPas2JSClassScope;
+  if ClassScope.AncestorScope<>nil then
+    AncestorType:=ClassScope.AncestorScope.Element as TPasClassType
+  else
+    AncestorType:=nil;
+
+  Call:=nil;
+  try
+    // module.$rtti.$ExtClass("TMyClass",{...});
+    Call:=CreateRTTINewType(El,GetBIName(pbifnRTTINewExtClass),false,AContext,TIObj);
+    if AncestorType<>nil then
+      begin
+      // add  ancestor: ancestortypeinfo
+      TIProp:=TIObj.Elements.AddElement;
+      TIProp.Name:=TJSString(GetBIName(pbivnRTTIExtClass_Ancestor));
+      TIProp.Expr:=CreateTypeInfoRef(AncestorType,AContext,El);
+      end;
+    // add  jsclass: "extname"
+    TIProp:=TIObj.Elements.AddElement;
+    TIProp.Name:=TJSString(GetBIName(pbivnRTTIExtClass_JSClass));
+    TIProp.Expr:=CreateLiteralString(El,TPasClassType(El).ExternalName);
+    Result:=Call;
+  finally
+    if Result=nil then
+      Call.Free;
+  end;
+end;
+
 function TPasToJSConverter.ConvertEnumType(El: TPasEnumType;
   AContext: TConvertContext): TJSElement;
 // TMyEnum = (red, green)
@@ -13773,7 +13983,7 @@ function TPasToJSConverter.ConvertEnumType(El: TPasEnumType;
 //     "0":"green",
 //     "green":0,
 //   };
-//   module.$rtti.$TIEnum("TMyEnum",{
+//   module.$rtti.$Enum("TMyEnum",{
 //     enumtype: this.TMyEnum,
 //     minvalue: 0,
 //     maxvalue: 1
@@ -14541,7 +14751,7 @@ Var
   SelfSt: TJSVariableStatement;
   ImplProc: TPasProcedure;
   BodyPas: TProcedureBody;
-  PosEl, ThisPas: TPasElement;
+  PosEl, ThisPas, ClassOrRec: TPasElement;
   Call: TJSCallExpression;
   ClassPath: String;
   ArgResolved: TPasResolverResult;
@@ -14550,6 +14760,7 @@ Var
   ArgTypeEl, HelperForType: TPasType;
   aResolver: TPas2JSResolver;
   IsClassConDestructor: Boolean;
+  LocalVar: TFCLocalIdentifier;
 begin
   Result:=nil;
 
@@ -14561,11 +14772,12 @@ begin
     exit;
   IsClassConDestructor:=(El.ClassType=TPasClassConstructor)
                      or (El.ClassType=TPasClassDestructor);
+  aResolver:=AContext.Resolver;
+  if not aResolver.IsFullySpecialized(El) then exit;
 
   {$IFDEF VerbosePas2JS}
   writeln('TPasToJSConverter.ConvertProcedure "',El.Name,'" Overload="',ProcScope.OverloadName,'" ',El.Parent.ClassName);
   {$ENDIF}
-  aResolver:=AContext.Resolver;
 
   ImplProc:=El;
   if ProcScope.ImplProc<>nil then
@@ -14678,8 +14890,10 @@ begin
         if not AContext.IsGlobal then
           begin
           // nested sub procedure  ->  no 'this'
-          FuncContext.ThisPas:=nil;
+          ThisPas:=nil;
           end
+        else if El.IsStatic then
+          ThisPas:=nil
         else
           begin
           ThisPas:=ProcScope.ClassRecScope.Element;
@@ -14694,7 +14908,11 @@ begin
               // 'this' in a type helper is a temporary getter/setter JS object
               ThisPas:=nil;
             end;
-          FuncContext.ThisPas:=ThisPas;
+          end;
+        FuncContext.ThisPas:=ThisPas;
+
+        if ThisPas<>nil then
+          begin
           if (bsObjectChecks in FuncContext.ScannerBoolSwitches)
               and (ThisPas is TPasMembersType) then
             begin
@@ -14707,14 +14925,13 @@ begin
             ClassPath:=CreateReferencePath(ProcScope.ClassRecScope.Element,AContext,rpkPathAndName);
             Call.AddArg(CreatePrimitiveDotExpr(ClassPath,PosEl));
             end;
-
           if (ImplProc.Body.Functions.Count>0)
               or aResolver.HasAnonymousFunctions(ImplProc.Body.Body) then
             begin
             // has nested procs -> add "var self = this;"
-            FuncContext.AddLocalVar(GetBIName(pbivnSelf),FuncContext.ThisPas);
+            FuncContext.AddLocalVar(GetBIName(pbivnSelf),ThisPas);
             SelfSt:=CreateVarStatement(GetBIName(pbivnSelf),
-                                CreatePrimitiveDotExpr('this',ImplProc),ImplProc);
+                              CreatePrimitiveDotExpr('this',ImplProc),ImplProc);
             AddBodyStatement(SelfSt,PosEl);
             if ImplProcScope.SelfArg<>nil then
               begin
@@ -14723,6 +14940,23 @@ begin
               end;
             end
           else if ImplProcScope.SelfArg<>nil then
+            begin
+            // no nested procs ->  redirect Pascal-Self to JS-this
+            FuncContext.AddLocalVar('this',ImplProcScope.SelfArg);
+            end;
+          end
+        else
+          begin
+          // no "this"
+          if ProcScope.ClassRecScope<>nil then
+            begin
+            // static method -> hide local
+            ClassOrRec:=ProcScope.ClassRecScope.Element;
+            LocalVar:=FuncContext.FindLocalIdentifier(ClassOrRec);
+            if (LocalVar<>nil) and (LocalVar.Name='this') then
+              FuncContext.AddLocalVar(LocalVarHide,ClassOrRec);
+            end;
+          if ImplProcScope.SelfArg<>nil then
             begin
             // no nested procs ->  redirect Pascal-Self to JS-this
             FuncContext.AddLocalVar('this',ImplProcScope.SelfArg);
@@ -16204,7 +16438,7 @@ begin
     end;
 end;
 
-procedure TPasToJSConverter.AddInstanceMemberFunction(El: TPasClassType;
+procedure TPasToJSConverter.AddClassConDestructorFunction(El: TPasClassType;
   Src: TJSSourceElements; ClassContext: TConvertContext; IsTObject: boolean;
   Ancestor: TPasType; Kind: TMemberFunc);
 const
@@ -17122,6 +17356,14 @@ begin
   end;
   if Flags>0 then
     Param.Elements.AddElement.Expr:=CreateLiteralNumber(Arg,Flags);
+end;
+
+function TPasToJSConverter.GetClassBIName(El: TPasClassType): string;
+begin
+  if El.IsExternal then
+    Result:=GetBIName(pbifnRTTINewExtClass)
+  else
+    Result:=GetBIName(pbifnRTTINewClass);
 end;
 
 function TPasToJSConverter.CreateRTTINewType(El: TPasType;
@@ -21595,6 +21837,20 @@ var
     aPath:=Prefix+aPath;
   end;
 
+  function PrependClassName(var Path: string; ClassOrRec: TPasMembersType): boolean;
+  begin
+    if (ClassOrRec.ClassType=TPasClassType) and TPasClassType(ClassOrRec).IsExternal then
+      begin
+      Prepend(Path,TPasClassType(ClassOrRec).ExternalName);
+      Result:=true;
+      end
+    else
+      begin
+      Prepend(Path,ClassOrRec.Name);
+      Result:=false;
+      end;
+  end;
+
   function NeedsWithExpr: boolean;
   var
     Parent: TPasElement;
@@ -21636,17 +21892,22 @@ var
   end;
 
   procedure Append_GetClass(Member: TPasElement);
+  var
+    P: TPasElement;
   begin
-    if Member.Parent is TPasClassType then
+    P:=Member.Parent;
+    if P=nil then
+      RaiseNotSupported(Member,AContext,20191018125004);
+    if P.ClassType=TPasClassType then
       begin
-      if TPasClassType(Member.Parent).IsExternal then
+      if TPasClassType(P).IsExternal then
         exit;
       if Result<>'' then
         Result:=Result+'.'+GetBIName(pbivnPtrClass)
       else
         Result:=GetBIName(pbivnPtrClass);
       end
-    else if Member.Parent is TPasRecordType then
+    else if P.ClassType=TPasRecordType then
       begin
       if Result<>'' then
         Result:=Result+'.'+GetBIName(pbivnPtrRecord)
@@ -21680,15 +21941,25 @@ var
   end;
 
   function IsA(SrcType, DstType: TPasType): boolean;
+  var
+    C: TClass;
   begin
     while SrcType<>nil do
       begin
       if SrcType=DstType then exit(true);
-      if SrcType.ClassType=TPasClassType then
+      C:=SrcType.ClassType;
+      if C=TPasClassType then
         SrcType:=TPas2JSClassScope(SrcType.CustomData).DirectAncestor
-      else if (SrcType.ClassType=TPasAliasType)
-          or (SrcType.ClassType=TPasTypeAliasType) then
+      else if (C=TPasAliasType)
+          or (C=TPasTypeAliasType) then
         SrcType:=TPasAliasType(SrcType).DestType
+      else if C=TPasSpecializeType then
+        begin
+        if SrcType.CustomData is TPasSpecializeTypeData then
+          SrcType:=TPasSpecializeTypeData(SrcType.CustomData).SpecializedType
+        else
+          RaiseInconsistency(20191027172642,SrcType);
+        end
       else
         exit(false);
       end;
@@ -21745,7 +22016,8 @@ begin
     begin
     // El is local var -> does not need path
     end
-  else if ElClass.InheritsFrom(TPasProcedure) and (TPasProcedure(El).LibrarySymbolName<>nil)
+  else if ElClass.InheritsFrom(TPasProcedure)
+      and (TPasProcedure(El).LibrarySymbolName<>nil)
       and not (El.Parent is TPasMembersType) then
     begin
     // an external global function -> use the literal
@@ -21813,11 +22085,17 @@ begin
           begin
           // redirect to helper-for-type
           ParentEl:=aResolver.ResolveAliasType(TPasClassType(ParentEl).HelperForType);
+          IsClassRec:=(ParentEl.ClassType=TPasClassType)
+                   or (ParentEl.ClassType=TPasRecordType);
+          if not IsClassRec then
+            RaiseNotSupported(El,AContext,20190926091356);
           ShortName:=AContext.GetLocalName(ParentEl);
           end;
 
         if Full then
-          Prepend(Result,ParentEl.Name)
+          begin
+          if PrependClassName(Result,TPasMembersType(ParentEl)) then break;
+          end
         else
           begin
           // Not in a Pascal dotscope and accessing a class member.
@@ -21827,24 +22105,33 @@ begin
           if ShortName<>'' then
             Prepend(Result,ShortName)
           else if El is TPasType then
-            Prepend(Result,ParentEl.Name)
+            begin
+            if PrependClassName(Result,TPasMembersType(ParentEl)) then break;
+            end
           else if El.Parent<>ParentEl then
-            Prepend(Result,ParentEl.Name)
+            begin
+            if PrependClassName(Result,TPasMembersType(ParentEl)) then break;
+            end
           else if (ParentEl.ClassType=TPasClassType)
               and (TPasClassType(ParentEl).HelperForType<>nil) then
             begin
             // helpers have no self
-            Prepend(Result,ParentEl.Name);
+            if PrependClassName(Result,TPasMembersType(ParentEl)) then break;
             end
           else if (SelfContext<>nil)
               and IsA(TPasType(SelfContext.ThisPas),TPasMembersType(ParentEl)) then
             begin
-            ShortName:=SelfContext.GetLocalName(SelfContext.ThisPas);
-            Prepend(Result,ShortName);
+            ShortName:=AContext.GetLocalName(SelfContext.ThisPas);
+            if ShortName='' then
+              begin
+              if PrependClassName(Result,TPasMembersType(ParentEl)) then break;
+              end
+            else
+              Prepend(Result,ShortName);
             end
           else
             begin
-            Prepend(Result,ParentEl.Name);
+            if PrependClassName(Result,TPasMembersType(ParentEl)) then break;
             // missing JS var for Self
             //{$IFDEF VerbosePas2JS}
             //{AllowWriteln}
@@ -21857,6 +22144,7 @@ begin
             //RaiseNotSupported(El,AContext,20180125004049);
             end;
           if (El.Parent=ParentEl) and (SelfContext<>nil)
+              and (SelfContext.PasElement is TPasProcedure)
               and not IsClassProc(SelfContext.PasElement) then
             begin
             // inside a method -> Self is a class instance
@@ -22191,7 +22479,8 @@ begin
                 Result:=Call;
                 Call.AddArg(CreateReferencePathExpr(ArgTypeEl,AContext));
                 end;
-              else RaiseNotSupported(El,AContext,20180401230251,InterfaceTypeNames[TPasClassType(ArgTypeEl).InterfaceType]);
+              else
+                RaiseNotSupported(El,AContext,20180401230251,InterfaceTypeNames[TPasClassType(ArgTypeEl).InterfaceType]);
               end;
               end
             else

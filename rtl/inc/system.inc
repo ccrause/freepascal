@@ -706,23 +706,23 @@ begin
     q:=qword(l);
 
   a:=mtwist_u32rand;
- b:=mtwist_u32rand;
+  b:=mtwist_u32rand;
 
- c:=q shr 32;
- d:=cardinal(q);
+  c:=q shr 32;
+  d:=cardinal(q);
 
- bd:=b*d;
- ad:=a*d;
- bc:=b*c;
- ac:=a*c;
+  bd:=qword(b)*d;
+  ad:=qword(a)*d;
+  bc:=qword(b)*c;
+  ac:=qword(a)*c;
 
- // We only need the carry bit
- carry:=((bd shr 32)+cardinal(ad)+cardinal(bc)) shr 32;
+  // We only need the carry bit
+  carry:=((bd shr 32)+cardinal(ad)+cardinal(bc)) shr 32;
 
- // Calculate the final result
- result:=int64(carry+(ad shr 32)+(bc shr 32)+ac);
- if l<0 then
-   result:=-result;
+  // Calculate the final result
+  result:=int64(carry+(ad shr 32)+(bc shr 32)+ac);
+  if l<0 then
+    result:=-result;
 end;
 
 {$ifndef FPUNONE}
@@ -951,15 +951,27 @@ begin
   { Avoid recursive calls when called from the exit routines }
   if StackError then
    exit;
-  { don't use sack_size, since the stack pointer has already been
+  { check stack alignment }
+{$ifdef CPUI386}
+{$ifdef FPC_STACKALIGNMENT}
+{$if FPC_STACKALIGNMENT=16}
+  if ((PtrUInt(Sptr)+4) mod 16)<>0 then
+    begin
+      StackError:=true;
+      HandleError(202);
+    end;
+{$endif FPC_STACKALIGNMENT=16}
+{$endif FPC_STACKALIGNMENT}
+{$endif CPUI386}
+  { don't use stack_size, since the stack pointer has already been
     decreased when this routine is called
   }
   c := Sptr - STACK_MARGIN;
   if (c <= StackBottom) then
-   begin
-     StackError:=true;
-     HandleError(202);
-   end;
+    begin
+      StackError:=true;
+      HandleError(202);
+    end;
 end;
 {$POP}
 
