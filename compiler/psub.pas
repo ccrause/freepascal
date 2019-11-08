@@ -757,7 +757,7 @@ implementation
             constructionsuccessful:=nil;
             if is_class(procdef.struct) then
               begin
-                constructionsuccessful:=clocalvarsym.create(internaltypeprefixName[itp_vmt_afterconstruction_local],vs_value,ptrsinttype,[],false);
+                constructionsuccessful:=clocalvarsym.create(internaltypeprefixName[itp_vmt_afterconstruction_local],vs_value,ptrsinttype,[]);
                 procdef.localst.insert(constructionsuccessful,false);
                 srsym:=search_struct_member(procdef.struct,'AFTERCONSTRUCTION');
                 if not assigned(srsym) or
@@ -1083,7 +1083,7 @@ implementation
                   ) and
                 ((flags*([pi_has_assembler_block,pi_is_assembler,
                         pi_needs_stackframe]+
-                        exception_flags[(target_info.cpu=cpu_i386)
+                        exception_flags[((target_info.cpu=cpu_i386) and (not paramanager.use_fixed_stack))
 {$ifndef DISABLE_WIN64_SEH}
                         or (target_info.system=system_x86_64_win64)
 {$endif DISABLE_WIN64_SEH}
@@ -1100,7 +1100,7 @@ implementation
                 generate_parameter_info;
 
                 if not(procdef.stack_tainting_parameter(calleeside)) and
-                   not(has_assembler_child) and (para_stack_size=0) then
+                   not(has_assembler_child) {and (para_stack_size=0)} then
                   begin
                     { Only need to set the framepointer }
                     framepointer:=NR_STACK_POINTER_REG;
@@ -1696,8 +1696,8 @@ implementation
             { allocate got register if needed }
             allocate_got_register(aktproccode);
 
-            if pi_uses_threadvar in flags then
-              allocate_tls_register(aktproccode);
+            { allocate got register if needed }
+            allocate_tls_register(aktproccode);
 
             { Allocate space in temp/registers for parast and localst }
             current_filepos:=entrypos;
@@ -1801,12 +1801,12 @@ implementation
 
             { make sure the got/pic register doesn't get freed in the }
             { middle of a loop                                        }
-            if (cs_create_pic in current_settings.moduleswitches) and
-               (pi_needs_got in flags) and
-               (got<>NR_NO) then
+            if (tf_pic_uses_got in target_info.flags) and
+              (pi_needs_got in flags) and
+              (got<>NR_NO) then
               cg.a_reg_sync(aktproccode,got);
 
-            if (pi_uses_threadvar in flags) and
+            if (pi_needs_tls in flags) and
               (tlsoffset<>NR_NO) then
               cg.a_reg_sync(aktproccode,tlsoffset);
 
@@ -1850,10 +1850,9 @@ implementation
             cg.g_maybe_got_init(templist);
             aktproccode.insertlistafter(headertai,templist);
 
-            if (pi_uses_threadvar in flags) and (tf_section_threadvars in target_info.flags) then
-              cg.g_maybe_tls_init(templist);
+            { init tls if needed }
+            cg.g_maybe_tls_init(templist);
             aktproccode.insertlistafter(stackcheck_asmnode.currenttai,templist);
-
 
             { re-enable if more code at the end is ever generated here
             cg.set_regalloc_live_range_direction(rad_forward);
@@ -1879,8 +1878,7 @@ implementation
               maintain location lists }
             procdef.parast.SymList.ForEachCall(@translate_registers,templist);
             procdef.localst.SymList.ForEachCall(@translate_registers,templist);
-            if (cs_create_pic in current_settings.moduleswitches) and
-               (pi_needs_got in flags) and
+            if (tf_pic_uses_got in target_info.flags) and (pi_needs_got in flags) and
                not(cs_no_regalloc in current_settings.globalswitches) and
                (got<>NR_NO) then
               cg.translate_register(got);
@@ -2557,6 +2555,7 @@ implementation
                      if is_c_variadic(pd) then
                        Message1(parser_e_callthrough_varargs,pd.fullprocname(false));
                      call_through_new_name(pd,proc_get_importname(pd));
+                     include(pd.implprocoptions,pio_thunk);
                    end
                  else
 {$endif cpuhighleveltarget}

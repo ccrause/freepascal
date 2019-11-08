@@ -50,7 +50,7 @@ interface
         function sectionattrs_coff(atype:TAsmSectiontype):string;virtual;
         function sectionalignment_aix(atype:TAsmSectiontype;secalign: longint):string;
         procedure WriteSection(atype:TAsmSectiontype;const aname:string;aorder:TAsmSectionOrder;secalign:longint;
-          secflags:TSectionFlags=SF_None;secprogbits:TSectionProgbits=SPB_None);virtual;
+          secflags:TSectionFlags=[];secprogbits:TSectionProgbits=SPB_None);virtual;
         procedure WriteExtraHeader;virtual;
         procedure WriteExtraFooter;virtual;
         procedure WriteInstruction(hp: tai);
@@ -273,7 +273,8 @@ implementation
           '.objc_protolist',
           '.stack',
           '.heap',
-          '.gcc_except_table'
+          '.gcc_except_table',
+          '.ARM.attributes'
         );
         secnames_pic : array[TAsmSectiontype] of string[length('__DATA, __datacoal_nt,coalesced')] = ('','',
           '.text',
@@ -333,7 +334,8 @@ implementation
           '.objc_protolist',
           '.stack',
           '.heap',
-          '.gcc_except_table'
+          '.gcc_except_table',
+          '..ARM.attributes'
         );
       var
         sep     : string[3];
@@ -468,11 +470,16 @@ implementation
       end;
 
 
-    procedure TGNUAssembler.WriteSection(atype:TAsmSectiontype;const aname:string;aorder:TAsmSectionOrder;secalign:longint;secflags:TSectionFlags=SF_None;secprogbits:TSectionProgbits=SPB_None);
+    procedure TGNUAssembler.WriteSection(atype:TAsmSectiontype;const aname:string;aorder:TAsmSectionOrder;secalign:longint;secflags:TSectionFlags=[];secprogbits:TSectionProgbits=SPB_None);
       var
         s : string;
+        secflag: TSectionFlag;
+        sectionprogbits,
+        sectionflags: boolean;
       begin
         writer.AsmLn;
+        sectionflags:=false;
+        sectionprogbits:=false;
         case target_info.system of
          system_i386_OS2,
          system_i386_EMX: ;
@@ -481,7 +488,21 @@ implementation
            begin
              { ... but vasm is GAS compatible on amiga/atari, and supports named sections }
              if create_smartlink_sections then
-               writer.AsmWrite('.section ');
+               begin
+                 writer.AsmWrite('.section ');
+                 sectionflags:=true;
+                 sectionprogbits:=true;
+               end;
+           end;
+         system_i386_win32,
+         system_x86_64_win64,
+         system_i386_wince,
+         system_arm_wince:
+           begin
+             { according to the GNU AS guide AS for COFF does not support the
+               progbits }
+             writer.AsmWrite('.section ');
+             sectionflags:=true;
            end;
          system_powerpc_darwin,
          system_i386_darwin,
@@ -498,31 +519,48 @@ implementation
                writer.AsmWrite('.section ');
            end
          else
-          writer.AsmWrite('.section ');
+           begin
+             writer.AsmWrite('.section ');
+             sectionflags:=true;
+             sectionprogbits:=true;
+           end
         end;
         s:=sectionname(atype,aname,aorder);
         writer.AsmWrite(s);
         { flags explicitly defined? }
-        if (secflags<>SF_None) or (secprogbits<>SPB_None) then
+        if (sectionflags or sectionprogbits) and
+           ((secflags<>[]) or
+            (secprogbits<>SPB_None)) then
           begin
-            case secflags of
-              SF_A:
-                writer.AsmWrite(',"a"');
-              SF_W:
-                writer.AsmWrite(',"w"');
-              SF_X:
-                writer.AsmWrite(',"x"');
-              SF_None:
-                writer.AsmWrite(',""');
-            end;
-            case secprogbits of
-              SPB_PROGBITS:
-                writer.AsmWrite(',%progbits');
-              SPB_NOBITS:
-                writer.AsmWrite(',%nobits');
-              SPB_None:
-                ;
-            end;
+            if sectionflags then
+              begin
+                s:=',"';
+                for secflag in secflags do
+                  case secflag of
+                    SF_A:
+                      s:=s+'a';
+                    SF_W:
+                      s:=s+'w';
+                    SF_X:
+                      s:=s+'x';
+                  end;
+                writer.AsmWrite(s+'"');
+              end;
+            if sectionprogbits then
+              begin
+                case secprogbits of
+                  SPB_PROGBITS:
+                    writer.AsmWrite(',%progbits');
+                  SPB_NOBITS:
+                    writer.AsmWrite(',%nobits');
+                  SPB_NOTE:
+                    writer.AsmWrite(',%note');
+                  SPB_None:
+                    ;
+                  else
+                    InternalError(2019100801);
+                end;
+              end;
           end
         else
           case atype of
@@ -992,7 +1030,39 @@ implementation
                      writer.AsmWrite(#9'.word'#9+tai_const(hp).sym.name+'(gottpoff)+(.-'+tai_const(hp).endsym.name+tostr_with_plus(tai_const(hp).symofs)+')');
                      writer.Asmln;
                    end;
+                 aitconst_tlsgd:
+                   begin
+                     writer.AsmWrite(#9'.word'#9+tai_const(hp).sym.name+'(tlsgd)+(.-'+tai_const(hp).endsym.name+tostr_with_plus(tai_const(hp).symofs)+')');
+                     writer.Asmln;
+                   end;
+                 aitconst_tlsdesc:
+                   begin
+                     writer.AsmWrite(#9'.word'#9+tai_const(hp).sym.name+'(tlsdesc)+(.-'+tai_const(hp).endsym.name+tostr_with_plus(tai_const(hp).symofs)+')');
+                     writer.Asmln;
+                   end;
+                 aitconst_tpoff:
+                   begin
+                     if assigned(tai_const(hp).endsym) or (tai_const(hp).symofs<>0) then
+                       Internalerror(2019092805);
+                     writer.AsmWrite(#9'.word'#9+tai_const(hp).sym.name+'(tpoff)');
+                     writer.Asmln;
+                   end;
 {$endif cpu64bitaddr}
+                 aitconst_dtpoff:
+                   begin
+{$ifdef arm}
+                     writer.AsmWrite(#9'.word'#9+tai_const(hp).sym.name+'(tlsldo)');
+                     writer.Asmln;
+{$endif arm}
+{$ifdef x86_64}
+                     writer.AsmWrite(#9'.long'#9+tai_const(hp).sym.name+'@dtpoff');
+                     writer.Asmln;
+{$endif x86_64}
+{$ifdef i386}
+                     writer.AsmWrite(#9'.word'#9+tai_const(hp).sym.name+'@tdpoff');
+                     writer.Asmln;
+{$endif i386}
+                   end;
                  aitconst_got:
                    begin
                      if tai_const(hp).symofs<>0 then
@@ -1481,6 +1551,18 @@ implementation
              begin
                WriteCFI(tai_cfi_base(hp));
              end;
+           ait_eabi_attribute:
+             begin
+               case tai_eabi_attribute(hp).eattr_typ of
+                 eattrtype_dword:
+                   writer.AsmWrite(#9'.eabi_attribute '+tostr(tai_eabi_attribute(hp).tag)+','+tostr(tai_eabi_attribute(hp).value));
+                 eattrtype_ntbs:
+                   writer.AsmWrite(#9'.eabi_attribute '+tostr(tai_eabi_attribute(hp).tag)+',"'+tai_eabi_attribute(hp).valuestr^+'"');
+                 else
+                   Internalerror(2019100601);
+               end;
+               writer.AsmLn;
+             end;
            else
              internalerror(2006012201);
          end;
@@ -1957,7 +2039,8 @@ implementation
          sec_none (* sec_objc_protlist *),
          sec_none (* sec_stack *),
          sec_none (* sec_heap *),
-         sec_none (* gcc_except_table *)
+         sec_none (* gcc_except_table *),
+         sec_none (* sec_arm_attribute *)
         );
       begin
         Result := inherited SectionName (SecXTable [AType], AName, AOrder);

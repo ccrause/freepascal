@@ -114,6 +114,8 @@ unit cgcpu;
 
         procedure gen_multiply(list: TAsmList; op: topcg; size: TCgSize; src2, src1, dst: tregister; check_overflow: boolean; var ovloc: tlocation);
 
+      private
+       procedure a_op_const_reg_reg_internal(list: TAsmList; op: TOpCg; size: tcgsize; a: tcgint; src, srchi, dst, dsthi: tregister);
       protected
         procedure a_op_reg_reg_internal(list: TAsmList; Op: TOpCG; size: TCGSize; src, srchi, dst, dsthi: TRegister);
         procedure a_op_const_reg_internal(list : TAsmList; Op: TOpCG; size: TCGSize; a: tcgint; reg, reghi: TRegister);
@@ -123,6 +125,7 @@ unit cgcpu;
       tcg64favr = class(tcg64f32)
         procedure a_op64_reg_reg(list : TAsmList;op:TOpCG;size : tcgsize;regsrc,regdst : tregister64);override;
         procedure a_op64_const_reg(list : TAsmList;op:TOpCG;size : tcgsize;value : int64;reg : tregister64);override;
+        procedure a_op64_const_reg_reg(list: TAsmList; op: TOpCg; size: tcgsize; value: int64;src,dst: tregister64);override;
       end;
 
     procedure create_codegen;
@@ -439,6 +442,18 @@ unit cgcpu;
 
      procedure tcgavr.a_op_const_reg_reg(list: TAsmList; op: TOpCg; size: tcgsize; a: tcgint; src, dst: tregister);
        begin
+         a_op_const_reg_reg_internal(list,op,size,a,src,NR_NO,dst,NR_NO);
+       end;
+
+
+     procedure tcgavr.a_op_const_reg_reg_internal(list: TAsmList; op: TOpCg; size: tcgsize; a: tcgint; src,srchi,dst,dsthi: tregister);
+       var
+         tmpSrc, tmpDst, countreg: TRegister;
+         b, b2, i, j: byte;
+         s1, s2, t1: integer;
+         l1: TAsmLabel;
+         oldexecutionweight: LongInt;
+       begin
          if (op in [OP_MUL,OP_IMUL]) and (size in [OS_16,OS_S16]) and (a in [2,4,8]) then
            begin
              emit_mov(list,dst,src);
@@ -450,6 +465,105 @@ unit cgcpu;
                  list.concat(taicpu.op_reg(A_ROL,GetNextReg(dst)));
                  a:=a shr 1;
                end;
+           end
+
+         else if (op in [OP_SHL,OP_SHR]) and
+           { a=0 get eliminated later by tcg.optimize_op_const }
+           (a>0)  then
+           begin
+             { number of bytes to shift }
+             b:=a div 8;
+
+             { Ensure that b is never larger than base type }
+             if b>tcgsize2size[size] then
+               begin
+                 b:=tcgsize2size[size];
+                 b2:=0;
+               end
+             else
+               b2:=a mod 8;
+
+             if b < tcgsize2size[size] then
+               { copy from src to dst accounting for shift offset }
+               for i:=0 to (tcgsize2size[size]-b-1) do
+                 if op=OP_SHL then
+                   a_load_reg_reg(list,OS_8,OS_8,
+                     GetOffsetReg64(src,srchi,i),
+                     GetOffsetReg64(dst,dsthi,i+b))
+                 else
+                   a_load_reg_reg(list,OS_8,OS_8,
+                     GetOffsetReg64(src,srchi,i+b),
+                     GetOffsetReg64(dst,dsthi,i));
+
+             { remaining bit shifts }
+             if b2 > 0 then
+               begin
+                 { Cost of loop }
+                 s1:=3+tcgsize2size[size]-b;
+                 t1:=b2*(tcgsize2size[size]-b+3);
+                 { Cost of loop unrolling,t2=s2 }
+                 s2:=b2*(tcgsize2size[size]-b);
+
+                 if ((cs_opt_size in current_settings.optimizerswitches) and (s1<s2)) or
+                    (((s2-s1)-t1/s2)>0) then
+                   begin
+                     { Shift non-moved bytes in loop }
+                     current_asmdata.getjumplabel(l1);
+                     countreg:=getintregister(list,OS_8);
+                     a_load_const_reg(list,OS_8,b2,countreg);
+                     cg.a_label(list,l1);
+                     oldexecutionweight:=executionweight;
+                     executionweight:=executionweight*b2;
+                     if op=OP_SHL then
+                       list.concat(taicpu.op_reg(A_LSL,GetOffsetReg64(dst,dsthi,b)))
+                     else
+                       list.concat(taicpu.op_reg(A_LSR,GetOffsetReg64(dst,dsthi,tcgsize2size[size]-1-b)));
+
+                     if size in [OS_S16,OS_16,OS_S32,OS_32,OS_S64,OS_64] then
+                       begin
+                         for i:=2+b to tcgsize2size[size] do
+                           if op=OP_SHL then
+                             list.concat(taicpu.op_reg(A_ROL,GetOffsetReg64(dst,dsthi,i-1)))
+                           else
+                             list.concat(taicpu.op_reg(A_ROR,GetOffsetReg64(dst,dsthi,tcgsize2size[size]-i)));
+                       end;
+                     list.concat(taicpu.op_reg(A_DEC,countreg));
+                     a_jmp_flags(list,F_NE,l1);
+                     executionweight:=oldexecutionweight;
+                     { keep registers alive }
+                     a_reg_sync(list,countreg);
+                   end
+                 else
+                   begin
+                     { Unroll shift loop over non-moved bytes }
+                     for j:=1 to b2 do
+                     begin
+                       if op=OP_SHL then
+                         list.concat(taicpu.op_reg(A_LSL,
+                         GetOffsetReg64(dst,dsthi,b)))
+                       else
+                         list.concat(taicpu.op_reg(A_LSR,
+                           GetOffsetReg64(dst,dsthi,tcgsize2size[size]-b-1)));
+
+                       if not(size in [OS_8,OS_S8]) then
+                         for i:=2 to tcgsize2size[size]-b do
+                           if op=OP_SHL then
+                             list.concat(taicpu.op_reg(A_ROL,
+                               GetOffsetReg64(dst,dsthi,b+i-1)))
+                           else
+                             list.concat(taicpu.op_reg(A_ROR,
+                               GetOffsetReg64(dst,dsthi,tcgsize2size[size]-b-i)));
+                     end;
+                   end;
+               end;
+
+               { fill skipped destination registers with 0
+                 Do last,then optimizer can optimize register moves }
+               for i:=1 to b do
+                 if op=OP_SHL then
+                   emit_mov(list,GetOffsetReg64(dst,dsthi,i-1),NR_R1)
+                 else
+                   emit_mov(list,GetOffsetReg64(dst,dsthi,tcgsize2size[size]-i),NR_R1);
            end
          else
            inherited a_op_const_reg_reg(list,op,size,a,src,dst);
@@ -687,8 +801,8 @@ unit cgcpu;
 
                list.concat(taicpu.op_reg(A_DEC,countreg));
                a_jmp_flags(list,F_NE,l1);
-               // keep registers alive
-               list.concat(taicpu.op_reg_reg(A_MOV,countreg,countreg));
+               { keep registers alive }
+               a_reg_sync(list,countreg);
                cg.a_label(list,l2);
              end;
 
@@ -773,7 +887,12 @@ unit cgcpu;
                    if ((qword(a) and mask) shr shift)=0 then
                      list.concat(taicpu.op_reg_reg(A_MOV,reg,NR_R1))
                    else if ((qword(a) and mask) shr shift)<>$ff then
-                     list.concat(taicpu.op_reg_const(A_ANDI,reg,(qword(a) and mask) shr shift));
+                     begin
+                       getcpuregister(list,NR_R26);
+                       list.concat(taicpu.op_reg_const(A_LDI,NR_R26,(qword(a) and mask) shr shift));
+                       list.concat(taicpu.op_reg_reg(A_AND,reg,NR_R26));
+                       ungetcpuregister(list,NR_R26);
+                     end;
                    { check if we are not in the last iteration to avoid an internalerror in GetNextReg }
                    if i<tcgsize2size[size] then
                      NextRegPostInc;
@@ -786,7 +905,12 @@ unit cgcpu;
                if ((a and mask)=1) and (tcgsize2size[size]=1) then
                  list.concat(taicpu.op_reg(A_DEC,reg))
                else
-                 list.concat(taicpu.op_reg_const(A_SUBI,reg,a and mask));
+                 begin
+                   getcpuregister(list,NR_R26);
+                   list.concat(taicpu.op_reg_const(A_LDI,NR_R26,a and mask));
+                   list.concat(taicpu.op_reg_reg(A_SUB,reg,NR_R26));
+                   ungetcpuregister(list,NR_R26);
+                 end;
                if size in [OS_S16,OS_16,OS_S32,OS_32,OS_S64,OS_64] then
                  begin
                    for i:=2 to tcgsize2size[size] do
@@ -2417,8 +2541,8 @@ unit cgcpu;
             cg.ungetcpuregister(list,NR_R27);
             cg.ungetcpuregister(list,NR_R30);
             cg.ungetcpuregister(list,NR_R31);
-            // keep registers alive
-            list.concat(taicpu.op_reg_reg(A_MOV,countreg,countreg));
+            { keep registers alive }
+            a_reg_sync(list,countreg);
           end
         else
           begin
@@ -2745,6 +2869,15 @@ unit cgcpu;
     procedure tcg64favr.a_op64_const_reg(list : TAsmList;op:TOpCG;size : tcgsize;value : int64;reg : tregister64);
       begin
         tcgavr(cg).a_op_const_reg_internal(list,Op,size,value,reg.reglo,reg.reghi);
+      end;
+
+
+   procedure tcg64favr.a_op64_const_reg_reg(list: TAsmList; op: TOpCg;size: tcgsize;value: int64;src,dst : tregister64);
+      begin
+        if op in [OP_SHL,OP_SHR] then
+          tcgavr(cg).a_op_const_reg_reg_internal(list,Op,size,value,src.reglo,src.reghi,dst.reglo,dst.reghi)
+        else
+          Inherited a_op64_const_reg_reg(list,op,size,value,src,dst);
       end;
 
 

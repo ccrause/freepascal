@@ -78,7 +78,7 @@ const
   detRollBack    = sqltypes.detRollBack; 
   detParamValue  = sqltypes.detParamValue; 
   detActualSQL   = sqltypes.detActualSQL;
-
+  DefaultMacroChar     = '%';
 Type
   TRowsCount = LargeInt;
 
@@ -104,6 +104,7 @@ Type
 
   TSQLCursor = Class(TSQLHandle)
   public
+    FDirect        : Boolean;
     FPrepared      : Boolean;
     FSelectable    : Boolean;
     FInitFieldDef  : Boolean;
@@ -361,18 +362,29 @@ type
     FDatabase: TSQLConnection;
     FParamCheck: Boolean;
     FParams: TParams;
+    FMacroCheck: Boolean;
+    FMacroChar: Char;
+    FMacros: TParams;
     FSQL: TStrings;
     FOrigSQL : String;
     FServerSQL : String;
     FTransaction: TSQLTransaction;
     FParseSQL: Boolean;
+    FDoUnPrepare : Boolean;
     FDataLink : TDataLink;
     FRowsAffected : TRowsCount;
+    function ExpandMacros( OrigSQL: String): String;
     procedure SetDatabase(AValue: TSQLConnection);
+    procedure SetMacroChar(AValue: Char);
+    procedure SetMacroCheck(AValue: Boolean);
     procedure SetParams(AValue: TParams);
+    procedure SetMacros(AValue: TParams);
     procedure SetSQL(AValue: TStrings);
     procedure SetTransaction(AValue: TSQLTransaction);
+    procedure RecreateMacros;
     Function GetPrepared : Boolean;
+    Procedure CheckUnprepare;
+    Procedure CheckPrepare;
   Protected
     Function CreateDataLink : TDataLink; virtual;
     procedure OnChangeSQL(Sender : TObject); virtual;
@@ -398,9 +410,12 @@ type
     Property Transaction : TSQLTransaction Read FTransaction Write SetTransaction;
     Property SQL : TStrings Read FSQL Write SetSQL;
     Property Params : TParams Read FParams Write SetParams;
+    Property Macros : TParams Read FMacros Write SetMacros;
+    property MacroChar: Char read FMacroChar write SetMacroChar default DefaultMacroChar;
     Property DataSource : TDataSource Read GetDataSource Write SetDataSource;
     Property ParseSQL : Boolean Read FParseSQL Write FParseSQL;
     Property ParamCheck : Boolean Read FParamCheck Write FParamCheck default true;
+    Property MacroCheck : Boolean Read FMacroCheck Write SetMacroCheck default false;
   Public
     constructor Create(AOwner : TComponent); override;
     destructor Destroy; override;
@@ -418,6 +433,8 @@ type
     Property DataSource;
     Property ParamCheck;
     Property Params;
+    Property MacroCheck;
+    Property Macros;
     Property ParseSQL;
     Property SQL;
     Property Transaction;
@@ -467,12 +484,12 @@ type
     FIsEOF               : boolean;
     FLoadingFieldDefs    : boolean;
     FUpdateMode          : TUpdateMode;
+    FDoUnprepare : Boolean;
     FusePrimaryKeyAsKey  : Boolean;
     FWhereStartPos       : integer;
     FWhereStopPos        : integer;
     FServerFilterText    : string;
     FServerFiltered      : Boolean;
-
     FServerIndexDefs     : TServerIndexDefs;
 
     // Used by SetSchemaType
@@ -483,9 +500,14 @@ type
     FUpdateQry,
     FDeleteQry           : TCustomSQLQuery;
     FSequence            : TSQLSequence;
+    procedure CheckPrepare;
+    procedure CheckUnPrepare;
     procedure FreeFldBuffers;
+    function GetMacroChar: Char;
     function GetParamCheck: Boolean;
     function GetParams: TParams;
+    function GetMacroCheck: Boolean;
+    function GetMacros: TParams;
     function GetParseSQL: Boolean;
     function GetServerIndexDefs: TServerIndexDefs;
     function GetSQL: TStringList;
@@ -493,8 +515,10 @@ type
     function GetSQLTransaction: TSQLTransaction;
     function GetStatementType : TStatementType;
     Function NeedLastInsertID: TField;
+    procedure SetMacroChar(AValue: Char);
     procedure SetOptions(AValue: TSQLQueryOptions);
     procedure SetParamCheck(AValue: Boolean);
+    procedure SetMacroCheck(AValue: Boolean);
     procedure SetSQLConnection(AValue: TSQLConnection);
     procedure SetSQLTransaction(AValue: TSQLTransaction);
     procedure SetInsertSQL(const AValue: TStringList);
@@ -502,6 +526,7 @@ type
     procedure SetDeleteSQL(const AValue: TStringList);
     procedure SetRefreshSQL(const AValue: TStringList);
     procedure SetParams(AValue: TParams);
+    procedure SetMacros(AValue: TParams);
     procedure SetParseSQL(AValue : Boolean);
     procedure SetSQL(const AValue: TStringList);
     procedure SetUsePrimaryKeyAsKey(AValue : Boolean);
@@ -511,6 +536,7 @@ type
     procedure ApplyFilter;
     Function AddFilter(SQLstr : string) : string;
   protected
+    procedure OpenCursor(InfoQuery: Boolean); override;
     function CreateSQLStatement(aOwner: TComponent): TCustomSQLStatement; virtual;
     Function CreateParams: TSQLDBParams; virtual;
     Function RefreshLastInsertID(Field: TField): Boolean; virtual;
@@ -537,7 +563,6 @@ type
     Procedure InternalRefresh; override;
     function  GetCanModify: Boolean; override;
     Function IsPrepared : Boolean; virtual;
-    Procedure SetActive (Value : Boolean); override;
     procedure SetServerFiltered(Value: Boolean); virtual;
     procedure SetServerFilterText(const Value: string); virtual;
     Function GetDataSource : TDataSource; override;
@@ -561,6 +586,7 @@ type
     procedure SetSchemaInfo( ASchemaType : TSchemaType; ASchemaObjectName, ASchemaPattern : string); virtual;
     function RowsAffected: TRowsCount; virtual;
     function ParamByName(Const AParamName : String) : TParam;
+    function MacroByName(Const AParamName : String) : TParam;
     Property Prepared : boolean read IsPrepared;
     Property SQLConnection : TSQLConnection Read GetSQLConnection Write SetSQLConnection;
     Property SQLTransaction: TSQLTransaction Read GetSQLTransaction Write SetSQLTransaction;
@@ -611,6 +637,9 @@ type
     Property Options : TSQLQueryOptions Read FOptions Write SetOptions default [];
     property Params : TParams read GetParams Write SetParams;
     Property ParamCheck : Boolean Read GetParamCheck Write SetParamCheck default true;
+    property Macros : TParams read GetMacros Write SetMacros;
+    Property MacroCheck : Boolean Read GetMacroCheck Write SetMacroCheck default false;
+    Property MacroChar : Char Read GetMacroChar Write SetMacroChar default DefaultMacroChar;
     property ParseSQL : Boolean read GetParseSQL write SetParseSQL default true;
     property UpdateMode : TUpdateMode read FUpdateMode write SetUpdateMode default upWhereKeyOnly;
     property UsePrimaryKeyAsKey : boolean read FUsePrimaryKeyAsKey write SetUsePrimaryKeyAsKey default true;
@@ -673,6 +702,9 @@ type
     Property Options;
     property Params;
     Property ParamCheck;
+    property Macros;
+    Property MacroCheck;
+    Property MacroChar;
     property ParseSQL;
     property UpdateMode;
     property UsePrimaryKeyAsKey;
@@ -891,6 +923,7 @@ var
 
 begin
   UnPrepare;
+  RecreateMacros;
   if not ParamCheck then
     exit;
   if assigned(DataBase) then
@@ -927,6 +960,20 @@ begin
     end;
 end;
 
+procedure TCustomSQLStatement.SetMacroChar(AValue: Char);
+begin
+  if FMacroChar=AValue then Exit;
+  FMacroChar:=AValue;
+  RecreateMacros;
+end;
+
+procedure TCustomSQLStatement.SetMacroCheck(AValue: Boolean);
+begin
+  if FMacroCheck=AValue then Exit;
+  FMacroCheck:=AValue;
+  RecreateMacros;
+end;
+
 procedure TCustomSQLStatement.SetTransaction(AValue: TSQLTransaction);
 begin
   if FTransaction=AValue then Exit;
@@ -942,6 +989,36 @@ begin
     end;
 end;
 
+procedure TCustomSQLStatement.RecreateMacros;
+var
+  NewParams: TSQLDBParams;
+  ConnOptions: TConnOptions;
+  PO : TSQLParseOptions;
+  PB : TParamBinding;
+  RS : String;
+
+begin
+  if MacroCheck then begin
+    if assigned(DataBase) then
+      ConnOptions:=DataBase.ConnOptions
+    else
+      ConnOptions := [sqEscapeRepeat,sqEscapeSlash];
+    NewParams := CreateParams;
+    try
+      PO:=[spoCreate,spoUseMacro];
+      if sqEscapeSlash in ConnOptions then
+        Include(PO,spoEscapeSlash);
+      if sqEscapeRepeat in ConnOptions then
+        Include(PO,spoEscapeRepeat);
+      NewParams.ParseSQL(FSQL.Text, PO, psInterbase, PB, MacroChar,RS);
+      NewParams.AssignValues(FMacros);
+      FMacros.Assign(NewParams);
+    finally
+      NewParams.Free;
+    end;
+  end;
+end;
+
 procedure TCustomSQLStatement.SetDataSource(AValue: TDataSource);
 
 begin
@@ -951,7 +1028,7 @@ begin
   FDataLink.DataSource:=AValue;
 end;
 
-Procedure TCustomSQLStatement.CopyParamsFromMaster(CopyBound: Boolean);
+procedure TCustomSQLStatement.CopyParamsFromMaster(CopyBound: Boolean);
 begin
   if Assigned(DataSource) and Assigned(DataSource.Dataset) then
     FParams.CopyParamValuesFromDataset(DataSource.Dataset,CopyBound);
@@ -963,13 +1040,20 @@ begin
   FParams.Assign(AValue);
 end;
 
+procedure TCustomSQLStatement.SetMacros(AValue: TParams);
+begin
+  if FMacros=AValue then Exit;
+  FMacros.Assign(AValue);
+end;
+
 procedure TCustomSQLStatement.SetSQL(AValue: TStrings);
 begin
   if FSQL=AValue then Exit;
   FSQL.Assign(AValue);
+  RecreateMacros;
 end;
 
-Procedure TCustomSQLStatement.DoExecute;
+procedure TCustomSQLStatement.DoExecute;
 begin
   FRowsAffected:=-1;
   If (FParams.Count>0) and Assigned(DataSource) then
@@ -979,27 +1063,46 @@ begin
   Database.Execute(FCursor,Transaction, FParams);
 end;
 
-Function TCustomSQLStatement.GetPrepared: Boolean;
+function TCustomSQLStatement.GetPrepared: Boolean;
+
 begin
-  Result := Assigned(FCursor) and FCursor.FPrepared;
+  Result := Assigned(FCursor) and (FCursor.FPrepared or FCursor.FDirect);
 end;
 
-Function TCustomSQLStatement.CreateDataLink: TDataLink;
+procedure TCustomSQLStatement.CheckUnprepare;
+begin
+  if FDoUnPrepare then
+    begin
+    UnPrepare;
+    FDoUnPrepare:=False;
+    end;
+end;
+
+procedure TCustomSQLStatement.CheckPrepare;
+begin
+  if Not Prepared then
+    begin
+    FDoUnprepare:=True;
+    Prepare;
+    end;
+end;
+
+function TCustomSQLStatement.CreateDataLink: TDataLink;
 begin
   Result:=TDataLink.Create;
 end;
 
-Function TCustomSQLStatement.CreateParams: TSQLDBParams;
+function TCustomSQLStatement.CreateParams: TSQLDBParams;
 begin
   Result:=TSQLDBParams.Create(Nil);
 end;
 
-Function TCustomSQLStatement.LogEvent(EventType: TDBEventType): Boolean;
+function TCustomSQLStatement.LogEvent(EventType: TDBEventType): Boolean;
 begin
   Result:=Assigned(Database) and Database.LogEvent(EventType);
 end;
 
-Procedure TCustomSQLStatement.Log(EventType: TDBEventType; Const Msg: String);
+procedure TCustomSQLStatement.Log(EventType: TDBEventType; const Msg: String);
 Var
   M : String;
 
@@ -1035,6 +1138,9 @@ begin
   TStringList(FSQL).OnChange:=@OnChangeSQL;
   FParams:=CreateParams;
   FParamCheck:=True;
+  FMacros:=CreateParams;
+  FMacroChar:=DefaultMacroChar;
+  FMacroCheck:=False;
   FParseSQL:=True;
   FRowsAffected:=-1;
 end;
@@ -1047,27 +1153,28 @@ begin
   DataSource:=Nil;
   FreeAndNil(FDataLink);
   FreeAndNil(FParams);
+  FreeAndNil(FMacros);
   FreeAndNil(FSQL);
   inherited Destroy;
 end;
 
-Function TCustomSQLStatement.GetSchemaType: TSchemaType;
+function TCustomSQLStatement.GetSchemaType: TSchemaType;
 
 begin
   Result:=stNoSchema
 end;
 
-Function TCustomSQLStatement.GetSchemaObjectName: String;
+function TCustomSQLStatement.GetSchemaObjectName: String;
 begin
   Result:='';
 end;
 
-Function TCustomSQLStatement.GetSchemaPattern: String;
+function TCustomSQLStatement.GetSchemaPattern: String;
 begin
   Result:='';
 end;
 
-Function TCustomSQLStatement.IsSelectable: Boolean;
+function TCustomSQLStatement.IsSelectable: Boolean;
 begin
   Result:=False;
 end;
@@ -1092,6 +1199,65 @@ begin
     DataBase.DeAllocateCursorHandle(FCursor);
 end;
 
+function TCustomSQLStatement.ExpandMacros( OrigSQL : String ) : String;
+
+Const
+  Terminators = SQLDelimiterCharacters+
+                [ #0,'=','+','-','*','\','/','[',']','|' ];
+
+var
+  I: Integer;
+  Ch : Char;
+  TermArr : Set of Char;
+  TempStr, TempMacroName : String;
+  MacroFlag : Boolean;
+
+  Procedure SubstituteMacro;
+
+  var
+    Param: TParam;
+  begin
+    Param := Macros.FindParam( TempMacroName );
+    if Assigned( Param ) then
+      Result := Result + Param.AsString
+    else
+      Result := Result + MacroChar + TempMacroName;
+    TempMacroName:='';
+  end;
+
+begin
+  Result := OrigSQL;
+  if not MacroCheck then
+    Exit;
+  TermArr := Terminators +[MacroChar];
+  Result := '';
+  MacroFlag := False;
+  for Ch in OrigSQL do
+    begin
+    if not MacroFlag and (Ch=MacroChar) then
+      begin
+      MacroFlag := True;
+      TempMacroName := '';
+      end
+    else if MacroFlag then
+      begin
+      if not (Ch In TermArr) then
+        TempMacroName := TempMacroName + Ch
+      else
+        begin
+        SubstituteMacro;
+        if Ch <> MacroChar then
+          MacroFlag := False;
+        TempMacroName := '';
+        end
+      end;
+    if not MacroFlag then
+      Result := Result + Ch;
+    end;
+  if (TempMacroName<>'') then
+    SubstituteMacro;
+end;
+
 procedure TCustomSQLStatement.DoPrepare;
 
 var
@@ -1103,7 +1269,7 @@ begin
     FOrigSQL := Database.GetSchemaInfoSQL(GetSchemaType, GetSchemaObjectName, GetSchemaPattern);
   if (FOrigSQL='') then
     DatabaseError(SErrNoStatement);
-  FServerSQL:=FOrigSQL;
+  FServerSQL:=ExpandMacros( FOrigSQL );
   GetStatementInfo(FServerSQL,StmInfo);
   AllocateCursor;
   FCursor.FSelectable:=True; // let PrepareStatement and/or Execute alter it
@@ -1112,12 +1278,15 @@ begin
   If LogEvent(detPrepare) then
     Log(detPrepare,FServerSQL);
   Database.PrepareStatement(FCursor,Transaction,FServerSQL,FParams);
+  // Update
+  FCursor.FInitFieldDef:=FCursor.FSelectable;
 end;
 
-Procedure TCustomSQLStatement.Prepare;
+procedure TCustomSQLStatement.Prepare;
 
 begin
-  if Prepared then exit;
+  if Prepared then
+    exit;
   if not assigned(Database) then
     DatabaseError(SErrDatabasenAssigned);
   if not assigned(Transaction) then
@@ -1133,10 +1302,14 @@ begin
   end;
 end;
 
-Procedure TCustomSQLStatement.Execute;
+procedure TCustomSQLStatement.Execute;
 begin
-  Prepare;
-  DoExecute;
+  CheckPrepare;
+  try
+    DoExecute;
+  finally
+    CheckUnPrepare;
+  end;
 end;
 
 procedure TCustomSQLStatement.DoUnPrepare;
@@ -1160,7 +1333,7 @@ begin
     Result:=Nil;
 end;
 
-Procedure TCustomSQLStatement.Unprepare;
+procedure TCustomSQLStatement.Unprepare;
 begin
   // Some SQLConnections does not support statement [un]preparation, but they have allocated local cursor(s)
   //  so let them do cleanup f.e. cancel pending queries and/or free resultset
@@ -1169,7 +1342,7 @@ begin
     DoUnprepare;
 end;
 
-function TCustomSQLStatement.ParamByName(Const AParamName: String): TParam;
+function TCustomSQLStatement.ParamByName(const AParamName: String): TParam;
 begin
   Result:=FParams.ParamByName(AParamName);
 end;
@@ -2067,7 +2240,7 @@ begin
     Qry.Open
     end
   else
-    Qry.Execute;
+    Qry.ExecSQL;
   if (scoApplyUpdatesChecksRowsAffected in Options) and (Qry.RowsAffected<>1) then
     begin
     Qry.Close;
@@ -2237,8 +2410,11 @@ begin
     CloseDataSets;
     If LogEvent(detCommit) then
       Log(detCommit,SCommitting);
-    // FTrans=Nil for the case of forced close.
-    if (FTrans=Nil) or (stoUseImplicit in Options) or SQLConnection.AttemptCommit(FTrans) then
+    // The inherited closetrans must always be called.
+    // So the last (FTrans=Nil) is for the case of forced close. (Bug IDs 35246 and 33737)
+    // Order is important:
+    // some connections do not have FTrans, but they must still go through AttemptCommit.
+    if (stoUseImplicit in Options) or SQLConnection.AttemptCommit(FTrans) or (FTrans=Nil) then
       begin
       CloseTrans;
       FreeAndNil(FTrans);
@@ -2265,8 +2441,12 @@ begin
     CloseDataSets;
     If LogEvent(detRollback) then
       Log(detRollback,SRollingBack);
+    // The inherited closetrans must always be called.
+    // So the last (FTrans=Nil) is for the case of forced close. (Bug IDs 35246 and 33737)
+    // Order is important:
+    // some connections do not have FTrans, but they must still go through AttemptCommit.
     // FTrans=Nil for the case of forced close.
-    if (FTrans=Nil) or SQLConnection.AttemptRollBack(FTrans) then
+    if SQLConnection.AttemptRollBack(FTrans) or (FTrans=Nil) then
       begin
       CloseTrans;
       FreeAndNil(FTrans);
@@ -2494,7 +2674,8 @@ end;
 
 { TCustomSQLQuery }
 
-Function TCustomSQLQuery.CreateSQLStatement(aOwner : TComponent)  : TCustomSQLStatement;
+function TCustomSQLQuery.CreateSQLStatement(aOwner: TComponent
+  ): TCustomSQLStatement;
 
 begin
   Result:=TQuerySQLStatement.Create(Self);
@@ -2549,6 +2730,11 @@ function TCustomSQLQuery.ParamByName(const AParamName: String): TParam;
 
 begin
   Result:=Params.ParamByName(AParamName);
+end;
+
+function TCustomSQLQuery.MacroByName(const AParamName: String): TParam;
+begin
+  Result:=Macros.ParamByName(AParamName);
 end;
 
 procedure TCustomSQLQuery.OnChangeModifySQL(Sender : TObject);
@@ -2611,6 +2797,18 @@ begin
   else
     system.insert(' where ('+ServerFilter+') ',SQLstr,FWhereStartPos);
   Result := SQLstr;
+end;
+
+procedure TCustomSQLQuery.OpenCursor(InfoQuery: Boolean);
+begin
+  if InfoQuery then
+    CheckPrepare;
+  try
+    inherited OpenCursor(InfoQuery);
+  finally
+    if InfoQuery then
+      CheckUnPrepare;
+  end;
 end;
 
 function TCustomSQLQuery.NeedRefreshRecord(UpdateKind: TUpdateKind): Boolean;
@@ -2708,22 +2906,11 @@ end;
 procedure TCustomSQLQuery.ApplyFilter;
 
 begin
-  FStatement.Unprepare;
-  FStatement.DoPrepare;
-  FStatement.DoExecute;
+  if Prepared then
+    FStatement.Unprepare;
   InternalRefresh;
   First;
 end;
-
-procedure TCustomSQLQuery.SetActive(Value: Boolean);
-
-begin
-  inherited SetActive(Value);
-// The query is UnPrepared, so that if a transaction closes all datasets
-// they also get unprepared
-  if not Value and IsPrepared then UnPrepare;
-end;
-
 
 procedure TCustomSQLQuery.SetServerFiltered(Value: Boolean);
 
@@ -2751,15 +2938,13 @@ procedure TCustomSQLQuery.Prepare;
 
 begin
   FStatement.Prepare;
-  if Assigned(FStatement.FCursor) then
-    with FStatement.FCursor do
-      FInitFieldDef := FSelectable;
 end;
 
 procedure TCustomSQLQuery.UnPrepare;
 
 begin
-  CheckInactive;
+  if Not Refreshing then
+    CheckInactive;
   If Assigned(FStatement) then
     FStatement.Unprepare;
 end;
@@ -2770,6 +2955,11 @@ begin
      SQLConnection.FreeFldBuffers(Cursor);
 end;
 
+function TCustomSQLQuery.GetMacroChar: Char;
+begin
+  Result := FStatement.MacroChar;
+end;
+
 function TCustomSQLQuery.GetParamCheck: Boolean;
 begin
   Result:=FStatement.ParamCheck;
@@ -2778,6 +2968,16 @@ end;
 function TCustomSQLQuery.GetParams: TParams;
 begin
   Result:=FStatement.Params;
+end;
+
+function TCustomSQLQuery.GetMacroCheck: Boolean;
+begin
+  Result:=FStatement.MacroCheck;
+end;
+
+function TCustomSQLQuery.GetMacros: TParams;
+begin
+  Result:=FStatement.Macros;
 end;
 
 function TCustomSQLQuery.GetParseSQL: Boolean;
@@ -2824,7 +3024,7 @@ end;
 
 procedure TCustomSQLQuery.Execute;
 begin
-  FStatement.Execute;
+  FStatement.DoExecute;
 end;
 
 function TCustomSQLQuery.RowsAffected: TRowsCount;
@@ -2853,13 +3053,16 @@ end;
 
 procedure TCustomSQLQuery.InternalClose;
 begin
+
   if assigned(Cursor) then
     begin
     if Cursor.FSelectable then
       FreeFldBuffers;
+    CheckUnPrepare;
     // Some SQLConnections does not support statement [un]preparation,
     //  so let them do cleanup f.e. cancel pending queries and/or free resultset
-    if not Prepared then FStatement.DoUnprepare;
+    // if not Prepared then
+    //  FStatement.DoUnprepare;
     end;
 
   if DefaultFields then
@@ -2875,15 +3078,13 @@ begin
 end;
 
 procedure TCustomSQLQuery.InternalInitFieldDefs;
+
 begin
   if FLoadingFieldDefs then
     Exit;
-
   FLoadingFieldDefs := True;
-
   try
     FieldDefs.Clear;
-    Prepare;
     SQLConnection.AddFieldDefs(Cursor,FieldDefs);
   finally
     FLoadingFieldDefs := False;
@@ -2896,6 +3097,7 @@ procedure TCustomSQLQuery.InternalOpen;
 var counter, fieldc : integer;
     F               : TField;
     IndexFields     : TStrings;
+
 begin
   if IsReadFromPacket then
     begin
@@ -2907,7 +3109,7 @@ begin
     end
   else
     begin
-    Prepare;
+    CheckPrepare;
     if not Cursor.FSelectable then
       DatabaseError(SErrNoSelectStatement,Self);
 
@@ -2917,13 +3119,14 @@ begin
     if DefaultFields and FUpdateable and FusePrimaryKeyAsKey and (not IsUniDirectional) then
       UpdateServerIndexDefs;
 
-    Execute;
+    FStatement.Execute;
     if not Cursor.FSelectable then
       DatabaseError(SErrNoSelectStatement,Self);
 
     // InternalInitFieldDef is only called after a prepare. i.e. not twice if
     // a dataset is opened - closed - opened.
-    if Cursor.FInitFieldDef then InternalInitFieldDefs;
+    if Cursor.FInitFieldDef then
+      InternalInitFieldDefs;
     if DefaultFields then
       begin
       CreateFields;
@@ -2964,22 +3167,40 @@ end;
 
 // public part
 
-procedure TCustomSQLQuery.ExecSQL;
+procedure TCustomSQLQuery.CheckPrepare;
+
 begin
-  try
+  if Not IsPrepared then
+    begin
     Prepare;
+    FDoUnPrepare:=True;
+    end;
+end;
+
+procedure TCustomSQLQuery.CheckUnPrepare;
+
+begin
+  if FDoUnPrepare then
+    begin
+    FDoUnPrepare:=False;
+    UnPrepare;
+    end;
+end;
+
+
+procedure TCustomSQLQuery.ExecSQL;
+
+begin
+  CheckPrepare;
+  try
     Execute;
+    // Always retrieve rows affected
+    FStatement.RowsAffected;
     If sqoAutoCommit in Options then
-      begin
-      // Retrieve rows affected
-      FStatement.RowsAffected;
       SQLTransaction.Commit;
-      end;
   finally
-    // Cursor has to be assigned, or else the prepare went wrong before PrepareStatment was
-    //   called, so UnPrepareStatement shoudn't be called either
-    // Don't deallocate cursor; f.e. RowsAffected is requested later
-    if not Prepared and (assigned(Database)) and (assigned(Cursor)) then SQLConnection.UnPrepareStatement(Cursor);
+    CheckUnPrepare;
+    // if not Prepared and (assigned(Database)) and (assigned(Cursor)) then SQLConnection.UnPrepareStatement(Cursor);
   end;
 end;
 
@@ -3066,6 +3287,11 @@ begin
       Inc(I);
       end;
     end
+end;
+
+procedure TCustomSQLQuery.SetMacroChar(AValue: Char);
+begin
+  FStatement.MacroChar:=AValue;
 end;
 
 function TCustomSQLQuery.RefreshLastInsertID(Field: TField): Boolean;
@@ -3194,6 +3420,11 @@ begin
   FStatement.ParamCheck:=AValue;
 end;
 
+procedure TCustomSQLQuery.SetMacroCheck(AValue: Boolean);
+begin
+  FStatement.MacroCheck:=AValue;
+end;
+
 procedure TCustomSQLQuery.SetOptions(AValue: TSQLQueryOptions);
 begin
   if FOptions=AValue then Exit;
@@ -3237,6 +3468,11 @@ end;
 procedure TCustomSQLQuery.SetParams(AValue: TParams);
 begin
   FStatement.Params.Assign(AValue);
+end;
+
+procedure TCustomSQLQuery.SetMacros(AValue: TParams);
+begin
+  FStatement.Macros.Assign(AValue);
 end;
 
 procedure TCustomSQLQuery.SetDataSource(AValue: TDataSource);

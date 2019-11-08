@@ -51,7 +51,8 @@ type
 
   TSystemUnitPart = (
     supTObject,
-    supTVarRec
+    supTVarRec,
+    supTypeInfo
     );
   TSystemUnitParts = set of TSystemUnitPart;
 
@@ -330,6 +331,7 @@ type
     Procedure TestProc_OverloadForward;
     Procedure TestProc_OverloadIntfImpl;
     Procedure TestProc_OverloadNested;
+    Procedure TestProc_OverloadNestedForward;
     Procedure TestProc_OverloadUnitCycle;
     Procedure TestProc_Varargs;
     Procedure TestProc_ConstOrder;
@@ -524,6 +526,8 @@ type
     Procedure TestClass_ExternalOverrideFail;
     Procedure TestClass_ExternalVar;
     Procedure TestClass_Const;
+    Procedure TestClass_LocalConstDuplicate;
+    // ToDo: Procedure TestAdvRecord_LocalConstDuplicate;
     Procedure TestClass_LocalVarSelfFail;
     Procedure TestClass_ArgSelfFail;
     Procedure TestClass_NestedProcSelf;
@@ -567,6 +571,7 @@ type
     Procedure TestExternalClass_DuplicateVarFail;
     Procedure TestExternalClass_Method;
     Procedure TestExternalClass_ClassMethod;
+    Procedure TestExternalClass_ClassMethodStatic;
     Procedure TestExternalClass_FunctionResultInTypeCast;
     Procedure TestExternalClass_NonExternalOverride;
     Procedure TestExternalClass_OverloadHint;
@@ -584,6 +589,9 @@ type
     Procedure TestExternalClass_FuncClassOf_New;
     Procedure TestExternalClass_New_PasClassFail;
     Procedure TestExternalClass_New_PasClassBracketsFail;
+    Procedure TestExternalClass_NewExtName;
+    Procedure TestExternalClass_Constructor;
+    Procedure TestExternalClass_ConstructorBrackets;
     Procedure TestExternalClass_LocalConstSameName;
     Procedure TestExternalClass_ReintroduceOverload;
     Procedure TestExternalClass_Inherited;
@@ -666,6 +674,7 @@ type
     Procedure TestClassHelper_PassProperty;
     Procedure TestExtClassHelper_ClassVar;
     Procedure TestExtClassHelper_Method_Call;
+    Procedure TestExtClassHelper_ClassMethod_MissingStatic;
     Procedure TestRecordHelper_ClassVar;
     Procedure TestRecordHelper_Method_Call;
     Procedure TestRecordHelper_Constructor;
@@ -689,6 +698,7 @@ type
     Procedure TestTypeHelper_Word;
     Procedure TestTypeHelper_Double;
     Procedure TestTypeHelper_StringChar;
+    Procedure TestTypeHelper_JSValue;
     Procedure TestTypeHelper_Array;
     Procedure TestTypeHelper_EnumType;
     Procedure TestTypeHelper_SetType;
@@ -807,6 +817,7 @@ type
     Procedure TestRTTI_Interface_Corba;
     Procedure TestRTTI_Interface_COM;
     Procedure TestRTTI_ClassHelper;
+    Procedure TestRTTI_ExternalClass;
 
     // Resourcestring
     Procedure TestResourcestringProgram;
@@ -1548,7 +1559,7 @@ var
 begin
   Intf:=TStringList.Create;
   // interface
-  if supTVarRec in Parts then
+  if [supTVarRec,supTypeInfo]*Parts<>[] then
     Intf.Add('{$modeswitch externalclass}');
   Intf.Add('type');
   Intf.Add('  integer=longint;');
@@ -1594,6 +1605,28 @@ begin
     '  TVarRecArray = array of TVarRec;',
     'function VarRecs: TVarRecArray; varargs;',
     '']);
+  if supTypeInfo in Parts then
+    begin
+    Intf.AddStrings([
+    'type',
+    '  TTypeInfo = class external name ''rtl.tTypeInfo'' end;',
+    '  TTypeInfoInteger = class external name ''rtl.tTypeInfoInteger''(TTypeInfo)',
+    '  end;',
+    '  TTypeInfoEnum = class external name ''rtl.tTypeInfoEnum''(TTypeInfoInteger) end;',
+    '  TTypeInfoSet = class external name ''rtl.tTypeInfoSet''(TTypeInfo) end;',
+    '  TTypeInfoStaticArray = class external name ''rtl.tTypeInfoStaticArray''(TTypeInfo) end;',
+    '  TTypeInfoDynArray = class external name ''rtl.tTypeInfoDynArray''(TTypeInfo) end;',
+    '  TTypeInfoProcVar = class external name ''rtl.tTypeInfoProcVar''(TTypeInfo) end;',
+    '  TTypeInfoMethodVar = class external name ''rtl.tTypeInfoMethodVar''(TTypeInfoProcVar) end;',
+    '  TTypeInfoClass = class external name ''rtl.tTypeInfoClass''(TTypeInfo) end;',
+    '  TTypeInfoClassRef = class external name ''rtl.tTypeInfoClassRef''(TTypeInfo) end;',
+    '  TTypeInfoExtClass = class external name ''rtl.tTypeInfoExtClass''(TTypeInfo) end;',
+    '  TTypeInfoRecord = class external name ''rtl.tTypeInfoRecord''(TTypeInfo) end;',
+    '  TTypeInfoPointer = class external name ''rtl.tTypeInfoPointer''(TTypeInfo) end;',
+    '  TTypeInfoHelper = class external name ''rtl.tTypeInfoHelper''(TTypeInfo) end;',
+    '  TTypeInfoInterface = class external name ''rtl.tTypeInfoInterface''(TTypeInfo) end;',
+    '']);
+    end;
   Intf.Add('var');
   Intf.Add('  ExitCode: Longint = 0;');
 
@@ -2324,7 +2357,6 @@ begin
   FFilename:='ns1.test1.pp';
   StartProgram(true);
   Add('uses unIt2;');
-  Add('implementation');
   Add('var');
   Add('  i: longint;');
   Add('begin');
@@ -2405,7 +2437,6 @@ begin
   FFilename:='Ns1.SubNs1.Test1.pp';
   StartProgram(true);
   Add('uses Ns2.sUbnS2.unIt2;');
-  Add('implementation');
   Add('var');
   Add('  i: longint;');
   Add('begin');
@@ -2436,8 +2467,9 @@ begin
   StartProgram(false);
   Add('{$modeswitch cblocks-}');
   Add('begin');
-  SetExpectedScannerError('Invalid mode switch: "cblocks-"',nErrInvalidModeSwitch);
   ConvertProgram;
+  CheckHint(mtWarning,nErrInvalidModeSwitch,'Warning: test1.pp(3,23) : Invalid mode switch: "cblocks"');
+  CheckResolverUnexpectedHints();
 end;
 
 procedure TTestModule.TestUnit_UseSystem;
@@ -4086,6 +4118,52 @@ procedure TTestModule.TestProc_OverloadNested;
 begin
   StartProgram(false);
   Add([
+  'procedure doit(vA: longint);',
+  '  procedure DoIt(vA, vB: longint); overload;',
+  '  begin',
+  '    doit(1);',
+  '    doit(1,2);',
+  '  end;',
+  '  procedure doit(vA, vB, vC: longint);',
+  '  begin',
+  '    doit(1);',
+  '    doit(1,2);',
+  '    doit(1,2,3);',
+  '  end;',
+  'begin',
+  '  doit(1);',
+  '  doit(1,2);',
+  '  doit(1,2,3);',
+  'end;',
+  'begin // main',
+  '  doit(1);']);
+  ConvertProgram;
+  CheckSource('TestProcedureOverloadNested',
+    LinesToStr([ // statements
+    'this.doit = function (vA) {',
+    '  function DoIt$1(vA, vB) {',
+    '    $mod.doit(1);',
+    '    DoIt$1(1, 2);',
+    '  };',
+    '  function doit$2(vA, vB, vC) {',
+    '    $mod.doit(1);',
+    '    DoIt$1(1, 2);',
+    '    doit$2(1, 2, 3);',
+    '  };',
+    '  $mod.doit(1);',
+    '  DoIt$1(1, 2);',
+    '  doit$2(1, 2, 3);',
+    '};',
+    '']),
+    LinesToStr([
+    '$mod.doit(1);',
+    '']));
+end;
+
+procedure TTestModule.TestProc_OverloadNestedForward;
+begin
+  StartProgram(false);
+  Add([
   'procedure DoIt(vA: longint); overload; forward;',
   'procedure DoIt(vB, vC: longint); overload;',
   'begin // 2 param overload',
@@ -4139,7 +4217,7 @@ begin
   '  doit(1);',
   '  doit(1,2);']);
   ConvertProgram;
-  CheckSource('TestProcedureOverloadNested',
+  CheckSource('TestProc_OverloadNestedForward',
     LinesToStr([ // statements
     'this.DoIt$1 = function (vB, vC) {',
     '  $mod.DoIt(1);',
@@ -11029,14 +11107,14 @@ begin
     '  };',
     '  this.GetInt = function () {',
     '    var Result = 0;',
-    '    Result = this.Fx;',
+    '    Result = $mod.TRec.Fx;',
     '    return Result;',
     '  };',
     '  this.SetInt = function (Value) {',
     '  };',
     '  this.DoIt = function () {',
-    '    $mod.TRec.Fy = this.Fx + 1;',
-    '    this.SetInt(this.GetInt() + 1);',
+    '    $mod.TRec.Fy = $mod.TRec.Fx + 1;',
+    '    $mod.TRec.SetInt($mod.TRec.GetInt() + 1);',
     '  };',
     '}, true);',
     'this.r = $mod.TRec.$new();',
@@ -11156,7 +11234,6 @@ begin
   '    Bracket: longint external name ''["A B"]'';',
   '    procedure DoIt;',
   '  end;',
-  'implementation',
   'procedure tcar.doit;',
   'begin',
   '  Intern:=Intern+1;',
@@ -11267,7 +11344,7 @@ begin
     '      $mod.TRec.TPoint.Count = this.Count + 3;',
     '    };',
     '    this.DoThat = function () {',
-    '      $mod.TRec.TPoint.Count = this.Count + 4;',
+    '      $mod.TRec.TPoint.Count = $mod.TRec.TPoint.Count + 4;',
     '    };',
     '  }, true);',
     '  this.i = 0;',
@@ -11463,14 +11540,16 @@ begin
   'class constructor tpoint.init;',
   'begin',
   '  count:=count+1;',
-  '  x:=3;',
-  '  tpoint.x:=4;',
+  '  x:=x+3;',
+  '  tpoint.x:=tpoint.x+4;',
   '  fly;',
   '  tpoint.fly;',
   'end;',
   'var r: TPoint;',
   'begin',
-  '  r.x:=10;',
+  '  r.x:=r.x+10;',
+  '  r.Fly;',
+  '  r.Fly();',
   '']);
   ConvertProgram;
   CheckSource('TestAdvRecord_ClassConstructor_Program',
@@ -11492,12 +11571,14 @@ begin
     LinesToStr([ // $mod.$main
     '(function () {',
     '  $mod.count = $mod.count + 1;',
-    '  $mod.TPoint.x = 3;',
-    '  $mod.TPoint.x = 4;',
+    '  $mod.TPoint.x = $mod.TPoint.x + 3;',
+    '  $mod.TPoint.x = $mod.TPoint.x + 4;',
     '  $mod.TPoint.Fly();',
     '  $mod.TPoint.Fly();',
     '})();',
-    '$mod.TPoint.x = 10;',
+    '$mod.TPoint.x = $mod.r.x + 10;',
+    '$mod.r.Fly();',
+    '$mod.r.Fly();',
     '']));
 end;
 
@@ -13954,7 +14035,6 @@ begin
   Add('    procedure DoIt;');
   Add('    class procedure DoMore;');
   Add('  end;');
-  Add('implementation');
   Add('procedure tobject.doit;');
   Add('begin');
   Add('  if cI=4 then;');
@@ -14026,6 +14106,65 @@ begin
     'if ($with2.cI === 25) ;',
     'var $with3 = $mod.Cla;',
     'if ($with3.cI === 26) ;',
+    '']));
+end;
+
+procedure TTestModule.TestClass_LocalConstDuplicate;
+begin
+  StartProgram(false);
+  Add([
+  'type',
+  '  TObject = class',
+  '    const cI: longint = 3;',
+  '    procedure Fly;',
+  '    procedure Run;',
+  '  end;',
+  '  TBird = class',
+  '    procedure Go;',
+  '  end;',
+  'procedure tobject.fly;',
+  'const cI: word = 4;',
+  'begin',
+  '  if cI=Self.cI then ;',
+  'end;',
+  'procedure tobject.run;',
+  'const cI: word = 5;',
+  'begin',
+  '  if cI=Self.cI then ;',
+  'end;',
+  'procedure tbird.go;',
+  'const cI: word = 6;',
+  'begin',
+  '  if cI=Self.cI then ;',
+  'end;',
+  'begin',
+  '']);
+  ConvertProgram;
+  CheckSource('TestClass_LocalConstDuplicate',
+    LinesToStr([
+    'rtl.createClass($mod, "TObject", null, function () {',
+    '  this.cI = 3;',
+    '  this.$init = function () {',
+    '  };',
+    '  this.$final = function () {',
+    '  };',
+    '  var cI$1 = 4;',
+    '  this.Fly = function () {',
+    '    if (cI$1 === this.cI) ;',
+    '  };',
+    '  var cI$2 = 5;',
+    '  this.Run = function () {',
+    '    if (cI$2 === this.cI) ;',
+    '  };',
+    '});',
+    'rtl.createClass($mod, "TBird", $mod.TObject, function () {',
+    '  var cI$3 = 6;',
+    '  this.Go = function () {',
+    '    if (cI$3 === this.cI) ;',
+    '  };',
+    '});',
+    '']),
+    LinesToStr([
     '']));
 end;
 
@@ -15659,14 +15798,17 @@ begin
   '    class procedure DoIt(Id: longint = 1); external name ''$Execute'';',
   '  end;',
   '  TExtB = TExtA;',
+  'var p: Pointer;',
   'begin',
   '  texta.doit;',
   '  texta.doit();',
   '  texta.doit(2);',
+  '  p:=@TExtA.DoIt;',
   '  with texta do begin',
   '    doit;',
   '    doit();',
   '    doit(3);',
+  '    p:=@DoIt;',
   '  end;',
   '  textb.doit;',
   '  textb.doit();',
@@ -15680,20 +15822,62 @@ begin
   ConvertProgram;
   CheckSource('TestExternalClass_ClassMethod',
     LinesToStr([ // statements
+    'this.p = null;',
     '']),
     LinesToStr([ // $mod.$main
     'ExtObj.$Execute(1);',
     'ExtObj.$Execute(1);',
     'ExtObj.$Execute(2);',
+    '$mod.p = rtl.createCallback(ExtObj, "$Execute");',
     'ExtObj.$Execute(1);',
     'ExtObj.$Execute(1);',
     'ExtObj.$Execute(3);',
+    '$mod.p = rtl.createCallback(ExtObj, "$Execute");',
     'ExtObj.$Execute(1);',
     'ExtObj.$Execute(1);',
     'ExtObj.$Execute(4);',
     'ExtObj.$Execute(1);',
     'ExtObj.$Execute(1);',
     'ExtObj.$Execute(5);',
+    '']));
+end;
+
+procedure TTestModule.TestExternalClass_ClassMethodStatic;
+begin
+  StartProgram(false);
+  Add([
+  '{$modeswitch externalclass}',
+  'type',
+  '  TExtA = class external name ''ExtObj''',
+  '    class procedure DoIt(Id: longint = 1); static;',
+  '  end;',
+  'var p: Pointer;',
+  'begin',
+  '  texta.doit;',
+  '  texta.doit();',
+  '  texta.doit(2);',
+  '  p:=@TExtA.DoIt;',
+  '  with texta do begin',
+  '    doit;',
+  '    doit();',
+  '    doit(3);',
+  '    p:=@DoIt;',
+  '  end;',
+  '']);
+  ConvertProgram;
+  CheckSource('TestExternalClass_ClassMethodStatic',
+    LinesToStr([ // statements
+    'this.p = null;',
+    '']),
+    LinesToStr([ // $mod.$main
+    'ExtObj.DoIt(1);',
+    'ExtObj.DoIt(1);',
+    'ExtObj.DoIt(2);',
+    '$mod.p = ExtObj.DoIt;',
+    'ExtObj.DoIt(1);',
+    'ExtObj.DoIt(1);',
+    'ExtObj.DoIt(3);',
+    '$mod.p = ExtObj.DoIt;',
     '']));
 end;
 
@@ -15745,32 +15929,33 @@ end;
 procedure TTestModule.TestExternalClass_NonExternalOverride;
 begin
   StartProgram(false);
-  Add('{$modeswitch externalclass}');
-  Add('type');
-  Add('  TExtA = class external name ''ExtObjA''');
-  Add('    procedure ProcA; virtual;');
-  Add('    procedure ProcB; virtual;');
-  Add('  end;');
-  Add('  TExtB = class external name ''ExtObjB'' (TExtA)');
-  Add('  end;');
-  Add('  TExtC = class (TExtB)');
-  Add('    procedure ProcA; override;');
-  Add('  end;');
-  Add('procedure TExtC.ProcA;');
-  Add('begin');
-  Add('  ProcA;');
-  Add('  Self.ProcA;');
-  Add('  ProcB;');
-  Add('  Self.ProcB;');
-  Add('end;');
-  Add('var');
-  Add('  A: texta;');
-  Add('  B: textb;');
-  Add('  C: textc;');
-  Add('begin');
-  Add('  a.proca;');
-  Add('  b.proca;');
-  Add('  c.proca;');
+  Add([
+  '{$modeswitch externalclass}',
+  'type',
+  '  TExtA = class external name ''ExtObjA''',
+  '    procedure ProcA; virtual;',
+  '    procedure ProcB; virtual;',
+  '  end;',
+  '  TExtB = class external name ''ExtObjB'' (TExtA)',
+  '  end;',
+  '  TExtC = class (TExtB)',
+  '    procedure ProcA; override;',
+  '  end;',
+  'procedure TExtC.ProcA;',
+  'begin',
+  '  ProcA;',
+  '  Self.ProcA;',
+  '  ProcB;',
+  '  Self.ProcB;',
+  'end;',
+  'var',
+  '  A: texta;',
+  '  B: textb;',
+  '  C: textc;',
+  'begin',
+  '  a.proca;',
+  '  b.proca;',
+  '  c.proca;']);
   ConvertProgram;
   CheckSource('TestExternalClass_NonExternalOverride',
     LinesToStr([ // statements
@@ -16216,27 +16401,29 @@ end;
 procedure TTestModule.TestExternalClass_New;
 begin
   StartProgram(false);
-  Add('{$modeswitch externalclass}');
-  Add('type');
-  Add('  TExtA = class external name ''ExtA''');
-  Add('    constructor New;');
-  Add('    constructor New(i: longint; j: longint = 2);');
-  Add('  end;');
-  Add('var');
-  Add('  A: texta;');
-  Add('begin');
-  Add('  a:=texta.new;');
-  Add('  a:=texta(texta.new);');
-  Add('  a:=texta.new();');
-  Add('  a:=texta.new(1);');
-  Add('  with texta do begin');
-  Add('    a:=new;');
-  Add('    a:=new();');
-  Add('    a:=new(2);');
-  Add('  end;');
-  Add('  a:=test1.texta.new;');
-  Add('  a:=test1.texta.new();');
-  Add('  a:=test1.texta.new(3);');
+  Add([
+  '{$modeswitch externalclass}',
+  'type',
+  '  TExtA = class external name ''ExtA''',
+  '    constructor New;',
+  '    constructor New(i: longint; j: longint = 2);',
+  '  end;',
+  'var',
+  '  A: texta;',
+  'begin',
+  '  a:=texta.new;',
+  '  a:=texta(texta.new);',
+  '  a:=texta.new();',
+  '  a:=texta.new(1);',
+  '  with texta do begin',
+  '    a:=new;',
+  '    a:=new();',
+  '    a:=new(2);',
+  '  end;',
+  '  a:=test1.texta.new;',
+  '  a:=test1.texta.new();',
+  '  a:=test1.texta.new(3);',
+  '']);
   ConvertProgram;
   CheckSource('TestExternalClass_New',
     LinesToStr([ // statements
@@ -16377,6 +16564,134 @@ begin
   '']);
   SetExpectedPasResolverError(sJSNewNotSupported,nJSNewNotSupported);
   ConvertProgram;
+end;
+
+procedure TTestModule.TestExternalClass_NewExtName;
+begin
+  StartProgram(false);
+  Add([
+  '{$modeswitch externalclass}',
+  'type',
+  '  TExtA = class external name ''ExtA''',
+  '    constructor New; external name ''Other'';',
+  '    constructor New(i: longint; j: longint = 2); external name ''A.B'';',
+  '  end;',
+  'var',
+  '  A: texta;',
+  'begin',
+  '  a:=texta.new;',
+  '  a:=texta(texta.new);',
+  '  a:=texta.new();',
+  '  a:=texta.new(1);',
+  '  with texta do begin',
+  '    a:=new;',
+  '    a:=new();',
+  '    a:=new(2);',
+  '  end;',
+  '  a:=test1.texta.new;',
+  '  a:=test1.texta.new();',
+  '  a:=test1.texta.new(3);',
+  '']);
+  ConvertProgram;
+  CheckSource('TestExternalClass_NewExtName',
+    LinesToStr([ // statements
+    'this.A = null;',
+    '']),
+    LinesToStr([ // $mod.$main
+    '$mod.A = new Other();',
+    '$mod.A = new Other();',
+    '$mod.A = new Other();',
+    '$mod.A = new A.B(1,2);',
+    '$mod.A = new Other();',
+    '$mod.A = new Other();',
+    '$mod.A = new A.B(2,2);',
+    '$mod.A = new Other();',
+    '$mod.A = new Other();',
+    '$mod.A = new A.B(3,2);',
+    '']));
+end;
+
+procedure TTestModule.TestExternalClass_Constructor;
+begin
+  StartProgram(false);
+  Add([
+  '{$modeswitch externalclass}',
+  'type',
+  '  TExtA = class external name ''ExtA''',
+  '    constructor Create;',
+  '    constructor Create(i: longint; j: longint = 2);',
+  '  end;',
+  'var',
+  '  A: texta;',
+  'begin',
+  '  a:=texta.create;',
+  '  a:=texta(texta.create);',
+  '  a:=texta.create();',
+  '  a:=texta.create(1);',
+  '  with texta do begin',
+  '    a:=create;',
+  '    a:=create();',
+  '    a:=create(2);',
+  '  end;',
+  '  a:=test1.texta.create;',
+  '  a:=test1.texta.create();',
+  '  a:=test1.texta.create(3);',
+  '']);
+  ConvertProgram;
+  CheckSource('TestExternalClass_Constructor',
+    LinesToStr([ // statements
+    'this.A = null;',
+    '']),
+    LinesToStr([ // $mod.$main
+    '$mod.A = new ExtA.Create();',
+    '$mod.A = new ExtA.Create();',
+    '$mod.A = new ExtA.Create();',
+    '$mod.A = new ExtA.Create(1,2);',
+    '$mod.A = new ExtA.Create();',
+    '$mod.A = new ExtA.Create();',
+    '$mod.A = new ExtA.Create(2,2);',
+    '$mod.A = new ExtA.Create();',
+    '$mod.A = new ExtA.Create();',
+    '$mod.A = new ExtA.Create(3,2);',
+    '']));
+end;
+
+procedure TTestModule.TestExternalClass_ConstructorBrackets;
+begin
+  StartProgram(false);
+  Add([
+  '{$modeswitch externalclass}',
+  'type',
+  '  TExtA = class external name ''ExtA''',
+  '    constructor Create; external name ''{}'';',
+  '  end;',
+  'var',
+  '  A: texta;',
+  'begin',
+  '  a:=texta.create;',
+  '  a:=texta(texta.create);',
+  '  a:=texta.create();',
+  '  with texta do begin',
+  '    a:=create;',
+  '    a:=create();',
+  '  end;',
+  '  a:=test1.texta.create;',
+  '  a:=test1.texta.create();',
+  '']);
+  ConvertProgram;
+  CheckSource('TestExternalClass_ConstructorBrackets',
+    LinesToStr([ // statements
+    'this.A = null;',
+    '']),
+    LinesToStr([ // $mod.$main
+    '$mod.A = {};',
+    '$mod.A = {};',
+    '$mod.A = {};',
+    '$mod.A = {};',
+    '$mod.A = {};',
+    '$mod.A = {};',
+    '$mod.A = {};',
+    '']));
 end;
 
 procedure TTestModule.TestExternalClass_LocalConstSameName;
@@ -16876,8 +17191,8 @@ begin
     '    function Sub() {',
     '    };',
     '    var f = null;',
-    '    f = rtl.createCallback($Self, "DoIt");',
-    '    f = rtl.createCallback($Self, "DoIt").bind(null, 13);',
+    '    f = $Self.DoIt;',
+    '    f = $Self.DoIt.bind(null, 13);',
     '    f = Sub;',
     '    f = $mod.GetIt;',
     '  };',
@@ -16893,7 +17208,7 @@ begin
     '  f = $mod.GetIt;',
     '  f = $mod.GetIt.bind(null, 3);',
     '  f = Sub;',
-    '  f = rtl.createCallback(o, "DoIt");',
+    '  f = $mod.TObject.DoIt;',
     '  f = fi.bind(null, 4);',
     '  return Result;',
     '};',
@@ -17952,13 +18267,13 @@ begin
     '        return this.FBirdIntf;',
     '      },',
     '    "{489289DE-FDE2-34A6-8288-39119022B1B4}": function () {',
-    '        return this.$class.GetEagleIntf();',
+    '        return this.GetEagleIntf();',
     '      },',
     '    "{489289DE-FDE2-34A6-8288-39118EF16074}": function () {',
     '        return rtl.getIntfT(this.FDoveObj, $mod.IDove);',
     '      },',
     '    "{B89289DE-FDE2-34A6-8288-3911CBDCB359}": function () {',
-    '        return rtl.getIntfT(this.$class.GetSwallowObj(), $mod.ISwallow);',
+    '        return rtl.getIntfT(this.GetSwallowObj(), $mod.ISwallow);',
     '      }',
     '  };',
     '});',
@@ -20938,7 +21253,7 @@ begin
     '  };',
     '  this.GetSpeed = function () {',
     '    var Result = 0;',
-    '    this.SetSpeed(this.GetSpeed() + 12);',
+    '    $mod.TObject.SetSpeed($mod.TObject.GetSpeed() + 12);',
     '    $mod.TObjHelper.SetLeft($mod.TObjHelper.GetLeft() + 13);',
     '    return Result;',
     '  };',
@@ -20948,7 +21263,7 @@ begin
     'rtl.createHelper($mod, "TObjHelper", null, function () {',
     '  this.GetLeft = function () {',
     '    var Result = 0;',
-    '    this.SetSpeed(this.GetSpeed() + 12);',
+    '    $mod.TObject.SetSpeed($mod.TObject.GetSpeed() + 12);',
     '    $mod.TObjHelper.SetLeft($mod.TObjHelper.GetLeft() + 13);',
     '    return Result;',
     '  };',
@@ -21497,6 +21812,27 @@ begin
     '$with1.Fly(2);',
     '$mod.p = rtl.createCallback($mod.Obj, "Fly");',
     '']));
+end;
+
+procedure TTestModule.TestExtClassHelper_ClassMethod_MissingStatic;
+begin
+  StartProgram(false);
+  Add([
+  '{$modeswitch externalclass}',
+  'type',
+  '  TExtA = class external name ''ExtObj''',
+  '    procedure Run(w: word = 10);',
+  '  end;',
+  '  THelper = class helper for TExtA',
+  '    class procedure Fly;',
+  '  end;',
+  'class procedure THelper.Fly;',
+  'begin end;',
+  'begin',
+  '']);
+  SetExpectedPasResolverError(sHelperClassMethodForExtClassMustBeStatic,
+                              nHelperClassMethodForExtClassMustBeStatic);
+  ConvertProgram;
 end;
 
 procedure TTestModule.TestRecordHelper_ClassVar;
@@ -22707,7 +23043,7 @@ begin
     '  this.GetField = function () {',
     '    var Result = 0;',
     '    $mod.THelper.Fly.call({',
-    '      p: this.GetField(),',
+    '      p: $mod.TObject.GetField(),',
     '      get: function () {',
     '          return this.p;',
     '        },',
@@ -23522,6 +23858,70 @@ begin
     '$mod.TCharHelper.Fly.call({',
     '  get: function () {',
     '      return "c";',
+    '    },',
+    '  set: function (v) {',
+    '      rtl.raiseE("EPropReadOnly");',
+    '    }',
+    '});',
+    '']));
+end;
+
+procedure TTestModule.TestTypeHelper_JSValue;
+begin
+  StartProgram(false);
+  Add([
+  '{$modeswitch typehelpers}',
+  'type',
+  '  TExtValue = type jsvalue;',
+  '  THelper = type helper for TExtValue',
+  '    function ToStr: String;',
+  '  end;',
+  'function THelper.ToStr: String;',
+  'begin',
+  'end;',
+  'var',
+  '  s: string;',
+  '  v: TExtValue;',
+  'begin',
+  '  s:=v.toStr;',
+  '  s:=v.toStr();',
+  '  TExtValue(s).toStr;',
+  '']);
+  ConvertProgram;
+  CheckSource('TestTypeHelper_JSValue',
+    LinesToStr([ // statements
+    'rtl.createHelper($mod, "THelper", null, function () {',
+    '  this.ToStr = function () {',
+    '    var Result = "";',
+    '    return Result;',
+    '  };',
+    '});',
+    'this.s = "";',
+    'this.v = undefined;',
+    '']),
+    LinesToStr([ // $mod.$main
+    '$mod.s = $mod.THelper.ToStr.call({',
+    '  p: $mod,',
+    '  get: function () {',
+    '      return this.p.v;',
+    '    },',
+    '  set: function (v) {',
+    '      this.p.v = v;',
+    '    }',
+    '});',
+    '$mod.s = $mod.THelper.ToStr.call({',
+    '  p: $mod,',
+    '  get: function () {',
+    '      return this.p.v;',
+    '    },',
+    '  set: function (v) {',
+    '      this.p.v = v;',
+    '    }',
+    '});',
+    '$mod.THelper.ToStr.call({',
+    '  p: $mod,',
+    '  get: function () {',
+    '      return this.p.s;',
     '    },',
     '  set: function (v) {',
     '      rtl.raiseE("EPropReadOnly");',
@@ -26910,14 +27310,10 @@ end;
 procedure TTestModule.TestRTTI_IntRange;
 begin
   Converter.Options:=Converter.Options-[coNoTypeInfo];
-  StartProgram(false);
+  StartProgram(true,[supTypeInfo]);
   Add([
   '{$modeswitch externalclass}',
   'type',
-  '  TTypeInfo = class external name ''rtl.tTypeInfo''',
-  '  end;',
-  '  TTypeInfoInteger = class external name ''rtl.tTypeInfoInteger''(TTypeInfo)',
-  '  end;',
   '  TGraphicsColor = -$7FFFFFFF-1..$7FFFFFFF;',
   '  TColor = type TGraphicsColor;',
   'var',
@@ -26946,12 +27342,10 @@ end;
 procedure TTestModule.TestRTTI_Double;
 begin
   Converter.Options:=Converter.Options-[coNoTypeInfo];
-  StartProgram(false);
+  StartProgram(true,[supTypeInfo]);
   Add([
   '{$modeswitch externalclass}',
   'type',
-  '  TTypeInfo = class external name ''rtl.tTypeInfo''',
-  '  end;',
   '  TFloat = type double;',
   'var',
   '  p: TTypeInfo;',
@@ -28656,16 +29050,12 @@ end;
 procedure TTestModule.TestRTTI_TypeInfo_ExtTypeInfoClasses1;
 begin
   Converter.Options:=Converter.Options-[coNoTypeInfo];
-  StartProgram(false);
+  StartProgram(true,[supTypeInfo]);
   Add([
   '{$modeswitch externalclass}',
   'type',
-  '  TTypeInfo = class external name ''rtl.tTypeInfo'' end;',
-  '  TTypeInfoInteger = class external name ''rtl.tTypeInfoInteger''(TTypeInfo) end;',
   '  TFlag = (up,down);',
-  '  TTypeInfoEnum = class external name ''rtl.tTypeInfoEnum''(TTypeInfoInteger) end;',
   '  TFlags = set of TFlag;',
-  '  TTypeInfoSet = class external name ''rtl.tTypeInfoSet''(TTypeInfo) end;',
   'var',
   '  ti: TTypeInfo;',
   '  tiInt: TTypeInfoInteger;',
@@ -28728,18 +29118,13 @@ end;
 procedure TTestModule.TestRTTI_TypeInfo_ExtTypeInfoClasses2;
 begin
   Converter.Options:=Converter.Options-[coNoTypeInfo];
-  StartProgram(false);
+  StartProgram(true,[supTypeInfo]);
   Add('{$modeswitch externalclass}');
   Add('type');
-  Add('  TTypeInfo = class external name ''rtl.tTypeInfo'' end;');
   Add('  TStaticArr = array[boolean] of string;');
-  Add('  TTypeInfoStaticArray = class external name ''rtl.tTypeInfoStaticArray''(TTypeInfo) end;');
   Add('  TDynArr = array of string;');
-  Add('  TTypeInfoDynArray = class external name ''rtl.tTypeInfoDynArray''(TTypeInfo) end;');
   Add('  TProc = procedure;');
-  Add('  TTypeInfoProcVar = class external name ''rtl.tTypeInfoProcVar''(TTypeInfo) end;');
   Add('  TMethod = procedure of object;');
-  Add('  TTypeInfoMethodVar = class external name ''rtl.tTypeInfoMethodVar''(TTypeInfoProcVar) end;');
   Add('var');
   Add('  StaticArray: TStaticArr;');
   Add('  tiStaticArray: TTypeInfoStaticArray;');
@@ -28799,18 +29184,13 @@ end;
 procedure TTestModule.TestRTTI_TypeInfo_ExtTypeInfoClasses3;
 begin
   Converter.Options:=Converter.Options-[coNoTypeInfo];
-  StartProgram(false);
+  StartProgram(true,[supTypeInfo]);
   Add('{$modeswitch externalclass}');
   Add('type');
-  Add('  TTypeInfo = class external name ''rtl.tTypeInfo'' end;');
   Add('  TRec = record end;');
-  Add('  TTypeInfoRecord = class external name ''rtl.tTypeInfoRecord''(TTypeInfo) end;');
   // ToDo: ^PRec
   Add('  TObject = class end;');
-  Add('  TTypeInfoClass = class external name ''rtl.tTypeInfoClass''(TTypeInfo) end;');
   Add('  TClass = class of tobject;');
-  Add('  TTypeInfoClassRef = class external name ''rtl.tTypeInfoClassRef''(TTypeInfo) end;');
-  Add('  TTypeInfoPointer = class external name ''rtl.tTypeInfoPointer''(TTypeInfo) end;');
   Add('var');
   Add('  Rec: trec;');
   Add('  tiRecord: ttypeinforecord;');
@@ -28869,7 +29249,7 @@ end;
 procedure TTestModule.TestRTTI_TypeInfo_FunctionClassType;
 begin
   Converter.Options:=Converter.Options-[coNoTypeInfo];
-  StartProgram(false);
+  StartProgram(true,[supTypeInfo]);
   Add([
   '{$modeswitch externalclass}',
   'type',
@@ -28878,8 +29258,6 @@ begin
   '    function MyClass: TClass;',
   '    class function ClassType: TClass;',
   '  end;',
-  '  TTypeInfo = class external name ''rtl.tTypeInfo'' end;',
-  '  TTypeInfoClass = class external name ''rtl.tTypeInfoClass''(TTypeInfo) end;',
   'function TObject.MyClass: TClass;',
   'var t: TTypeInfoClass;',
   'begin',
@@ -29022,7 +29400,7 @@ end;
 procedure TTestModule.TestRTTI_Interface_Corba;
 begin
   Converter.Options:=Converter.Options-[coNoTypeInfo];
-  StartProgram(false);
+  StartProgram(true,[supTypeInfo]);
   Add([
   '{$interfaces corba}',
   '{$modeswitch externalclass}',
@@ -29034,8 +29412,6 @@ begin
   '    procedure SetItem(Value: longint);',
   '    property Item: longint read GetItem write SetItem;',
   '  end;',
-  '  TTypeInfo = class external name ''rtl.tTypeInfo'' end;',
-  '  TTypeInfoInterface = class external name ''rtl.tTypeInfoInterface''(TTypeInfo) end;',
   'procedure DoIt(t: TTypeInfoInterface); begin end;',
   'var',
   '  i: IBird;',
@@ -29087,7 +29463,7 @@ end;
 procedure TTestModule.TestRTTI_Interface_COM;
 begin
   Converter.Options:=Converter.Options-[coNoTypeInfo];
-  StartProgram(false);
+  StartProgram(true,[supTypeInfo]);
   Add([
   '{$interfaces com}',
   '{$modeswitch externalclass}',
@@ -29104,8 +29480,6 @@ begin
   '    procedure SetItem(Value: longint);',
   '    property Item: longint read GetItem write SetItem;',
   '  end;',
-  '  TTypeInfo = class external name ''rtl.tTypeInfo'' end;',
-  '  TTypeInfoInterface = class external name ''rtl.tTypeInfoInterface''(TTypeInfo) end;',
   'var',
   '  i: IBird;',
   '  t: TTypeInfoInterface;',
@@ -29164,7 +29538,7 @@ end;
 procedure TTestModule.TestRTTI_ClassHelper;
 begin
   Converter.Options:=Converter.Options-[coNoTypeInfo];
-  StartProgram(false);
+  StartProgram(true,[supTypeInfo]);
   Add([
   '{$interfaces com}',
   '{$modeswitch externalclass}',
@@ -29176,8 +29550,6 @@ begin
   '    function GetItem: longint;',
   '    property Item: longint read GetItem;',
   '  end;',
-  '  TTypeInfo = class external name ''rtl.tTypeInfo'' end;',
-  '  TTypeInfoHelper = class external name ''rtl.tTypeInfoHelper''(TTypeInfo) end;',
   'function THelper.GetItem: longint;',
   'begin',
   'end;',
@@ -29208,6 +29580,40 @@ begin
     '']),
     LinesToStr([ // $mod.$main
     '$mod.t = $mod.$rtti["THelper"];',
+    '']));
+end;
+
+procedure TTestModule.TestRTTI_ExternalClass;
+begin
+  Converter.Options:=Converter.Options-[coNoTypeInfo];
+  StartProgram(true,[supTypeInfo]);
+  Add([
+  '{$modeswitch externalclass}',
+  'type',
+  '  TJSObject = class external name ''Object''',
+  '  end;',
+  '  TJSArray = class external name ''Array'' (TJSObject)',
+  '  end;',
+  'var',
+  '  p: Pointer;',
+  '  tc: TTypeInfoExtClass;',
+  'begin',
+  '  p:=typeinfo(TJSArray);']);
+  ConvertProgram;
+  CheckSource('TestRTTI_ExternalClass',
+    LinesToStr([ // statements
+    '$mod.$rtti.$ExtClass("TJSObject", {',
+    '  jsclass: "Object"',
+    '});',
+    '$mod.$rtti.$ExtClass("TJSArray", {',
+    '  ancestor: $mod.$rtti["TJSObject"],',
+    '  jsclass: "Array"',
+    '});',
+    'this.p = null;',
+    'this.tc = null;',
+    '']),
+    LinesToStr([ // $mod.$main
+    '$mod.p = $mod.$rtti["TJSArray"];',
     '']));
 end;
 
@@ -29504,7 +29910,6 @@ begin
   'constructor THelper.Create(Id: word); begin end;',
   'begin',
   '  if typeinfo(TMyInt)=nil then ;']);
-  //SetExpectedConverterError('aaa',123);
   ConvertProgram;
 end;
 

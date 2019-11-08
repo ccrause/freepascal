@@ -2506,7 +2506,10 @@ function(){
     <div class="section">
     <h2 id="varargs">The procedure modifier varargs</h2>
     Appending the <b>varargs</b> modifier to a procedure allows to pass arbitrary
-    more parameters to a function. To access these non typed arguments use
+    more parameters to a function. By default these parameters are untyped, i.e.
+    any type fits. Alternatively you can use <b>varargs of aType</b> to allow
+    only specific types.<br>
+    To access these arguments use
     either <i>JSArguments</i> from unit JS or an <i>asm..end</i> block.
     <table class="sample">
       <tbody>
@@ -2691,10 +2694,15 @@ function(){
     An external class is not a TObject and has none of its methods.<br>
     All members are external. If you omit the <i>external</i> modifier the
     external name is the member name. Keep in mind that JS is case sensitive.<br>
-    Destructors are not allowed.<br>
-    Constructors are only allowed with the name <i>New</i> and a call
-    translates to <i>new ExtClass(params)</i>.
     Properties work the same as with Pascal classes, i.e. are replaced by Getter/Setter.<br>
+    Destructors are not allowed.<br>
+    Constructors are supported in four ways:
+    <ul>
+      <li><i>constructor New</i> is translated to <i>new ExtClass(params)</i>.</li>
+      <li><i>constructor New; external name ''GlobalFunc''</i> is translated to <i>new GlobalFunc(params)</i>.</li>
+      <li><i>constructor SomeName; external name <i>'{}'</i> is translated to <i>{}</i>.</li>
+      <li>Otherwise it is translated to <i>new ExtClass.FuncName(params)</i>.</li>
+    </ul>
 
     <table class="sample">
       <tbody>
@@ -2762,7 +2770,8 @@ End.
       <li>You can typecast function addresses and function references to JS
       function, e.g. <i>TJSFunction(@SomeProc)</i>, <i>TJSFunction(OnClick)</i>.
       Keep in mind that typecasting a method address creates a function wrapper
-      to bind the Self argument.</li>
+      to bind the Self argument, except when typecasting to <i>TJSFunction</i>
+      (pas2js 1.5+).</li>
     </ul>
     </div>
 
@@ -3009,6 +3018,7 @@ End.
     <li>{$mode delphi} or {$mode objfpc}: Same as -Mdelphi or -Mobjfpc, but only for this unit. You can use units of both modes in a program. If present must be at the top of the unit, or after the module name.</li>
     <li>{$modeswitch externalclass}: allow declaring external classes</li>
     <li>{$modeswitch arrayoperators}: allow + operator to concatenate arrays, default in mode delphi</li>
+    <li>{$modeswitch OmitRTTI}: treat published sections as public</li>
     <li>{$macro on|off} enables macro replacements. Only macros with a value are replaced. Macros are never replaced inside directives.</li>
     <li>{$I filename} or {$include filename} - insert include file</li>
     <li>{$I %param%}:
@@ -3072,6 +3082,8 @@ End.
         <li>Check type casts, e.g. <i>TBird(AnObject)</i> becomes <i>AnObject as TBird</i></li>
       </ul>
     </li>
+    <li>{$DispatchField Msg}: enable checking <i>message number</i> methods for record field name "Msg"</li>
+    <li>{$DispatchStrField MsgStr}: enable checking <i>message string</i> methods for record field name "Msg"</li>
     </ul>
     Defines:
     <ul>
