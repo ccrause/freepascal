@@ -1936,7 +1936,13 @@ implementation
 
   function thlcgobj.get_call_result_cgpara(pd: tabstractprocdef; forceresdef: tdef): tcgpara;
     begin
-      if not assigned(forceresdef) then
+      if pd.generate_safecall_wrapper then
+        begin
+          if assigned(forceresdef) then
+            internalerror(2019112403);
+          result:=paramanager.get_safecallresult_funcretloc(pd,callerside)
+        end
+      else if not assigned(forceresdef) then
         begin
           pd.init_paraloc_info(callerside);
           result:=pd.funcretloc[callerside];
@@ -3290,7 +3296,7 @@ implementation
          current_asmdata.getjumplabel(oklabel);
          a_cmp_const_reg_label(list,selftype,OC_NE,0,reg,oklabel);
          cgpara1.init;
-         paramanager.getintparaloc(list,pd,1,cgpara1);
+         paramanager.getcgtempparaloc(list,pd,1,cgpara1);
          a_load_const_cgpara(list,s32inttype,aint(210),cgpara1);
          paramanager.freecgpara(list,cgpara1);
          g_call_system_proc(list,pd,[@cgpara1],nil).resetiftemp;
@@ -3323,9 +3329,9 @@ implementation
       cgpara1.init;
       cgpara2.init;
       cgpara3.init;
-      paramanager.getintparaloc(list,pd,1,cgpara1);
-      paramanager.getintparaloc(list,pd,2,cgpara2);
-      paramanager.getintparaloc(list,pd,3,cgpara3);
+      paramanager.getcgtempparaloc(list,pd,1,cgpara1);
+      paramanager.getcgtempparaloc(list,pd,2,cgpara2);
+      paramanager.getcgtempparaloc(list,pd,3,cgpara3);
       if pd.is_pushleftright then
         begin
           a_loadaddr_ref_cgpara(list,strdef,dest,cgpara1);
@@ -3355,8 +3361,8 @@ implementation
       pd:=search_system_proc('fpc_variant_copy_overwrite');
       cgpara1.init;
       cgpara2.init;
-      paramanager.getintparaloc(list,pd,1,cgpara1);
-      paramanager.getintparaloc(list,pd,2,cgpara2);
+      paramanager.getcgtempparaloc(list,pd,1,cgpara1);
+      paramanager.getcgtempparaloc(list,pd,2,cgpara2);
       if pd.is_pushleftright then
         begin
           a_loadaddr_ref_cgpara(list,vardef,source,cgpara1);
@@ -3399,7 +3405,7 @@ implementation
        if incrfunc<>'' then
         begin
           pd:=search_system_proc(incrfunc);
-          paramanager.getintparaloc(list,pd,1,cgpara1);
+          paramanager.getcgtempparaloc(list,pd,1,cgpara1);
           { widestrings aren't ref. counted on all platforms so we need the address
             to create a real copy }
           if is_widestring(t) then
@@ -3413,8 +3419,8 @@ implementation
        else
         begin
           pd:=search_system_proc('fpc_addref');
-          paramanager.getintparaloc(list,pd,1,cgpara1);
-          paramanager.getintparaloc(list,pd,2,cgpara2);
+          paramanager.getcgtempparaloc(list,pd,1,cgpara1);
+          paramanager.getcgtempparaloc(list,pd,2,cgpara2);
           if is_open_array(t) then
             InternalError(201103054);
           reference_reset_symbol(href,RTTIWriter.get_rtti_label(t,initrtti,def_needs_indirect(t)),0,sizeof(pint),[]);
@@ -3453,7 +3459,7 @@ implementation
        else if t.typ=variantdef then
          begin
            pd:=search_system_proc('fpc_variant_init');
-           paramanager.getintparaloc(list,pd,1,cgpara1);
+           paramanager.getcgtempparaloc(list,pd,1,cgpara1);
            a_loadaddr_ref_cgpara(list,t,ref,cgpara1);
            paramanager.freecgpara(list,cgpara1);
           g_call_system_proc(list,pd,[@cgpara1],nil).resetiftemp;
@@ -3463,8 +3469,8 @@ implementation
             if is_open_array(t) then
               InternalError(201103052);
             pd:=search_system_proc('fpc_initialize');
-            paramanager.getintparaloc(list,pd,1,cgpara1);
-            paramanager.getintparaloc(list,pd,2,cgpara2);
+            paramanager.getcgtempparaloc(list,pd,1,cgpara1);
+            paramanager.getcgtempparaloc(list,pd,2,cgpara2);
             reference_reset_symbol(href,RTTIWriter.get_rtti_label(t,initrtti,def_needs_indirect(t)),0,sizeof(pint),[]);
             if pd.is_pushleftright then
               begin
@@ -3513,8 +3519,8 @@ implementation
             pd:=search_system_proc('fpc_dynarray_clear')
           else
             pd:=search_system_proc('fpc_finalize');
-          paramanager.getintparaloc(list,pd,1,cgpara1);
-          paramanager.getintparaloc(list,pd,2,cgpara2);
+          paramanager.getcgtempparaloc(list,pd,1,cgpara1);
+          paramanager.getcgtempparaloc(list,pd,2,cgpara2);
           reference_reset_symbol(href,RTTIWriter.get_rtti_label(t,initrtti,def_needs_indirect(t)),0,sizeof(pint),[]);
           if pd.is_pushleftright then
             begin
@@ -3535,7 +3541,7 @@ implementation
         end;
       pd:=search_system_proc(decrfunc);
       cgpara1.init;
-      paramanager.getintparaloc(list,pd,1,cgpara1);
+      paramanager.getcgtempparaloc(list,pd,1,cgpara1);
       a_loadaddr_ref_cgpara(list,t,ref,cgpara1);
       paramanager.freecgpara(list,cgpara1);
       g_call_system_proc(list,pd,[@cgpara1],nil).resetiftemp;
@@ -3553,9 +3559,9 @@ implementation
       cgpara2.init;
       cgpara3.init;
       pd:=search_system_proc(name);
-      paramanager.getintparaloc(list,pd,1,cgpara1);
-      paramanager.getintparaloc(list,pd,2,cgpara2);
-      paramanager.getintparaloc(list,pd,3,cgpara3);
+      paramanager.getcgtempparaloc(list,pd,1,cgpara1);
+      paramanager.getcgtempparaloc(list,pd,2,cgpara2);
+      paramanager.getcgtempparaloc(list,pd,3,cgpara3);
 
       reference_reset_symbol(href,RTTIWriter.get_rtti_label(t,initrtti,def_needs_indirect(t)),0,sizeof(pint),[]);
       { if calling convention is left to right, push parameters 1 and 2 }
@@ -3851,7 +3857,7 @@ implementation
       { do getmem call }
       pd:=search_system_proc('fpc_getmem');
       cgpara1.init;
-      paramanager.getintparaloc(list,pd,1,cgpara1);
+      paramanager.getcgtempparaloc(list,pd,1,cgpara1);
       a_load_reg_cgpara(list,sinttype,sizereg,cgpara1);
       paramanager.freecgpara(list,cgpara1);
       getmemres:=g_call_system_proc(list,pd,[@cgpara1],ptrarrdef);
@@ -3866,9 +3872,9 @@ implementation
       cgpara1.init;
       cgpara2.init;
       cgpara3.init;
-      paramanager.getintparaloc(list,pd,1,cgpara1);
-      paramanager.getintparaloc(list,pd,2,cgpara2);
-      paramanager.getintparaloc(list,pd,3,cgpara3);
+      paramanager.getcgtempparaloc(list,pd,1,cgpara1);
+      paramanager.getcgtempparaloc(list,pd,2,cgpara2);
+      paramanager.getcgtempparaloc(list,pd,3,cgpara3);
       if pd.is_pushleftright then
         begin
           { load source }
@@ -3905,7 +3911,7 @@ implementation
       { do freemem call }
       pd:=search_system_proc('fpc_freemem');
       cgpara1.init;
-      paramanager.getintparaloc(list,pd,1,cgpara1);
+      paramanager.getcgtempparaloc(list,pd,1,cgpara1);
       { load source }
       a_load_loc_cgpara(list,cpointerdef.getreusable(arrdef),l,cgpara1);
       paramanager.freecgpara(list,cgpara1);
@@ -4755,11 +4761,12 @@ implementation
        begin
          { initialize units }
          if not(current_module.islibrary) then
-{$ifdef AVR}
-           cg.a_call_name(list,'FPC_INIT_FUNC_TABLE',false)
-{$else AVR}
-           g_call_system_proc(list,'fpc_initializeunits',[],nil).resetiftemp
-{$endif AVR}
+           begin
+             if tf_init_final_units_by_calls in target_info.flags then
+               cg.a_call_name(list,'FPC_INIT_FUNC_TABLE',false)
+             else
+               g_call_system_proc(list,'fpc_initializeunits',[],nil).resetiftemp;
+           end
          else
            g_call_system_proc(list,'fpc_libinitializeunits',[],nil).resetiftemp;
        end;
@@ -5205,8 +5212,17 @@ implementation
     end;
 
   procedure thlcgobj.gen_load_loc_function_result(list: TAsmList; vardef: tdef; const l: tlocation);
+    var
+      safecallretpara: tcgpara;
     begin
-      gen_load_loc_cgpara(list,vardef,l,current_procinfo.procdef.funcretloc[calleeside]);
+      if not current_procinfo.procdef.generate_safecall_wrapper then
+        gen_load_loc_cgpara(list,vardef,l,current_procinfo.procdef.funcretloc[calleeside])
+      else
+        begin
+          safecallretpara:=paramanager.get_safecallresult_funcretloc(current_procinfo.procdef,calleeside);
+          gen_load_loc_cgpara(list,vardef,l,safecallretpara);
+          safecallretpara.resetiftemp;
+        end;
     end;
 
   procedure thlcgobj.gen_load_loc_cgpara(list: TAsmList; vardef: tdef; const l: tlocation; const cgpara: tcgpara);
@@ -5307,27 +5323,39 @@ implementation
       retdef : tdef;
     begin
       { Is the loading needed? }
-      if is_void(current_procinfo.procdef.returndef) or
+      if (is_void(current_procinfo.procdef.returndef) and
+          not current_procinfo.procdef.generate_safecall_wrapper) or
          (
           (po_assembler in current_procinfo.procdef.procoptions) and
-          (not(assigned(current_procinfo.procdef.funcretsym)) or
+          (current_procinfo.procdef.generate_safecall_wrapper or
+           not assigned(current_procinfo.procdef.funcretsym) or
            (tabstractvarsym(current_procinfo.procdef.funcretsym).refs=0) or
-           (po_nostackframe in current_procinfo.procdef.procoptions))
+           (po_nostackframe in current_procinfo.procdef.procoptions)
+          )
          ) then
         exit;
 
       { constructors return self }
-      if not current_procinfo.procdef.getfuncretsyminfo(ressym,retdef) then
-        internalerror(2018122501);
-      if (ressym.refs>0) or
-         is_managed_type(retdef) then
+      if current_procinfo.procdef.generate_safecall_wrapper then
         begin
-          { was: don't do anything if funcretloc.loc in [LOC_INVALID,LOC_REFERENCE] }
-          if not paramanager.ret_in_param(current_procinfo.procdef.returndef,current_procinfo.procdef) then
-            gen_load_loc_function_result(list,retdef,tabstractnormalvarsym(ressym).localloc);
+          if not current_procinfo.procdef.get_safecall_funcretsym_info(ressym,retdef) then
+            internalerror(2019112402);
+          gen_load_loc_function_result(list,retdef,tabstractnormalvarsym(ressym).localloc);
         end
       else
-        gen_load_uninitialized_function_result(list,current_procinfo.procdef,retdef,current_procinfo.procdef.funcretloc[calleeside]);
+        begin
+          if not current_procinfo.procdef.get_funcretsym_info(ressym,retdef) then
+            internalerror(2018122501);
+          if (ressym.refs>0) or
+             is_managed_type(retdef) then
+            begin
+              { was: don't do anything if funcretloc.loc in [LOC_INVALID,LOC_REFERENCE] }
+              if not paramanager.ret_in_param(current_procinfo.procdef.returndef,current_procinfo.procdef) then
+                gen_load_loc_function_result(list,retdef,tabstractnormalvarsym(ressym).localloc);
+            end
+          else
+            gen_load_uninitialized_function_result(list,current_procinfo.procdef,retdef,current_procinfo.procdef.funcretloc[calleeside]);
+        end;
       if tabstractnormalvarsym(ressym).localloc.loc=LOC_REFERENCE then
         tg.UnGetLocal(list,tabstractnormalvarsym(ressym).localloc.reference);
     end;
@@ -5339,7 +5367,7 @@ implementation
     begin
       pd:=search_system_proc('fpc_stackcheck');
       paraloc1.init;
-      paramanager.getintparaloc(current_asmdata.CurrAsmList,pd,1,paraloc1);
+      paramanager.getcgtempparaloc(current_asmdata.CurrAsmList,pd,1,paraloc1);
       hlcg.a_load_const_cgpara(list,paraloc1.def,current_procinfo.calc_stackframe_size,paraloc1);
       paramanager.freecgpara(list,paraloc1);
       paraloc1.done;
@@ -5354,7 +5382,7 @@ implementation
       paraloc1.init;
       { The parameter to fpc_stackcheck is loaded seperately via
         gen_stack_check_size_para() }
-      paramanager.getintparaloc(list,pd,1,paraloc1);
+      paramanager.getcgtempparaloc(list,pd,1,paraloc1);
       paramanager.freecgpara(list,paraloc1);
       { Call the helper }
       g_call_system_proc(list,pd,[@paraloc1],nil).resetiftemp;

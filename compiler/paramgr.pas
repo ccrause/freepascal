@@ -94,7 +94,9 @@ unit paramgr;
           function get_saved_registers_fpu(calloption : tproccalloption):tcpuregisterarray;virtual;
           function get_saved_registers_mm(calloption : tproccalloption):tcpuregisterarray;virtual;
 
-          procedure getintparaloc(list: TAsmList; pd: tabstractprocdef; nr : longint; var cgpara: tcgpara);virtual;
+          { \brief Get a parameter location for calling a procdef directly instead of via a call node }
+          { \returns parameter location in \c cgpara for parameter \c nr of \c pd }
+          procedure getcgtempparaloc(list: TAsmList; pd: tabstractprocdef; nr : longint; var cgpara: tcgpara);virtual;
 
           {# allocate an individual pcgparalocation that's part of a tcgpara
 
@@ -128,6 +130,7 @@ unit paramgr;
             forces the function result to something different than the real
             result.  }
           function  get_funcretloc(p : tabstractprocdef; side: tcallercallee; forcetempdef: tdef): tcgpara;virtual;abstract;
+          function  get_safecallresult_funcretloc(p : tabstractprocdef; side: tcallercallee): tcgpara; virtual;
           procedure create_funcretloc_info(p : tabstractprocdef; side: tcallercallee);
 
           { This is used to populate the location information on all parameters
@@ -441,6 +444,27 @@ implementation
       end;
 
 
+    function tparamanager.get_safecallresult_funcretloc(p: tabstractprocdef; side: tcallercallee): tcgpara;
+      var
+        paraloc: pcgparalocation;
+      begin
+        result.init;
+        result.def:=ossinttype;
+        result.intsize:=result.def.size;
+        result.size:=def_cgsize(result.def);
+        result.alignment:=result.def.alignment;
+        paraloc:=result.add_location;
+        paraloc^.size:=result.size;
+        paraloc^.def:=result.def;
+        paraloc^.loc:=LOC_REGISTER;
+        if side=callerside then
+          paraloc^.register:=NR_FUNCTION_RESULT_REG
+        else
+          paraloc^.register:=NR_FUNCTION_RETURN_REG;
+        result.Temporary:=true;;
+      end;
+
+
     function tparamanager.is_stack_paraloc(paraloc: pcgparalocation): boolean;
       begin
         result:=
@@ -724,7 +748,7 @@ implementation
       end;
 
 
-    procedure tparamanager.getintparaloc(list: TAsmList; pd: tabstractprocdef; nr : longint; var cgpara: tcgpara);
+    procedure tparamanager.getcgtempparaloc(list: TAsmList; pd: tabstractprocdef; nr : longint; var cgpara: tcgpara);
       begin
         if (nr<1) or (nr>pd.paras.count) then
           InternalError(2013060101);

@@ -275,7 +275,7 @@ implementation
       begin
         { allow passing of a constant to a const formaldef }
         if (parasym.varspez=vs_const) and
-           (left.location.loc in [LOC_CONSTANT,LOC_REGISTER]) then
+           not(left.location.loc in [LOC_CREFERENCE,LOC_REFERENCE]) then
           hlcg.location_force_mem(current_asmdata.CurrAsmList,left.location,left.resultdef);
         push_addr_para;
       end;
@@ -929,9 +929,8 @@ implementation
         sym : tasmsymbol;
         vmtoffset : aint;
 {$endif vtentry}
-{$ifdef SUPPORT_SAFECALL}
         cgpara : tcgpara;
-{$endif}
+        tmploc: tlocation;
       begin
          if not assigned(procdefinition) or
             not(procdefinition.has_paraloc_info in [callerside,callbothsides]) then
@@ -1207,7 +1206,7 @@ implementation
            This does not apply to interrupt procedures, their ret statment never clears any stack parameters }
          else if paramanager.use_fixed_stack and
                  not(po_interrupt in procdefinition.procoptions) and
-                 (target_info.abi=abi_linux386_sysv) then
+                 (target_info.abi=abi_i386_dynalignedstack) then
            begin
              { however, a delphi style frame pointer for a nested subroutine
                is not cleared by the callee, so we have to compensate for this
@@ -1263,19 +1262,21 @@ implementation
            cg.dealloccpuregisters(current_asmdata.CurrAsmList,R_ADDRESSREGISTER,regs_to_save_address);
          cg.dealloccpuregisters(current_asmdata.CurrAsmList,R_INTREGISTER,regs_to_save_int);
 
-{$ifdef SUPPORT_SAFECALL}
-         if (procdefinition.proccalloption=pocall_safecall) and
-            (tf_safecall_exceptions in target_info.flags) then
+         if procdefinition.generate_safecall_wrapper then
            begin
              pd:=search_system_proc('fpc_safecallcheck');
              cgpara.init;
-             paramanager.getintparaloc(current_asmdata.CurrAsmList,pd,1,cgpara);
-             cg.a_load_reg_cgpara(current_asmdata.CurrAsmList,OS_INT,NR_FUNCTION_RESULT_REG,cgpara);
+             { fpc_safecallcheck returns its parameter value (= function result of function we just called) }
+             paramanager.getcgtempparaloc(current_asmdata.CurrAsmList,pd,1,cgpara);
+             location_reset(tmploc,LOC_REGISTER,def_cgsize(retloc.Def));
+             tmploc.register:=hlcg.getregisterfordef(current_asmdata.CurrAsmList,retloc.Def);
+             hlcg.gen_load_cgpara_loc(current_asmdata.CurrAsmList,retloc.Def,retloc,tmploc,true);
              paramanager.freecgpara(current_asmdata.CurrAsmList,cgpara);
-             cg.g_call(current_asmdata.CurrAsmList,'FPC_SAFECALLCHECK');
+             hlcg.a_load_loc_cgpara(current_asmdata.CurrAsmList,retloc.Def,tmploc,cgpara);
+             retloc.resetiftemp;
+             retloc:=hlcg.g_call_system_proc(current_asmdata.CurrAsmList,pd,[@cgpara],nil);
              cgpara.done;
            end;
-{$endif}
 
          { handle function results }
          if (not is_void(resultdef)) then

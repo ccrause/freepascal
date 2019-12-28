@@ -518,7 +518,11 @@ implementation
     procedure trealconstnode.printnodedata(var t: text);
       begin
         inherited printnodedata(t);
-        writeln(t,printnodeindention,'value = ',value_real);
+        write(t,printnodeindention,'value = ',value_real);
+        if is_currency(resultdef) then
+          writeln(', value_currency = ',value_currency)
+        else
+          writeln;
       end;
 
     function trealconstnode.emit_data(tcb:ttai_typedconstbuilder):sizeint;
@@ -619,7 +623,7 @@ implementation
         { only do range checking when explicitly asked for it
           and if the type can be range checked, see tests/tbs/tb0539.pp }
         if (resultdef.typ in [orddef,enumdef]) then
-          adaptrange(resultdef,value,nf_internal in flags, not rangecheck)
+          adaptrange(resultdef,value,nf_internal in flags,not rangecheck,rangecheck)
       end;
 
     function tordconstnode.pass_1 : tnode;
@@ -1063,7 +1067,10 @@ implementation
                       if (cp2=CP_UTF8) then
                         begin
                           if not cpavailable(cp1) then
-                            Message1(option_code_page_not_available,IntToStr(cp1));
+                            begin
+                              Message1(option_code_page_not_available,IntToStr(cp1));
+                              exit;
+                            end;
                           initwidestring(pw);
                           setlengthwidestring(pw,len);
                           { returns room for terminating 0 }
@@ -1082,7 +1089,10 @@ implementation
                       if (cp1=CP_UTF8) then
                         begin
                           if not cpavailable(cp2) then
-                            Message1(option_code_page_not_available,IntToStr(cp2));
+                            begin
+                              Message1(option_code_page_not_available,IntToStr(cp2));
+                              exit;
+                            end;
                           initwidestring(pw);
                           setlengthwidestring(pw,len);
                           ascii2unicode(value_str,len,cp2,pw);

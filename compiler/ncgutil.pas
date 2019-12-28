@@ -767,9 +767,8 @@ implementation
             parasize:=0;
             { For safecall functions with safecall-exceptions enabled the funcret is always returned as a para
               which is considered a normal para on the c-side, so the funcret has to be pop'ed normally. }
-            if not ( (current_procinfo.procdef.proccalloption=pocall_safecall) and
-                     (tf_safecall_exceptions in target_info.flags) ) and
-                   paramanager.ret_in_param(current_procinfo.procdef.returndef,current_procinfo.procdef) then
+            if not current_procinfo.procdef.generate_safecall_wrapper and
+               paramanager.ret_in_param(current_procinfo.procdef.returndef,current_procinfo.procdef) then
               inc(parasize,sizeof(pint));
           end
         else
@@ -777,7 +776,7 @@ implementation
             parasize:=current_procinfo.para_stack_size;
             { the parent frame pointer para has to be removed always by the caller in
               case of Delphi-style parent frame pointer passing }
-            if (not(paramanager.use_fixed_stack) or (target_info.abi=abi_linux386_sysv)) and
+            if (not(paramanager.use_fixed_stack) or (target_info.abi=abi_i386_dynalignedstack)) and
                (po_delphi_nested_cc in current_procinfo.procdef.procoptions) then
               dec(parasize,sizeof(pint));
           end;

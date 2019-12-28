@@ -793,7 +793,7 @@ implementation
             enum_get_params:=ccallparanode.create(expr.getcopy,nil);
             enum_get:=ccallnode.create(enum_get_params, tprocsym(enumerator_get.procsym), nil, nil, [],nil);
             tcallnode(enum_get).procdefinition:=enumerator_get;
-            addsymref(enumerator_get.procsym);
+            addsymref(enumerator_get.procsym,enumerator_get);
           end
         else
           enum_get:=ccallnode.create(nil, tprocsym(enumerator_get.procsym), enumerator_get.owner, expr.getcopy, [],nil);
@@ -1946,7 +1946,7 @@ implementation
           gets inserted before the exit label to which this node will jump }
         if (target_info.system in systems_fpnestedstruct) and
            not(nf_internal in flags) and
-           current_procinfo.procdef.getfuncretsyminfo(ressym,resdef) and
+           current_procinfo.procdef.get_funcretsym_info(ressym,resdef) and
            (tabstractnormalvarsym(ressym).inparentfpstruct) then
           begin
             if not assigned(result) then
@@ -2162,8 +2162,11 @@ implementation
           end;
 
         p.labelsym:=labelsym;
+        { do not copy the label node here as we do not know if the label node is part of the tree or not,
+          this will be fixed after the copying in node.setuplabelnode: if the labelnode has copiedto set,
+          labelnode of the goto node is update }
         if assigned(labelnode) then
-          p.labelnode:=tlabelnode(labelnode.dogetcopy)
+          p.labelnode:=labelnode
         else
           begin
             { don't trigger IE when there was already an error, i.e. the
