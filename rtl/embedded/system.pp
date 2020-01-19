@@ -30,7 +30,7 @@ Unit System;
 
   meanwhile, the avr compiler can deal with them (FK) }
 {$ifdef CPUAVR}
-{ $define EXCLUDE_COMPLEX_PROCS}
+{$define EXCLUDE_COMPLEX_PROCS}
 {$endif CPUAVR}
 
 { $define USE_NOTHREADMANAGER}
