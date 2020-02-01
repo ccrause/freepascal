@@ -109,8 +109,10 @@ Procedure FindClose(Var f: SearchRec);
 Procedure GetFAttr(var f; var attr: word);
 Procedure GetFTime(var f; var time: longint);
 Function  FSearch(path: pathstr; dirlist: string): pathstr;
+{$ifdef FPC_HAS_FEATURE_FILEIO}
 Function  FExpand(const path: pathstr): pathstr;
 Procedure FSplit(path: pathstr; var dir: dirstr; var name: namestr; var ext: extstr);
+{$endif FPC_HAS_FEATURE_FILEIO}
 function  GetShortName(var p : String) : boolean;
 function  GetLongName(var p : String) : boolean;
 

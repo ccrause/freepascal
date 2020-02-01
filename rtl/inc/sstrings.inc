@@ -683,6 +683,7 @@ end;
 { also define alias for internal use in the system unit }
 procedure fpc_shortstr_bool(b : boolean;len:sizeint;out s:shortstring);external {$ifndef cpujvm}name 'FPC_SHORTSTR_BOOL'{$endif};
 
+{$ifndef CPUAVR_16_REGS}
 procedure fpc_shortstr_currency({$ifdef cpujvm}constref{$endif} c : currency; len,f : SizeInt; out s : shortstring);[public,alias:'FPC_SHORTSTR_CURRENCY']; compilerproc;
 const
   MinLen = 8; { Minimal string length in scientific format }
@@ -861,6 +862,7 @@ begin
       Dec(j);
     end;
 end;
+{$endif CPUAVR_16_REGS}
 
 {
    Array Of Char Str() helpers
@@ -1327,6 +1329,9 @@ end;
   const maxqword=qword($ffffffffffffffff);
 
   begin
+{$ifdef EXCLUDE_COMPLEX_PROCS}
+    runerror(219);
+{$else EXCLUDE_COMPLEX_PROCS}
     fpc_val_qword_shortstr:=0;
     Code:=InitVal(s,negative,base);
     If Negative or (Code>length(s)) Then
@@ -1357,6 +1362,7 @@ end;
        inc(code);
      end;
     code := 0;
+{$endif EXCLUDE_COMPLEX_PROCS}
   end;
 
 {$endif CPU64}

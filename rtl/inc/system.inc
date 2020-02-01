@@ -392,6 +392,7 @@ Begin
   Swap:=(X shl 16) + (X shr 16);
 End;
 
+{$ifndef CPUAVR_16_REGS}
 Function Swap (X : QWord) : QWord;{$ifdef SYSTEMINLINE}inline;{$endif}
 Begin
   Swap:=(X shl 32) + (X shr 32);
@@ -401,6 +402,7 @@ Function Swap (X : Int64) : Int64;{$ifdef SYSTEMINLINE}inline;{$endif}
 Begin
   Swap:=(X shl 32) + (X shr 32);
 End;
+{$endif CPUAVR_16_REGS}
 
 {$ifdef SUPPORT_DOUBLE}
 operator := (b:real48) d:double;{$ifdef SYSTEMINLINE}inline;{$endif}
@@ -427,7 +429,9 @@ end;
 {$I genmath.inc}
 {$endif}
 
+{$ifndef CPUAVR_16_REGS}
 {$i gencurr.inc}
+{$endif CPUAVR_16_REGS}
 
 
 function aligntoptr(p : pointer) : pointer;inline;
@@ -489,8 +493,10 @@ type
 {$i sstrings.inc}
 
 { requires sstrings.inc for initval }
+{$ifndef CPUAVR_16_REGS}
 {$I int64p.inc}
 {$I int64.inc}
+{$endif CPUAVR_16_REGS}
 
 {Requires int64.inc, since that contains the VAL functions for int64 and qword}
 {$ifdef FPC_HAS_FEATURE_ANSISTRINGS}
@@ -1329,6 +1335,7 @@ begin
 end;
 
 
+{$ifdef FPC_HAS_FEATURE_FILEIO}
 Procedure dump_stack(var f : text;fp : Pointer; addr : CodePointer);
 var
   i : Longint;
@@ -1385,6 +1392,7 @@ begin
   end;
 {$endif FPC_HAS_FEATURE_EXCEPTIONS}
 end;
+{$endif FPC_HAS_FEATURE_FILEIO}
 
 
 {$ifdef FPC_HAS_FEATURE_EXCEPTIONS}

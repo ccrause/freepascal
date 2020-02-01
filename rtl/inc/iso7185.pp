@@ -24,16 +24,25 @@ unit iso7185;
     type
       Integer = Longint;
 
+{$ifdef FPC_HAS_FEATURE_TEXTIO}
     Procedure Rewrite(var t : Text);
     Procedure Reset(var t : Text);
+{$endif FPC_HAS_FEATURE_TEXTIO}
+{$ifdef FPC_HAS_FEATURE_FILEIO}
     Procedure Reset(var f : TypedFile);   [INTERNPROC: fpc_in_Reset_TypedFile];
     Procedure Rewrite(var f : TypedFile); [INTERNPROC: fpc_in_Rewrite_TypedFile];
+{$endif FPC_HAS_FEATURE_FILEIO}
 
+{$ifdef FPC_HAS_FEATURE_TEXTIO}
     Procedure Rewrite(var t : Text;const filename : string);
+{$endif FPC_HAS_FEATURE_TEXTIO}
+{$ifdef FPC_HAS_FEATURE_FILEIO}
     Procedure Reset(var t : Text;const filename : string);
     Procedure Reset(var f : TypedFile;const filename : string);   [INTERNPROC: fpc_in_Reset_TypedFile_Name];
     Procedure Rewrite(var f : TypedFile;const filename : string); [INTERNPROC: fpc_in_Rewrite_TypedFile_Name];
+{$endif FPC_HAS_FEATURE_FILEIO}
 
+{$ifdef FPC_HAS_FEATURE_TEXTIO}
     Function Eof(Var t: Text): Boolean;
     Function Eof:Boolean;
     Function Eoln(Var t: Text): Boolean;
@@ -44,13 +53,16 @@ unit iso7185;
 
     Procedure Get(Var t: Text);
     Procedure Put(Var t: Text);
+{$endif FPC_HAS_FEATURE_TEXTIO}
 
+{$ifdef FPC_HAS_FEATURE_FILEIO}
     Procedure Get(Var f: TypedFile);
     Procedure Put(Var f: TypedFile);
     Procedure Seek(var f:TypedFile;Pos:Int64);
     Function FilePos(var f:TypedFile):Int64;
 
     Function Eof(var f:TypedFile): Boolean;
+{$endif FPC_HAS_FEATURE_FILEIO}
 
 {$ifndef FPUNONE}
 {$ifdef FPC_CURRENCY_IS_INT64}
@@ -67,9 +79,12 @@ unit iso7185;
   implementation
 
 
+{$ifdef FPC_HAS_FEATURE_FILEIO}
 {$i isotmp.inc}
- 
+{$endif FPC_HAS_FEATURE_FILEIO}
+
 {$i-}
+{$ifdef FPC_HAS_FEATURE_TEXTIO}
     procedure DoAssign(var t : Text);
 {$ifndef FPC_HAS_FEATURE_RANDOM}
       const
@@ -202,8 +217,10 @@ unit iso7185;
         If TextRec(t).BufPos>=TextRec(t).BufSize Then
           FileFunc(TextRec(t).InOutFunc)(TextRec(t));
       end;
+{$endif FPC_HAS_FEATURE_TEXTIO}
 
 
+{$ifdef FPC_HAS_FEATURE_FILEIO}
     procedure Get(var f:TypedFile);[IOCheck];
       Begin
         if not(eof(f)) then
@@ -248,6 +265,7 @@ unit iso7185;
           (FileRec(f).mode=fmInput) then
           dec(FilePos);
       End;
+{$endif FPC_HAS_FEATURE_FILEIO}
 
 
 {$ifndef FPUNONE}

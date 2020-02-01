@@ -291,6 +291,9 @@ unit charset;
          lastchar, i : longint;
 
       begin
+{$ifndef FPC_HAS_FEATURE_FILEIO}
+        runerror(217);
+{$else}
          lastchar:=-1;
          loadunicodemapping:=nil;
          datasize:=256;
@@ -381,6 +384,7 @@ unit charset;
          p^.map:=data;
          p^.reversemap:=buildreversemap(p^.map,(p^.lastchar+1),p^.reversemaplength);
          loadunicodemapping:=p;
+{$endif FPC_HAS_FEATURE_FILEIO}
       end;
 
 
@@ -395,6 +399,9 @@ unit charset;
       var
         fileName : string;
       begin
+{$ifndef FPC_HAS_FEATURE_FILEIO}
+        runerror(217);
+{$else}
         fileName := directory;
         if (fileName <> '') then begin
           if (fileName[Length(fileName)] <> DirectorySeparator) then
@@ -402,11 +409,17 @@ unit charset;
         end;
         fileName := fileName + cpname + '_' + ENDIAN_SUFFIX + BINARY_MAPPING_FILE_EXT;
         Result := loadbinaryunicodemapping(fileName);
+{$endif FPC_HAS_FEATURE_FILEIO}
       end;
 
     {$PUSH}
       {$I-}
     function loadbinaryunicodemapping(const filename : string) : punicodemap;
+    {$ifndef FPC_HAS_FEATURE_FILEIO}
+      begin
+        runerror(217);
+      end;
+    {$else}
       const
         BLOCK_SIZE = 16*1024;
       var
@@ -449,6 +462,7 @@ unit charset;
         FreeMem(locBuffer,locSize);
         Close(f);
       end;
+{$endif FPC_HAS_FEATURE_FILEIO}
     {$POP}
 
     procedure freemapping(amapping : punicodemap);

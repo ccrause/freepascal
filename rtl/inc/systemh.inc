@@ -860,15 +860,19 @@ Function Swap (X : Word) : Word;{$ifdef SYSTEMINLINE}inline;{$endif}[internconst
 Function Swap (X : Integer) : Integer;{$ifdef SYSTEMINLINE}inline;{$endif}[internconst:fpc_in_const_swap_word];
 Function Swap (X : Longint) : Longint;{$ifdef SYSTEMINLINE}inline;{$endif}[internconst:fpc_in_const_swap_long];
 Function Swap (X : Cardinal) : Cardinal;{$ifdef SYSTEMINLINE}inline;{$endif}[internconst:fpc_in_const_swap_long];
+{$ifndef CPUAVR_16_REGS}
 Function Swap (X : QWord) : QWord;{$ifdef SYSTEMINLINE}inline;{$endif}[internconst:fpc_in_const_swap_qword];
 Function Swap (X : Int64) : Int64;{$ifdef SYSTEMINLINE}inline;{$endif}[internconst:fpc_in_const_swap_qword];
+{$endif CPUAVR_16_REGS}
 
 Function Align (Addr : PtrUInt; Alignment : PtrUInt) : PtrUInt;{$ifdef SYSTEMINLINE}inline;{$endif}
 Function Align (Addr : Pointer; Alignment : PtrUInt) : Pointer;{$ifdef SYSTEMINLINE}inline;{$endif}
 
 {$ifdef FPC_HAS_FEATURE_RANDOM}
 Function  Random(l:longint):longint;
+{$ifndef CPUAVR_16_REGS}
 Function  Random(l:int64):int64;
+{$endif CPUAVR_16_REGS}
 {$ifndef FPUNONE}
 Function  Random: extended;
 {$endif}
@@ -901,7 +905,9 @@ Function Abs(l:Longint):Longint;[internconst:fpc_in_const_abs];{$ifdef SYSTEMINL
 {$define FPC_SYSTEM_HAS_ABS_INT64}
 Function Abs(l:Int64):Int64;[internproc:fpc_in_abs_long];
 {$else FPC_HAS_INTERNAL_ABS_INT64}
+{$ifndef CPUAVR_16_REGS}
 Function Abs(l:Int64):Int64;[internconst:fpc_in_const_abs];{$ifdef SYSTEMINLINE}inline;{$endif}
+{$endif CPUAVR_16_REGS}
 {$endif FPC_HAS_INTERNAL_ABS_INT64}
 {$if defined(CPUINT8)}
 Function Sqr(l:shortint):shortint;[internconst:fpc_in_const_sqr];{$ifdef SYSTEMINLINE}inline;{$endif}
@@ -910,8 +916,10 @@ Function Sqr(l:shortint):shortint;[internconst:fpc_in_const_sqr];{$ifdef SYSTEMI
 Function Sqr(l:smallint):smallint;[internconst:fpc_in_const_sqr];{$ifdef SYSTEMINLINE}inline;{$endif}
 {$endif CPUINT16 or CPUINT8}
 Function Sqr(l:Longint):Longint;[internconst:fpc_in_const_sqr];{$ifdef SYSTEMINLINE}inline;{$endif}
+{$ifndef CPUAVR_16_REGS}
 Function Sqr(l:Int64):Int64;[internconst:fpc_in_const_sqr];{$ifdef SYSTEMINLINE}inline;{$endif}
 Function Sqr(l:QWord):QWord;[internconst:fpc_in_const_sqr];{$ifdef SYSTEMINLINE}inline;{$endif}
+{$endif CPUAVR_16_REGS}
 {$if defined(CPUINT8)}
 Function Odd(l:shortint):Boolean;[internconst:fpc_in_const_odd];{$ifdef SYSTEMINLINE}inline;{$endif}
 Function Odd(l:byte):Boolean;[internconst:fpc_in_const_odd];{$ifdef SYSTEMINLINE}inline;{$endif}
@@ -929,36 +937,46 @@ function SwapEndian(const AValue: SmallInt): SmallInt;{$ifdef SYSTEMINLINE}inlin
 function SwapEndian(const AValue: Word): Word;{$ifdef SYSTEMINLINE}inline;{$endif}
 function SwapEndian(const AValue: LongInt): LongInt;
 function SwapEndian(const AValue: DWord): DWord;
+{$ifndef CPUAVR_16_REGS}
 function SwapEndian(const AValue: Int64): Int64;
 function SwapEndian(const AValue: QWord): QWord;
+{$endif CPUAVR_16_REGS}
 
 function BEtoN(const AValue: SmallInt): SmallInt;{$ifdef SYSTEMINLINE}inline;{$endif}
 function BEtoN(const AValue: Word): Word;{$ifdef SYSTEMINLINE}inline;{$endif}
 function BEtoN(const AValue: LongInt): LongInt;{$ifdef SYSTEMINLINE}inline;{$endif}
 function BEtoN(const AValue: DWord): DWord;{$ifdef SYSTEMINLINE}inline;{$endif}
+{$ifndef CPUAVR_16_REGS}
 function BEtoN(const AValue: Int64): Int64;{$ifdef SYSTEMINLINE}inline;{$endif}
 function BEtoN(const AValue: QWord): QWord;{$ifdef SYSTEMINLINE}inline;{$endif}
+{$endif CPUAVR_16_REGS}
 
 function LEtoN(const AValue: SmallInt): SmallInt;{$ifdef SYSTEMINLINE}inline;{$endif}
 function LEtoN(const AValue: Word): Word;{$ifdef SYSTEMINLINE}inline;{$endif}
 function LEtoN(const AValue: LongInt): LongInt;{$ifdef SYSTEMINLINE}inline;{$endif}
 function LEtoN(const AValue: DWord): DWord;{$ifdef SYSTEMINLINE}inline;{$endif}
+{$ifndef CPUAVR_16_REGS}
 function LEtoN(const AValue: Int64): Int64;{$ifdef SYSTEMINLINE}inline;{$endif}
 function LEtoN(const AValue: QWord): QWord;{$ifdef SYSTEMINLINE}inline;{$endif}
+{$endif CPUAVR_16_REGS}
 
 function NtoBE(const AValue: SmallInt): SmallInt;{$ifdef SYSTEMINLINE}inline;{$endif}
 function NtoBE(const AValue: Word): Word;{$ifdef SYSTEMINLINE}inline;{$endif}
 function NtoBE(const AValue: LongInt): LongInt;{$ifdef SYSTEMINLINE}inline;{$endif}
 function NtoBE(const AValue: DWord): DWord;{$ifdef SYSTEMINLINE}inline;{$endif}
+{$ifndef CPUAVR_16_REGS}
 function NtoBE(const AValue: Int64): Int64;{$ifdef SYSTEMINLINE}inline;{$endif}
 function NtoBE(const AValue: QWord): QWord;{$ifdef SYSTEMINLINE}inline;{$endif}
+{$endif CPUAVR_16_REGS}
 
 function NtoLE(const AValue: SmallInt): SmallInt;{$ifdef SYSTEMINLINE}inline;{$endif}
 function NtoLE(const AValue: Word): Word;{$ifdef SYSTEMINLINE}inline;{$endif}
 function NtoLE(const AValue: LongInt): LongInt;{$ifdef SYSTEMINLINE}inline;{$endif}
 function NtoLE(const AValue: DWord): DWord;{$ifdef SYSTEMINLINE}inline;{$endif}
+{$ifndef CPUAVR_16_REGS}
 function NtoLE(const AValue: Int64): Int64;{$ifdef SYSTEMINLINE}inline;{$endif}
 function NtoLE(const AValue: QWord): QWord;{$ifdef SYSTEMINLINE}inline;{$endif}
+{$endif CPUAVR_16_REGS}
 
 {$ifdef FPC_HAS_INTERNAL_ROX}
 
@@ -1030,11 +1048,13 @@ function RorQWord(Const AValue : QWord;const Dist : Byte): QWord;[internproc:fpc
 function RolQWord(Const AValue : QWord): QWord;[internproc:fpc_in_rol_x];
 function RolQWord(Const AValue : QWord;const Dist : Byte): QWord;[internproc:fpc_in_rol_x_x];
 {$else FPC_HAS_INTERNAL_ROX_QWORD}
+{$ifndef CPUAVR_16_REGS}
 function RorQWord(Const AValue : QWord): QWord;{$ifdef SYSTEMINLINE}inline;{$endif}
 function RorQWord(Const AValue : QWord;const Dist : Byte): QWord;{$ifdef SYSTEMINLINE}inline;{$endif}
 
 function RolQWord(Const AValue : QWord): QWord;{$ifdef SYSTEMINLINE}inline;{$endif}
 function RolQWord(Const AValue : QWord;const Dist : Byte): QWord;{$ifdef SYSTEMINLINE}inline;{$endif}
+{$endif CPUAVR_16_REGS}
 {$endif FPC_HAS_INTERNAL_ROX_QWORD}
 
 {$ifdef FPC_HAS_INTERNAL_SAR}
@@ -1080,7 +1100,9 @@ function SarLongint(Const AValue : Longint;const Shift : Byte = 1): Longint;
 function SarInt64(Const AValue : Int64): Int64;[internproc:fpc_in_sar_x];
 function SarInt64(Const AValue : Int64;Shift : Byte): Int64;[internproc:fpc_in_sar_x_y];
 {$ifndef FPC_HAS_INTERNAL_SAR_QWORD}
+{$ifndef CPUAVR_16_REGS}
 function fpc_SarInt64(Const AValue : Int64;const Shift : Byte): Int64;compilerproc;
+{$endif CPUAVR_16_REGS}
 {$endif FPC_HAS_INTERNAL_SAR_QWORD}
 
 {$ifdef FPC_HAS_INTERNAL_BSF}
@@ -1160,7 +1182,9 @@ function PopCnt(Const AValue : QWord): QWord;[internproc:fpc_in_popcnt_x];
 {$I mathh.inc}
 {$endif}
 { currency math routines }
+{$ifndef CPUAVR_16_REGS}
 {$I currh.inc}
+{$endif CPUAVR_16_REGS}
 
 {****************************************************************************
                          Addr/Pointer Handling
@@ -1548,8 +1572,10 @@ Function  ParamCount:Longint;
 Function  ParamStr(l:Longint):string;
 {$endif FPC_HAS_FEATURE_COMMANDARGS}
 
+{$ifndef CPUAVR_16_REGS}
 Procedure Dump_Stack(var f : text;fp:pointer;addr : codepointer = nil);
 procedure Dump_Stack(var f : text;skipframes : longint);
+{$endif CPUAVR_16_REGS}
 {$ifdef FPC_HAS_FEATURE_EXCEPTIONS}
 procedure DumpExceptionBacktrace(var f:text);
 {$endif FPC_HAS_FEATURE_EXCEPTIONS}

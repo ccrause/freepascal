@@ -45,6 +45,9 @@ unit extpas;
         year2,month2,mday2,wday2,
         hour,minute,second,sec100 : word;
       begin
+{$ifdef CPUAVR_16_REGS}
+        runerror(217);
+{$else}
         repeat
           GetDate(year1,month1,mday1,wday1);
           GetTime(hour,minute,second,sec100);
@@ -60,6 +63,7 @@ unit extpas;
         ts.minute:=minute;
         ts.second:=second;
         ts.second100:=sec100;
+{$endif CPUAVR_16_REGS}
       end;
 
 

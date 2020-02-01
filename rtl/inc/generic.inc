@@ -2350,7 +2350,7 @@ end;
 
 {$endif ndef FPC_SYSTEM_HAS_SQR_LONGINT}
 
-
+{$ifndef CPUAVR_16_REGS}
 {$ifndef FPC_SYSTEM_HAS_ABS_INT64}
 
 function abs(l: Int64): Int64;{$ifdef SYSTEMINLINE}inline;{$endif}
@@ -2373,7 +2373,6 @@ end;
 
 {$endif ndef FPC_SYSTEM_HAS_SQR_INT64}
 
-
 {$ifndef FPC_SYSTEM_HAS_SQR_QWORD}
 
 function sqr(l: QWord): QWord;{$ifdef SYSTEMINLINE}inline;{$endif}
@@ -2382,6 +2381,7 @@ begin
 end;
 
 {$endif ndef FPC_SYSTEM_HAS_SQR_INT64}
+{$endif CPUAVR_16_REGS}
 
 {$ifdef CPU16}
 {$ifndef FPC_SYSTEM_HAS_DECLOCKED_SMALLINT}
@@ -2663,6 +2663,7 @@ function SwapEndian(const AValue: DWord): DWord;{$ifdef SYSTEMINLINE}inline;{$en
   end;
 {$endif}
 
+{$ifndef CPUAVR_16_REGS}
 function SwapEndian(const AValue: Int64): Int64;
   begin
     Result := ((AValue shl 8) and $FF00FF00FF00FF00) or
@@ -2682,6 +2683,7 @@ function SwapEndian(const AValue: QWord): QWord;
     Result := (Result shl 32) or ((Result shr 32));
   end;
 {$endif}
+{$endif CPUAVR_16_REGS}
 {$endif FPC_SYSTEM_HAS_SWAPENDIAN}
 
 function BEtoN(const AValue: SmallInt): SmallInt;{$ifdef SYSTEMINLINE}inline;{$endif}
@@ -2728,6 +2730,7 @@ function BEtoN(const AValue: DWord): DWord;{$ifdef SYSTEMINLINE}inline;{$endif}
 {$endif not cpujvm}
 
 
+{$ifndef CPUAVR_16_REGS}
 function BEtoN(const AValue: Int64): Int64;{$ifdef SYSTEMINLINE}inline;{$endif}
   begin
     {$IFDEF ENDIAN_BIG}
@@ -2748,7 +2751,7 @@ function BEtoN(const AValue: QWord): QWord;{$ifdef SYSTEMINLINE}inline;{$endif}
     {$ENDIF}
   end;
 {$endif not cpujvm}
-
+{$endif CPUAVR_16_REGS}
 
 
 function LEtoN(const AValue: SmallInt): SmallInt;{$ifdef SYSTEMINLINE}inline;{$endif}
@@ -2795,6 +2798,7 @@ function LEtoN(const AValue: DWord): DWord;{$ifdef SYSTEMINLINE}inline;{$endif}
 {$endif not cpujvm}
 
 
+{$ifndef CPUAVR_16_REGS}
 function LEtoN(const AValue: Int64): Int64;{$ifdef SYSTEMINLINE}inline;{$endif}
   begin
     {$IFDEF ENDIAN_LITTLE}
@@ -2815,7 +2819,7 @@ function LEtoN(const AValue: QWord): QWord;{$ifdef SYSTEMINLINE}inline;{$endif}
     {$ENDIF}
   end;
 {$endif not cpujvm}
-
+{$endif CPUAVR_16_REGS}
 
 
 function NtoBE(const AValue: SmallInt): SmallInt;{$ifdef SYSTEMINLINE}inline;{$endif}
@@ -2862,6 +2866,7 @@ function NtoBE(const AValue: DWord): DWord;{$ifdef SYSTEMINLINE}inline;{$endif}
 {$endif not cpujvm}
 
 
+{$ifndef CPUAVR_16_REGS}
 function NtoBE(const AValue: Int64): Int64;{$ifdef SYSTEMINLINE}inline;{$endif}
   begin
     {$IFDEF ENDIAN_BIG}
@@ -2882,7 +2887,7 @@ function NtoBE(const AValue: QWord): QWord;{$ifdef SYSTEMINLINE}inline;{$endif}
     {$ENDIF}
   end;
 {$endif not cpujvm}
-
+{$endif CPUAVR_16_REGS}
 
 function NtoLE(const AValue: SmallInt): SmallInt;{$ifdef SYSTEMINLINE}inline;{$endif}
   begin
@@ -2928,6 +2933,7 @@ function NtoLE(const AValue: DWord): DWord;{$ifdef SYSTEMINLINE}inline;{$endif}
 {$endif not cpujvm}
 
 
+{$ifndef CPUAVR_16_REGS}
 function NtoLE(const AValue: Int64): Int64;{$ifdef SYSTEMINLINE}inline;{$endif}
   begin
     {$IFDEF ENDIAN_LITTLE}
@@ -2948,6 +2954,7 @@ function NtoLE(const AValue: QWord): QWord;{$ifdef SYSTEMINLINE}inline;{$endif}
     {$ENDIF}
   end;
 {$endif not cpujvm}
+{$endif CPUAVR_16_REGS}
 
 {$ifndef FPC_SYSTEM_HAS_MEM_BARRIER}
 
@@ -3056,6 +3063,7 @@ function RolDWord(Const AValue : DWord;const Dist : Byte): DWord;{$ifdef SYSTEMI
 {$endif FPC_SYSTEM_HAS_ROX_DWORD}
 {$endif FPC_HAS_INTERNAL_ROX_DWORD}
 
+{$ifndef CPUAVR_16_REGS}
 {$ifndef FPC_HAS_INTERNAL_ROX_QWORD}
 {$ifndef FPC_SYSTEM_HAS_ROX_QWORD}
 
@@ -3111,6 +3119,7 @@ procedure fpc_rol_assign_qword(var AValue : QWord;const Dist : Byte); [Public,Al
   end;
 {$endif FPC_SYSTEM_HAS_ROX_ASSIGN_QWORD}
 {$endif FPC_HAS_INTERNAL_ROX_ASSIGN_QWORD}
+{$endif CPUAVR_16_REGS}
 
 {$ifndef FPC_HAS_INTERNAL_SAR_BYTE}
 {$ifndef FPC_SYSTEM_HAS_SAR_BYTE}
@@ -3139,6 +3148,7 @@ function SarLongint(Const AValue : Longint;const Shift : Byte): Longint;
 {$endif FPC_HAS_INTERNAL_SAR_DWORD}
 {$endif FPC_SYSTEM_HAS_SAR_DWORD}
 
+{$ifndef CPUAVR_16_REGS}
 {$ifndef FPC_HAS_INTERNAL_SAR_QWORD}
 {$ifndef FPC_SYSTEM_HAS_SAR_QWORD}
 function fpc_SarInt64(Const AValue : Int64;const Shift : Byte): Int64; [Public,Alias:'FPC_SARINT64']; compilerproc;
@@ -3160,6 +3170,7 @@ procedure fpc_sar_assign_qword(var AValue : QWord;const Shift : Byte); [Public,A
   end;
 {$endif FPC_HAS_INTERNAL_SAR_ASSIGN_QWORD}
 {$endif FPC_SYSTEM_HAS_SAR_ASSIGN_QWORD}
+{$endif CPUAVR_16_REGS}
 
 {$ifndef FPC_HAS_INTERNAL_BSF_BYTE}
 {$ifndef FPC_SYSTEM_HAS_BSF_BYTE}
@@ -3320,6 +3331,7 @@ function fpc_PopCnt_dword(AValue : DWord): DWord;[Public,Alias:'FPC_POPCNT_DWORD
   end;
 
 
+{$ifndef CPUAVR_16_REGS}
 {$ifndef FPC_SYSTEM_HAS_POPCNT_QWORD}
 function fpc_PopCnt_qword(AValue : QWord): QWord;[Public,Alias:'FPC_POPCNT_QWORD'];compilerproc;
 {$ifdef VER2_6}
@@ -3338,4 +3350,5 @@ function fpc_PopCnt_qword(AValue : QWord): QWord;[Public,Alias:'FPC_POPCNT_QWORD
 {$endif VER2_6}
   end;
 {$endif}
+{$endif CPUAVR_16_REGS}
 

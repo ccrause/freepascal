@@ -93,7 +93,9 @@ procedure fpc_ShortStr_Float(d : ValReal;len,fr,rt : SizeInt;out s : shortstring
 {$endif}
 procedure fpc_shortstr_enum(ordinal,len:sizeint;typinfo,ord2strindex:pointer;out s:shortstring);compilerproc;
 procedure fpc_shortstr_bool(b : boolean;len:sizeint;out s:shortstring);compilerproc;
+{$ifndef CPUAVR_16_REGS}
 procedure fpc_ShortStr_Currency(c : currency; len,f : SizeInt; out s : shortstring); compilerproc;
+{$endif CPUAVR_16_REGS}
 
 procedure fpc_chararray_sint(v : valsint;len : SizeInt;out a : array of char); compilerproc;
 procedure fpc_chararray_uint(v : valuint;len : SizeInt;out a : array of char); compilerproc;
@@ -429,7 +431,7 @@ procedure fpc_PWideChar_To_ShortStr(out res : shortstring;const p : pwidechar); 
 {$endif FPC_HAS_FEATURE_WIDESTRINGS}
 
 
-{ $ifdef FPC_HAS_FEATURE_TEXTIO}
+{$ifdef FPC_HAS_FEATURE_TEXTIO}
 { from text.inc }
 Function fpc_get_input:PText;compilerproc;
 Function fpc_get_output:PText;compilerproc;
@@ -508,7 +510,7 @@ procedure fpc_SetupReadStr_Unicodestr(var ReadWriteStrText: text; const s: unico
 {$ifndef FPC_WIDESTRING_EQUAL_UNICODESTRING}
 procedure fpc_SetupReadStr_Widestr(var ReadWriteStrText: text; const s: widestring); compilerproc;
 {$endif FPC_WIDESTRING_EQUAL_UNICODESTRING}
-{ $endif FPC_HAS_FEATURE_TEXTIO}
+{$endif FPC_HAS_FEATURE_TEXTIO}
 
 {$ifdef FPC_HAS_FEATURE_VARIANTS}
 procedure fpc_variant_init(var v: tvardata);compilerproc;
@@ -617,6 +619,7 @@ function fpc_mul_dword_checkoverflow(f1,f2 : dword) : dword; compilerproc;
 {$endif FPC_INCLUDE_SOFTWARE_MUL}
 
 { from int64.inc }
+{$ifndef CPUAVR_16_REGS}
 function fpc_div_qword(n,z : qword) : qword; compilerproc;
 function fpc_mod_qword(n,z : qword) : qword; compilerproc;
 function fpc_div_int64(n,z : int64) : int64; compilerproc;
@@ -656,12 +659,15 @@ procedure fpc_ror_assign_qword(var AValue : QWord;const Dist : Byte);compilerpro
 procedure fpc_rol_assign_int64(var AValue : int64;const Dist : Byte);compilerproc;
 procedure fpc_rol_assign_qword(var AValue : QWord;const Dist : Byte);compilerproc;
 {$endif FPC_HAS_INTERNAL_ROX_ASSIGN_QWORD}
+{$endif CPUAVR_16_REGS}
 
 
 function fpc_popcnt_byte(AValue : Byte): Byte;compilerproc;
 function fpc_popcnt_word(AValue : Word): Word;compilerproc;
 function fpc_popcnt_dword(AValue : DWord): DWord;compilerproc;
+{$ifndef CPUAVR_16_REGS}
 function fpc_popcnt_qword(AValue : QWord): QWord;compilerproc;
+{$endif CPUAVR_16_REGS}
 
 
 {$ifndef FPUNONE}

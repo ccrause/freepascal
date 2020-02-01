@@ -29,9 +29,9 @@ Unit System;
   which are probably anyways rarely used on avr
 
   meanwhile, the avr compiler can deal with them (FK) }
-{$ifdef CPUAVR}
-{ $define EXCLUDE_COMPLEX_PROCS}
-{$endif CPUAVR}
+{$ifdef CPUAVR_16_REGS}
+{$define EXCLUDE_COMPLEX_PROCS}
+{$endif CPUAVR_16_REGS}
 
 { $define USE_NOTHREADMANAGER}
 
@@ -55,9 +55,9 @@ Unit System;
 {$I systemh.inc}
 
 const
-{$ifdef FPC_HAS_FEATURE_TEXTIO}
+{ $ifdef FPC_HAS_FEATURE_TEXTIO}
   LineEnding = #10;
-{$endif FPC_HAS_FEATURE_TEXTIO}
+{ $endif FPC_HAS_FEATURE_TEXTIO}
 {$ifdef FPC_HAS_FEATURE_FILEIO}
   LFNSupport = true;
   DirectorySeparator = '/';
@@ -73,15 +73,16 @@ const
 {$ifdef FPC_HAS_FEATURE_EXITCODE}
   maxExitCode = 255;
 {$endif FPC_HAS_FEATURE_EXITCODE}
-{$ifdef FPC_HAS_FEATURE_FILEIO}
-
-  MaxPathLen = 1024; // BSDs since 1993, Solaris 10, Darwin
-  AllFilesMask = '*';
 
   UnusedHandle    = -1;
   StdInputHandle  = 0;
   StdOutputHandle = 1;
   StdErrorHandle  = 2;
+
+{$ifdef FPC_HAS_FEATURE_FILEIO}
+
+  MaxPathLen = 1024; // BSDs since 1993, Solaris 10, Darwin
+  AllFilesMask = '*';
 
   FileNameCaseSensitive : boolean = true;
   FileNameCasePreserving: boolean = true;

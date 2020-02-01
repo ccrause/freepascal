@@ -16,6 +16,7 @@
 
  **********************************************************************}
 
+{$ifdef FPC_HAS_FEATURE_FILEIO}
 procedure DoDirSeparators(var p:shortstring);
 var
   i : longint;
@@ -33,6 +34,7 @@ begin
     if p[i] in AllowDirectorySeparators then
       p[i]:=DirectorySeparator;
 end;
+{$endif FPC_HAS_FEATURE_FILEIO}
 
 {$IFNDEF HAS_DOSEXITCODE}
 {$ifdef FPC_HAS_FEATURE_THREADING}
@@ -234,6 +236,7 @@ end;
 {$IFNDEF HAS_FSPLIT}
 {$push}
 {$warnings off}
+{$ifdef FPC_HAS_FEATURE_FILEIO}
 Procedure FSplit (Path: PathStr; var Dir: DirStr; var Name: NameStr; var Ext: ExtStr);
 var
   DirEnd, ExtStart: Longint;
@@ -276,6 +279,7 @@ begin
   Name := Copy (Path, DirEnd + 1, ExtStart - DirEnd - 1);
   Ext := Copy (Path, ExtStart, Length (Path) - ExtStart + 1);
 end;
+{$endif FPC_HAS_FEATURE_FILEIO}
 {$pop}
 {$ENDIF HAS_FSPLIT}
 
@@ -287,7 +291,9 @@ end;
 {$IFNDEF HAS_FEXPAND}
 
 (* FExpand maintained in standalone include file for easier maintenance. *)
+{$ifdef FPC_HAS_FEATURE_FILEIO}
 {$I fexpand.inc}
+{$endif FPC_HAS_FEATURE_FILEIO}
 
 {$ENDIF HAS_FEXPAND}
 
