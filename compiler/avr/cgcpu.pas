@@ -1933,7 +1933,12 @@ unit cgcpu;
     function tcgavr.GetLoad(const ref: treference) : tasmop;
       begin
         if (ref.base=NR_NO) and (ref.index=NR_NO) then
-          result:=A_LDS
+          begin
+            if (current_settings.cputype = cpu_avrtiny) and (ref.offset < $40) then
+              result:=A_IN
+            else
+              result:=A_LDS;
+          end
         else if (ref.base<>NR_NO) and (ref.offset<>0) then
           result:=A_LDD
         else
@@ -1944,7 +1949,12 @@ unit cgcpu;
     function tcgavr.GetStore(const ref: treference) : tasmop;
       begin
         if (ref.base=NR_NO) and (ref.index=NR_NO) then
-          result:=A_STS
+          begin
+            if (current_settings.cputype = cpu_avrtiny) and (ref.offset < $40) then
+              result:=A_OUT
+            else
+              result:=A_STS;
+          end
         else if (ref.base<>NR_NO) and (ref.offset<>0) then
           result:=A_STD
         else
@@ -2225,9 +2235,9 @@ unit cgcpu;
               regs:=regs+[RS_R28,RS_R29];
 
             { we clear r1 }
-            include(regs,RS_R1);
+            include(regs,getsupreg(GetDefaultZeroReg));
 
-            regs:=regs+[RS_R0];
+            regs:=regs+[getsupreg(GetDefaultTmpReg)];
 
             for reg:=RS_R31 downto RS_R0 do
               if reg in regs then
@@ -2313,7 +2323,7 @@ unit cgcpu;
                   end;
 
                 { we clear r1 }
-                include(regs,RS_R1);
+                include(regs,getsupreg(GetDefaultZeroReg));
 
                 { Reload SREG }
                 regs:=regs+[getsupreg(GetDefaultTmpReg)];

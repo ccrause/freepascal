@@ -187,19 +187,35 @@ implementation
 
     constructor taicpu.op_reg_ref(op : tasmop;_op1 : tregister;const _op2 : treference);
       begin
-         inherited create(op);
-         ops:=2;
-         loadreg(0,_op1);
-         loadref(1,_op2);
+        // LDS of AVRTiny cannot reach IO regs, so LDS is replaced with IN as needed
+        // but then reference needs to change to constant
+        if (current_settings.cputype = cpu_avrtiny) and
+          (op = A_IN) then
+            op_reg_const(op, _op1, _op2.offset)
+        else
+          begin
+            inherited create(op);
+            ops:=2;
+            loadreg(0,_op1);
+            loadref(1,_op2);
+          end;
       end;
 
 
     constructor taicpu.op_ref_reg(op : tasmop;const _op1 : treference;_op2 : tregister);
       begin
-         inherited create(op);
-         ops:=2;
-         loadref(0,_op1);
-         loadreg(1,_op2);
+        // STS of AVRTiny cannot reach IO regs, so STS is replaced with OUT as needed
+        // but then reference needs to change to constant
+        if (current_settings.cputype = cpu_avrtiny) and
+          (op = A_OUT) then
+            op_const_reg(op, _op1.offset, _op2)
+        else
+          begin
+            inherited create(op);
+            ops:=2;
+            loadref(0,_op1);
+            loadreg(1,_op2);
+          end;
       end;
 
 
