@@ -1934,7 +1934,7 @@ unit cgcpu;
       begin
         if (ref.base=NR_NO) and (ref.index=NR_NO) then
           begin
-            if (current_settings.cputype = cpu_avrtiny) and (ref.offset < $40) then
+            if (current_settings.cputype=cpu_avrtiny) and (ref.symbol=nil) and (ref.offset<$40) then
               result:=A_IN
             else
               result:=A_LDS;
@@ -1950,7 +1950,7 @@ unit cgcpu;
       begin
         if (ref.base=NR_NO) and (ref.index=NR_NO) then
           begin
-            if (current_settings.cputype = cpu_avrtiny) and (ref.offset < $40) then
+            if (current_settings.cputype=cpu_avrtiny) and (ref.symbol=nil) and (ref.offset<$40) then
               result:=A_OUT
             else
               result:=A_STS;
