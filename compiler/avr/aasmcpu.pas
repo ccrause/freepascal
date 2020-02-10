@@ -409,6 +409,7 @@ implementation
           i: Integer;
           hp: tai;
         begin
+          exit;
           taicpu(firstinstruction).opcode:=A_SLEEP;
           for i:=0 to taicpu(firstinstruction).opercnt-1 do
             taicpu(firstinstruction).freeop(i);
@@ -558,6 +559,7 @@ implementation
                         A_POP,
                         A_PUSH:
                           begin
+                            { certain cpu types do not support some instructions, so replace them }
                             if current_settings.cputype=cpu_avr1 then
                               begin
                                 remove_instruction;
