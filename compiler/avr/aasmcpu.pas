@@ -509,12 +509,7 @@ implementation
                           end;
                         A_STS:
                           begin
-                            {if current_settings.cputype=cpu_avr1 then
-                              begin
-                                remove_instruction;
-                                result:=false;
-                              end
-                            else} if current_settings.cputype in [cpu_avrtiny, cpu_avr1] then
+                            if current_settings.cputype in [cpu_avrtiny, cpu_avr1] then
                               with taicpu(curtai).oper[0]^ do
                                 if (ref^.base=NR_NO) and (ref^.index=NR_NO) and (ref^.symbol=nil) and (ref^.offset<$40) then
                                   begin
@@ -529,12 +524,7 @@ implementation
                           end;
                         A_LDS:
                           begin
-                            {if current_settings.cputype=cpu_avr1 then
-                              begin
-                                remove_instruction;
-                                result:=false;
-                              end
-                            else} if current_settings.cputype in [cpu_avrtiny, cpu_avr1] then
+                            if current_settings.cputype in [cpu_avrtiny, cpu_avr1] then
                               with taicpu(curtai).oper[1]^ do
                                 if (ref^.base=NR_NO) and (ref^.index=NR_NO) and (ref^.symbol=nil) and (ref^.offset<$40) then
                                   begin
