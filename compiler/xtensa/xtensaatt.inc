@@ -41,6 +41,7 @@
 'sll',
 'slli',
 'sra',
+'srai',
 'srl',
 'srli',
 'ssi',
