@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <CONFIG>
   <ProjectOptions>
-    <Version Value="11"/>
+    <Version Value="12"/>
     <PathDelim Value="\"/>
     <General>
       <Flags>
@@ -9,9 +9,9 @@
         <MainUnitHasCreateFormStatements Value="False"/>
         <MainUnitHasTitleStatement Value="False"/>
         <LRSInOutputDirectory Value="False"/>
+        <CompatibilityMode Value="True"/>
       </Flags>
       <SessionStorage Value="InProjectDir"/>
-      <MainUnit Value="0"/>
       <Title Value="ppcxtensa"/>
     </General>
     <BuildModes Count="1">
@@ -22,13 +22,15 @@
     </PublishOptions>
     <RunParams>
       <local>
-        <LaunchingApplication PathPlusParams="/usr/X11R6/bin/xterm -T 'Lazarus Run Output' -e $(LazarusDir)/tools/runwait.sh $(TargetCmdLine)"/>
+        <CommandLineParams Value="-Cplx106 -Ur -Tembedded -Pxtensa -XP\home\christo\xtensa\xtensa-lx106-elf\bin\xtensa-lx106-elf- -Xr -Ur -Xs -O2 -n -Fi\home\christo\fpc\avr-new\rtl\inc -Fi\home\christo\fpc\avr-new\rtl\xtensa -FE\home\christo\fpc\avr-new\rtl\embedded -FU\home\christo\fpc\avr-new\rtl\units\xtensa-embedded -dxtensa -dRELEASE -Cacall0 -al -Fi\home\christo\fpc\avr-new\rtl\objpas\sysutils \home\christo\fpc\avr-new\rtl\embedded\sysutils.pp"/>
+        <LaunchingApplication PathPlusParams="\usr\X11R6\bin\xterm -T &apos;Lazarus Run Output&apos; -e $(LazarusDir)\tools\runwait.sh $(TargetCmdLine)"/>
       </local>
       <FormatVersion Value="2"/>
       <Modes Count="1">
         <Mode0 Name="default">
           <local>
-            <LaunchingApplication PathPlusParams="/usr/X11R6/bin/xterm -T 'Lazarus Run Output' -e $(LazarusDir)/tools/runwait.sh $(TargetCmdLine)"/>
+            <CommandLineParams Value="-Cplx106 -Ur -Tembedded -Pxtensa -XP\home\christo\xtensa\xtensa-lx106-elf\bin\xtensa-lx106-elf- -Xr -Ur -Xs -O2 -n -Fi\home\christo\fpc\avr-new\rtl\inc -Fi\home\christo\fpc\avr-new\rtl\xtensa -FE\home\christo\fpc\avr-new\rtl\embedded -FU\home\christo\fpc\avr-new\rtl\units\xtensa-embedded -dxtensa -dRELEASE -Cacall0 -al -Fi\home\christo\fpc\avr-new\rtl\objpas\sysutils \home\christo\fpc\avr-new\rtl\embedded\sysutils.pp"/>
+            <LaunchingApplication PathPlusParams="\usr\X11R6\bin\xterm -T &apos;Lazarus Run Output&apos; -e $(LazarusDir)\tools\runwait.sh $(TargetCmdLine)"/>
           </local>
         </Mode0>
       </Modes>
@@ -63,6 +65,11 @@
         <UseAnsiStrings Value="False"/>
       </SyntaxOptions>
     </Parsing>
+    <Linking>
+      <Debugging>
+        <DebugInfoType Value="dsDwarf2Set"/>
+      </Debugging>
+    </Linking>
     <Other>
       <Verbosity>
         <ShowWarn Value="False"/>
@@ -76,4 +83,11 @@
 -Sew"/>
     </Other>
   </CompilerOptions>
+  <Debugging>
+    <Exceptions Count="1">
+      <Item1>
+        <Name Value="ECompilerAbort"/>
+      </Item1>
+    </Exceptions>
+  </Debugging>
 </CONFIG>
