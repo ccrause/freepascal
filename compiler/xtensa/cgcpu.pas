@@ -169,20 +169,18 @@ implementation
                   begin
                     if CPUXTENSA_HAS_SEXT in cpu_capabilities[current_settings.cputype] then
                       list.concat(taicpu.op_reg_reg_const(A_SEXT,reg2,reg1,7))
-                    else if current_settings.cputype = cpu_lx106 then
+                    else
                       begin
                         list.concat(taicpu.op_reg_reg_const(A_SLLI,reg2,reg1,24));
                         list.concat(taicpu.op_reg_reg_const(A_SRAI,reg2,reg2,24));
-                      end
-                    else
-                      internalerror(2020033101);
+                      end;
                     if tosize=OS_16 then
                       list.concat(taicpu.op_reg_reg_const_const(A_EXTUI,reg2,reg2,0,16));
                   end;
                 OS_16:
                   list.concat(taicpu.op_reg_reg_const_const(A_EXTUI,reg2,reg1,0,16));
                 OS_S16:
-                  if target_info.abi = abi_xtensa_windowed then
+                  if CPUXTENSA_HAS_SEXT in cpu_capabilities[current_settings.cputype] then
                     list.concat(taicpu.op_reg_reg_const(A_SEXT,reg2,reg1,15))
                   else
                     begin
@@ -274,13 +272,11 @@ implementation
         if (fromsize=OS_S8) and not(tosize in [OS_S8,OS_8]) then
           if CPUXTENSA_HAS_SEXT in cpu_capabilities[current_settings.cputype] then
             list.concat(taicpu.op_reg_reg_const(A_SEXT,reg,reg,7))
-          else if current_settings.cputype = cpu_lx106 then
+          else
             begin
               list.concat(taicpu.op_reg_reg_const(A_SLLI,reg,reg,24));
               list.concat(taicpu.op_reg_reg_const(A_SRAI,reg,reg,24));
-            end
-          else
-            internalerror(2020033101);
+            end;
         if (fromsize<>tosize) and (not (tosize in [OS_SINT,OS_INT])) then
           a_load_reg_reg(list,fromsize,tosize,reg,reg);
       end;
