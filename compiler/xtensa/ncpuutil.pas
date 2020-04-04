@@ -66,13 +66,13 @@ implementation
       finalList.Concat(tai_align.Create(target_info.alignment.procalign));
 
       case target_info.abi of
-//        abi_xtensa_call0:
-//          begin
-//            initList.Concat(taicpu.op_none(A_RET));
-//            finalList.Concat(taicpu.op_none(A_RET));
-//            callop:=A_CALL0;
-//            retop:=A_RET;
-//          end;
+        abi_xtensa_call0:
+          begin
+            initList.Concat(taicpu.op_none(A_RET));
+            finalList.Concat(taicpu.op_none(A_RET));
+            callop:=A_CALL0;
+            retop:=A_RET;
+          end;
         abi_xtensa_windowed:
           begin
             initList.Concat(taicpu.op_reg_const(A_ENTRY,NR_A1,16));
