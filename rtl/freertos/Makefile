@@ -197,6 +197,12 @@ $(error When compiling for mipsel-embedded, a sub-architecture (e.g. SUBARCH=pic
 endif
 override FPCOPT+=-Cp$(SUBARCH)
 endif
+ifeq ($(FULL_TARGET),xtensa-embedded)
+ifeq ($(SUBARCH),)
+$(error When compiling for xtensa-embedded, a sub-architecture (e.g. SUBARCH=lx106 or SUBARCH=lx6) must be defined)
+endif
+override FPCOPT+=-Cp$(SUBARCH)
+endif
 ifneq ($(findstring $(OS_SOURCE),$(LIMIT83fs)),)
 TARGETSUFFIX=$(OS_TARGET)
 SOURCESUFFIX=$(OS_SOURCE)
@@ -499,6 +505,7 @@ endif
 ifeq ($(ARCH),xtensa)
 CPU_SPECIFIC_COMMON_UNITS=sysutils math classes fgl macpas typinfo types rtlconsts getopts lineinfo
 CPU_UNITS=esp32
+override FPCOPT+=-CfHARD
 CPU_UNITS_DEFINED=1
 ifeq ($(CPU_UNITS_DEFINED),)
 $(error No CPUs enabled for given SUBARCH, pass either a SUBARCH or set CPU_UNITS_DEFINED=1 if you know what you are doing)
