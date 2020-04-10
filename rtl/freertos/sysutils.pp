@@ -33,13 +33,13 @@ interface
   { Include platform independent interface part }
   {$i sysutilh.inc}
 
-  var
-    SleepHandler: procedure(ms: cardinal) = nil;
+  //var
+  //  SleepHandler: procedure(ms: cardinal) = nil;
 
 implementation
 
 uses
-  sysconst,heapmgr;
+  sysconst,heapmgr,freertos;
 
   { Include platform independent implementation part }
   {$i sysutils.inc}
@@ -214,13 +214,15 @@ end;
 
 Procedure Sleep(Milliseconds : Cardinal);
 begin
-  if assigned(SleepHandler) then
-    SleepHandler(Milliseconds);
+  vTaskDelay(Milliseconds {div portTICK_PERIOD_MS});
 end;
 
-Function GetLastOSError : Integer;
+function GetLastOSError : Integer;
+var
+  preenty: PReentryRecord;
 begin
-  Result:=-1;
+  preenty := __getreent;
+  Result := preenty^.errno;
 end;
 
 

@@ -25,7 +25,7 @@ unit esp32;
 {$linklib esp_timer,static}
 {$linklib bootloader_support,static}
 {$linklib pthread,static}
-{$linklib soc_esp32,static}
+//{$linklib soc_esp32,static}
 {$linklib hal,static}
 {$linklib c,static}
 {$linklib esp_event,static}
