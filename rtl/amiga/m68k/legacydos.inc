@@ -23,10 +23,100 @@
 }
 
 
-function CreateNewProc(tags: PTagItem): PProcess; public name '_fpc_amiga_createproc';
+procedure NextTag(var Tag: PTagItem); inline;
 begin
-{$warning CreateNewProc unimplemented!}
+  if Tag^.ti_Tag = TAG_END then
+    Exit;
+  Inc(Tag);
+  repeat
+    case Tag^.ti_Tag of
+      TAG_IGNORE: Inc(Tag);
+      TAG_SKIP: Inc(Tag, Tag^.ti_Data);
+      TAG_MORE: Tag := PTagItem(Tag^.ti_Data);
+      else
+        Break;
+    end;
+  until False;
+end;
+
+{$PACKRECORDS 2}
+type
+  TAmigaLegacyFakeSegList = record
+    length: DWord;
+    next: DWord;
+    jump: Word;
+    entry: Pointer;
+    pad: Word;
+  end;
+{$PACKRECORDS DEFAULT}
+
+var
+  __amiga_fake_seglist: TAmigaLegacyFakeSegList;
+  __amiga_fake_seglist_lock: TSignalSemaphore;
+  __amiga_fake_seglist_lock_inited: boolean = false;
+
+function CreateNewProc(tags: PTagItem): PProcess; public name '_fpc_amiga_createproc';
+var
+  seglistbptr: dword;
+  name: pchar;
+  entryfunc: pointer;
+  stacksize: dword;
+  m: pmsgport;
+  tag: ptagitem;
+begin
   CreateNewProc:=nil;
+
+  entryfunc:=nil;
+  stacksize:=4000;
+  name:='New Process';
+
+  tag := Tags;
+  if Assigned(tag) then
+  begin
+    repeat
+      case Tag^.ti_Tag of
+        NP_Entry: entryfunc := Pointer(Tag^.ti_Data);
+        NP_StackSize: stacksize := Tag^.ti_Data;
+      end;
+      NextTag(Tag);
+    until tag^.ti_Tag = TAG_END;
+  end;
+
+  if entryfunc = nil then
+    exit;
+
+  { This is a gigantic hack, and probably only works, because AThreads will always
+    feed the same function pointer in here (i.e. starts the same function multiple
+    times, which is a wrapper for FPC threads), and also waits for the subprocess
+    to properly start before trying to start a new one, but just in case, lets
+    still have proper-ish locking here, in case one spawns a subthread from a
+    subthread... (KB) }
+
+  if not __amiga_fake_seglist_lock_inited then
+    begin
+      InitSemaphore(@__amiga_fake_seglist_lock);
+      __amiga_fake_seglist_lock_inited:=true;
+    end;
+
+  ObtainSemaphore(@__amiga_fake_seglist_lock);
+
+  with __amiga_fake_seglist do
+    begin
+      length:=16;
+      next:=0;
+      jump:=$4ef9; { JMP }
+      entry:=entryfunc;
+      pad:=$4e71; { NOP }
+    end;
+
+  seglistbptr:=ptruint(@__amiga_fake_seglist) shr 2;
+  m:=CreateProc(name, 0, seglistbptr, stacksize);
+  if m <> nil then
+    { CreateProc returns the MsgPort inside the process structure.
+      recalculate to the address of the process instead... *yuck* (KB) }
+    CreateNewProc:=PProcess(pointer(m)-ptruint(@PProcess(nil)^.pr_MsgPort));
+
+  ReleaseSemaphore(@__amiga_fake_seglist_lock);
 end;
 
 function NameFromLock(lock  : LongInt;
@@ -85,6 +175,8 @@ function NameFromFH(fh    : BPTR;
                     len   : LongInt): LongBool; public name '_fpc_amiga_namefromfh';
 begin
 {$warning NameFromFH unimplemented!}
+  { note that this is only used in sysutils/FileSetDate, but because SetFileDate() (see below)
+    is not easily possible on KS1.x, so it might not be needed to implement this at all (KB) }
   NameFromFH:=false;
 end;
 
@@ -92,25 +184,48 @@ function ExamineFH(fh : BPTR;
                    fib: PFileInfoBlock): LongBool; public name '_fpc_amiga_examinefh';
 begin
 {$warning ExamineFH unimplemented!}
+  { ExamineFH is only used to determine file size, in sysfile.inc/do_filesize(),
+    but this code is already always falling back to double-seek method on KS1.x, and in
+    other location is sysutils/FileGetDate(), which deals with this function returning
+    false. Note that ExamineFH can fail on newer Amiga systems as well, because the
+    underlying FS needs to support ACTION_EXAMINE_FH which some FSes known not to do,
+    so the only difference is right now that it always fails on KS1.x... }
   ExamineFH:=false;
 end;
 
 function LockDosList(flags: Cardinal): PDosList; public name '_fpc_amiga_lockdoslist';
+var
+  dosInfo: PDosInfo;
 begin
-{$warning LockDosList unimplemented!}
-  LockDosList:=nil;
+  dosInfo:=PDosInfo(PRootNode(PDosLibrary(AOS_DOSBase)^.dl_Root)^.rn_Info shl 2);
+  { Actually, DOS v36+ also does Forbid(); in its LockDosList for
+    compatibility with old programs (KB) }
+  Forbid();
+  LockDosList:=PDosList(dosInfo^.di_DevInfo shl 2);
 end;
 
 procedure UnLockDosList(flags: Cardinal); public name '_fpc_amiga_unlockdoslist';
 begin
-{$warning UnlockDosList unimplemented!}
+  { To pair with the Forbid(); in LockDosList, see comment there (KB) }
+  Permit();
 end;
 
 function NextDosEntry(dlist: PDosList;
                       flags: Cardinal): PDosList; public name '_fpc_amiga_nextdosentry';
 begin
-{$warning NextDosEntry unimplemented!}
-  NextDosEntry:=nil;
+  while true do
+    begin
+      dlist:=PDosList(dlist^.dol_Next shl 2);
+      if dlist = nil then
+        break;
+      { Again, this only supports what's really needed for the RTL at the time of writing
+        this code, feel free to extend (KB) }
+      if (((flags and LDF_VOLUMES) = LDF_VOLUMES) and (dlist^.dol_Type = DLT_VOLUME)) or
+         (((flags and LDF_DEVICES) = LDF_DEVICES) and (dlist^.dol_Type = DLT_DEVICE)) then
+        break;
+    end;
+
+  NextDosEntry:=dlist;
 end;
 
 // Very first dirty version of MatchFirst/Next/End)
@@ -203,7 +318,7 @@ begin
       // copy the fileinfoblock into the chain
       Move(ib, NChain^.an_Info, SizeOf(TFileInfoBlock));
     end;
-  until Res = 0; // useless... we jump oput earlier
+  until Res = 0; // useless... we jump out earlier
   //
   // if we found something
   if Assigned(Anchor^.ap_Last) then
@@ -258,22 +373,6 @@ begin
   end;
 end;
 
-procedure NextTag(var Tag: PTagItem); inline;
-begin
-  if Tag^.ti_Tag = TAG_END then
-    Exit;
-  Inc(Tag);
-  repeat
-    case Tag^.ti_Tag of
-      TAG_IGNORE: Inc(Tag);
-      TAG_SKIP: Inc(Tag, Tag^.ti_Data);
-      TAG_MORE: Tag := PTagItem(Tag^.ti_Data);
-      else
-        Break;
-    end;
-  until False;
-end;
-
 // we emulate that by the old execute command, should be enough for most cases
 function SystemTagList(command: PChar;
                        tags   : PTagItem): LongInt; public name '_fpc_amiga_systemtaglist';
@@ -313,6 +412,8 @@ function SetFileDate(name: PChar;
                      date: PDateStamp): LongBool; public name '_fpc_amiga_setfiledate';
 begin
 {$warning SetFileDate unimplemented!}
+  { Might not be possible to implement, or implement with a reasonable effort on KS1.x (KS) }
+  { Used in: dos/SetFTime, sysutils/FileSetDate }
   SetFileDate:=false;
 end;
 
@@ -321,6 +422,8 @@ function SetFileSize(fh  : LongInt;
                      mode: LongInt): LongInt; public name '_fpc_amiga_setfilesize';
 begin
 {$warning SetFileSize unimplemented!}
+  { Might not be possible to implement, or implement with a reasonable effort on KS1.x (KS) }
+  { Used in: sysfile.inc/do_truncate, sysutils/FileCreate, sysutils/FileTruncate }
   SetFileSize:=-1;
 end;
 

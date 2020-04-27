@@ -585,16 +585,33 @@ implementation
           exit;
         { "ldr literal" must be a 32/64 bit LDR and have a symbol }
         if (ref.refaddr=addr_pic) and
-           ((op<>A_LDR) or
+           (not (op in [A_LDR,A_B,A_BL]) or
             not(oppostfix in [PF_NONE,PF_W,PF_SW]) or
             (not assigned(ref.symbol) and
              not assigned(ref.symboldata))) then
           exit;
         { if this is a (got) page offset load, we must have a base register and a
-          symbol }
+          symbol (except if we have an ADD with a non-got page offset load) }
         if (ref.refaddr in [addr_gotpageoffset,addr_pageoffset]) and
-           (not assigned(ref.symbol) or
-            (ref.base=NR_NO) or
+           (
+             (
+               (
+                 (op<>A_ADD) or
+                 (ref.refaddr=addr_gotpageoffset)
+               ) and
+               (
+                 not assigned(ref.symbol) or
+                 (ref.base=NR_NO)
+               )
+             ) or
+             (
+               (
+                 (op=A_ADD) and
+                 (ref.refaddr=addr_pageoffset)
+               ) and
+               not assigned(ref.symbol) and
+               (ref.base=NR_NO)
+             ) or
             (ref.index<>NR_NO) or
             (ref.offset<>0)) then
           begin

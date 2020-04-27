@@ -1617,7 +1617,7 @@ parser_e_generic_constraints_not_allowed_here=03355_E_Generic constraint not all
 %
 # Type Checking
 #
-# 04127 is the last used one
+# 04128 is the last used one
 #
 % \section{Type checking errors}
 % This section lists all errors that can occur when type checking is
@@ -2061,6 +2061,9 @@ type_e_forward_interface_type_does_not_match=04127_E_The interface type of the f
 % When declaring an interface forward, the interface type must be the same as at the actual declaration of the interface.
 % This is in particular important with regard to the parent interface which implicitly sets the interface type for the
 % child interface.
+type_e_generic_const_type_not_allowed=04128_E_Type not allowed for generic constant parameter: $1
+% Only types that can also be used (indirectly) for untyped constants can be used as a
+% type for a generic constant parameter.
 % \end{description}
 #
 # Symtable
@@ -2904,7 +2907,7 @@ asmr_e_mismatch_broadcasting_elements=07142_E_Mismatch broadcasting elements (ex
 #
 # Assembler/binary writers
 #
-# 08033 is the last used one
+# 08035 is the last used one
 #
 asmw_f_too_many_asm_files=08000_F_Too many assembler files
 % With smartlinking enabled, there are too many assembler
@@ -2960,6 +2963,7 @@ asmw_f_data_segment_too_large=08031_F_Data segment too large
 asmw_e_instruction_not_supported_by_cpu=08032_E_Instruction not supported by the selected instruction set
 asmw_e_brxx_out_of_range=08033_E_Asm: conditional branch destination is out of range
 asmw_e_illegal_use_of_rip=08034_E_Asm: RIP cannot be used as index register or with another register in a reference
+asmw_e_seh_invalid_data_size=08035_F_Illegal function size for SEH function
 #
 # Executing linker/assembler
 #
@@ -3774,6 +3778,9 @@ Supported Whole Program Optimizations:
   All
   $WPOPTIMIZATIONS
 
+Code Generation Backend
+  $CODEGENERATIONBACKEND
+
 Supported Microcontroller types:$\n  $CONTROLLERTYPES$\n
 This program comes under the GNU General Public Licence
 For more information read COPYING.v2
@@ -3810,6 +3817,7 @@ new features, etc.):
 #    S = Sparc targets
 #    s = Sparc64 targets
 #    V = AVR
+#    x = xtensa targets
 # The second character also indicates who will display this line,
 # (if the above character was TRUE) the current possibilities are :
 #    * = everyone
@@ -3988,6 +3996,7 @@ A*2CV<x>_Set section threadvar model to <x>
 **2iV_Return short compiler version
 **2iW_Return full compiler version
 **2ia_Return list of supported ABI targets
+**2ib_Return the used code generation backend type
 **2ic_Return list of supported CPU instruction sets
 **2if_Return list of supported FPU instruction sets
 **2ii_Return list of supported inline assembler modes
@@ -4096,11 +4105,13 @@ F*2P<x>_Set target CPU (aarch64,arm,avr,i386,i8086,jvm,m68k,mips,mipsel,powerpc,
 3*2Twin32_Windows 32 Bit
 3*2Twince_Windows CE
 # x86_64 targets
+4*2Tandroid_Android
 4*2Taros_AROS
 4*2Tdarwin_Darwin/Mac OS X
 4*2Tdragonfly_DragonFly BSD
 4*2Tembedded_Embedded
 4*2Tfreebsd_FreeBSD
+4*2Thaiku_Haiku
 4*2Tiphonesim_iPhoneSimulator
 4*2Tlinux_Linux
 4*2Tnetbsd_NetBSD
@@ -4124,6 +4135,7 @@ A*2Tandroid_Android
 A*2Taros_AROS
 A*2Tdarwin_Darwin/iPhoneOS/iOS
 A*2Tembedded_Embedded
+A*2Tfreertos_FreeRTOS
 A*2Tgba_Game Boy Advance
 A*2Tlinux_Linux
 A*2Tnds_Nintendo DS
@@ -4132,8 +4144,10 @@ A*2Tpalmos_PalmOS
 A*2Tsymbian_Symbian
 A*2Twince_Windows CE
 # aarch64 targets
+a*2Tandroid_Android
 a*2Tdarwin_Darwin/iOS
 a*2Tlinux_Linux
+a*2Twin64_Windows 64
 # jvm targets
 J*2Tandroid_Android
 J*2Tjava_Java
@@ -4173,6 +4187,10 @@ s*2Tlinux_Linux
 # not yet ready s*2Tsolaris_Solaris
 # avr targets
 V*2Tembedded_Embedded
+# xtensa targets
+x*2Tembedded_Embedded
+x*2Tfreertos_FreeRTOS
+x*2Tlinux_Linux
 # end of targets section
 **1u<x>_Undefines the symbol <x>
 **1U_Unit options:

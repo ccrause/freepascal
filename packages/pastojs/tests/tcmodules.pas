@@ -522,6 +522,7 @@ type
     Procedure TestClass_OverloadsAncestor;
     Procedure TestClass_OverloadConstructor;
     Procedure TestClass_OverloadDelphiOverride;
+    Procedure TestClass_ReintroduceVarDelphi;
     Procedure TestClass_ReintroducedVar;
     Procedure TestClass_RaiseDescendant;
     Procedure TestClass_ExternalMethod;
@@ -701,12 +702,14 @@ type
     Procedure TestTypeHelper_Constructor;
     Procedure TestTypeHelper_Word;
     Procedure TestTypeHelper_Double;
+    Procedure TestTypeHelper_NativeInt;
     Procedure TestTypeHelper_StringChar;
     Procedure TestTypeHelper_JSValue;
     Procedure TestTypeHelper_Array;
     Procedure TestTypeHelper_EnumType;
     Procedure TestTypeHelper_SetType;
     Procedure TestTypeHelper_InterfaceType;
+    Procedure TestTypeHelper_NestedSelf;
 
     // proc types
     Procedure TestProcType;
@@ -13889,6 +13892,94 @@ begin
     '']));
 end;
 
+procedure TTestModule.TestClass_ReintroduceVarDelphi;
+begin
+  StartProgram(false);
+  Add([
+  '{$mode delphi}',
+  'type',
+  '  TObject = class end;',
+  '  TAnimal = class',
+  '  public',
+  '    {#animal_a}A: longint;',
+  '    function {#animal_b}B: longint;',
+  '  end;',
+  '  TBird = class(TAnimal)',
+  '  public',
+  '    {#bird_a}A: double;',
+  '    {#bird_b}B: boolean;',
+  '  end;',
+  '  TEagle = class(TBird)',
+  '  public',
+  '    function {#eagle_a}A: boolean;',
+  '    {#eagle_b}B: double;',
+  '  end;',
+  'function TAnimal.B: longint;',
+  'begin',
+  'end;',
+  'function TEagle.A: boolean;',
+  'begin',
+  '  {@eagle_b}B:=3.3;',
+  '  {@eagle_a}A();',
+  '  TBird(Self).{@bird_b}B:=true;',
+  '  TAnimal(Self).{@animal_a}A:=17;',
+  '  inherited {@bird_b}B:=inherited {bird_a}A>1;', // Delphi allows only inherited <functionname>
+  'end;',
+  'var',
+  '  e: TEagle;',
+  'begin',
+  '  e.{@eagle_b}B:=5.3;',
+  '  if e.{@eagle_a}A then ;',
+  '']);
+  ConvertProgram;
+  CheckSource('TestClass_ReintroduceVarDelphi',
+    LinesToStr([ // statements
+    'rtl.createClass($mod, "TObject", null, function () {',
+    '  this.$init = function () {',
+    '  };',
+    '  this.$final = function () {',
+    '  };',
+    '});',
+    'rtl.createClass($mod, "TAnimal", $mod.TObject, function () {',
+    '  this.$init = function () {',
+    '    $mod.TObject.$init.call(this);',
+    '    this.A = 0;',
+    '  };',
+    '  this.B = function () {',
+    '    var Result = 0;',
+    '    return Result;',
+    '  };',
+    '});',
+    'rtl.createClass($mod, "TBird", $mod.TAnimal, function () {',
+    '  this.$init = function () {',
+    '    $mod.TAnimal.$init.call(this);',
+    '    this.A$1 = 0.0;',
+    '    this.B$1 = false;',
+    '  };',
+    '});',
+    'rtl.createClass($mod, "TEagle", $mod.TBird, function () {',
+    '  this.$init = function () {',
+    '    $mod.TBird.$init.call(this);',
+    '    this.B$2 = 0.0;',
+    '  };',
+    '  this.A$2 = function () {',
+    '    var Result = false;',
+    '    this.B$2 = 3.3;',
+    '    this.A$2();',
+    '    this.B$1 = true;',
+    '    this.A = 17;',
+    '    this.B$1 = this.A$1 > 1;',
+    '    return Result;',
+    '  };',
+    '});',
+    'this.e = null;',
+    '']),
+    LinesToStr([ // $mod.$main
+    '$mod.e.B$2 = 5.3;',
+    'if ($mod.e.A$2()) ;',
+    '']));
+end;
+
 procedure TTestModule.TestClass_ReintroducedVar;
 begin
   StartProgram(false);
@@ -24001,6 +24092,99 @@ begin
     '']));
 end;
 
+procedure TTestModule.TestTypeHelper_NativeInt;
+begin
+  StartProgram(false);
+  Add([
+  '{$modeswitch typehelpers}',
+  'type',
+  '  MaxInt = type nativeint;',
+  '  THelperI = type helper for MaxInt',
+  '    function ToStr: String;',
+  '  end;',
+  '  MaxUInt = type nativeuint;',
+  '  THelperU = type helper for MaxUInt',
+  '    function ToStr: String;',
+  '  end;',
+  'function THelperI.ToStr: String;',
+  'begin',
+  '  Result:=str(Self);',
+  'end;',
+  'function THelperU.ToStr: String;',
+  'begin',
+  '  Result:=str(Self);',
+  'end;',
+  'procedure DoIt(s: string);',
+  'begin',
+  'end;',
+  'var i: MaxInt;',
+  'begin',
+  '  DoIt(i.toStr);',
+  '  DoIt(i.toStr());',
+  '  (i*i).toStr;',
+  '  DoIt((i*i).toStr);',
+  '']);
+  ConvertProgram;
+  CheckSource('TestTypeHelper_NativeInt',
+    LinesToStr([ // statements
+    'rtl.createHelper($mod, "THelperI", null, function () {',
+    '  this.ToStr = function () {',
+    '    var Result = "";',
+    '    Result = "" + this.get();',
+    '    return Result;',
+    '  };',
+    '});',
+    'rtl.createHelper($mod, "THelperU", null, function () {',
+    '  this.ToStr = function () {',
+    '    var Result = "";',
+    '    Result = "" + this.get();',
+    '    return Result;',
+    '  };',
+    '});',
+    'this.DoIt = function (s) {',
+    '};',
+    'this.i = 0;',
+    '']),
+    LinesToStr([ // $mod.$main
+    '$mod.DoIt($mod.THelperI.ToStr.call({',
+    '  p: $mod,',
+    '  get: function () {',
+    '      return this.p.i;',
+    '    },',
+    '  set: function (v) {',
+    '      this.p.i = v;',
+    '    }',
+    '}));',
+    '$mod.DoIt($mod.THelperI.ToStr.call({',
+    '  p: $mod,',
+    '  get: function () {',
+    '      return this.p.i;',
+    '    },',
+    '  set: function (v) {',
+    '      this.p.i = v;',
+    '    }',
+    '}));',
+    '$mod.THelperI.ToStr.call({',
+    '  a: $mod.i * $mod.i,',
+    '  get: function () {',
+    '      return this.a;',
+    '    },',
+    '  set: function (v) {',
+    '      rtl.raiseE("EPropReadOnly");',
+    '    }',
+    '});',
+    '$mod.DoIt($mod.THelperI.ToStr.call({',
+    '  a: $mod.i * $mod.i,',
+    '  get: function () {',
+    '      return this.a;',
+    '    },',
+    '  set: function (v) {',
+    '      rtl.raiseE("EPropReadOnly");',
+    '    }',
+    '}));',
+    '']));
+end;
+
 procedure TTestModule.TestTypeHelper_StringChar;
 begin
   StartProgram(false);
@@ -24505,6 +24689,44 @@ begin
     '$mod.THelper.Run();',
     '$mod.THelper.Run();',
     '$mod.THelper.Run();',
+    '']));
+end;
+
+procedure TTestModule.TestTypeHelper_NestedSelf;
+begin
+  StartProgram(false);
+  Add([
+  '{$modeswitch typehelpers}',
+  'type',
+  '  THelper = type helper for string',
+  '    procedure Run(Value: string);',
+  '  end;',
+  'procedure THelper.Run(Value: string);',
+  '  function Sub(i: nativeint): boolean;',
+  '  begin',
+  '    Result:=Self[i+1]=Value[i];',
+  '  end;',
+  'begin',
+  '  if Self[3]=Value[4] then ;',
+  'end;',
+  'begin',
+  '']);
+  ConvertProgram;
+  CheckSource('TestTypeHelper_NestedSelf',
+    LinesToStr([ // statements
+    'rtl.createHelper($mod, "THelper", null, function () {',
+    '  this.Run = function (Value) {',
+    '    var $Self = this;',
+    '    function Sub(i) {',
+    '      var Result = false;',
+    '      Result = $Self.get().charAt((i + 1) - 1) === Value.charAt(i - 1);',
+    '      return Result;',
+    '    };',
+    '    if ($Self.get().charAt(2) === Value.charAt(3)) ;',
+    '  };',
+    '});',
+    '']),
+    LinesToStr([ // $mod.$main
     '']));
 end;
 

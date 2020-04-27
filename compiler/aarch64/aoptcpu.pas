@@ -42,14 +42,14 @@ Interface
         function PostPeepHoleOptsCpu(var p: tai): boolean; override;
         function RegLoadedWithNewValue(reg: tregister; hp: tai): boolean;override;
         function InstructionLoadsFromReg(const reg: TRegister; const hp: tai): boolean;override;
-        function GetNextInstructionUsingReg(Current : tai; out Next : tai; reg : TRegister) : Boolean;
         function LookForPostindexedPattern(p : taicpu) : boolean;
-        procedure DebugMsg(const s : string; p : tai);
       private
         function OptPass1Shift(var p: tai): boolean;
         function OptPostCMP(var p: tai): boolean;
-        function RemoveSuperfluousMove(const p: tai; movp: tai; const optimizer: string): boolean;
         function OptPass1Data(var p: tai): boolean;
+        function RemoveSuperfluousFMov(const p: tai; movp: tai; const optimizer: string): boolean;
+        function OptPass1STP(var p: tai): boolean;
+        function OptPass1Mov(var p: tai): boolean;
       End;
 
 Implementation
@@ -60,95 +60,9 @@ Implementation
     cgutils,
     verbose;
 
-{$ifdef DEBUG_AOPTCPU}
-  procedure TCpuAsmOptimizer.DebugMsg(const s: string;p : tai);
-    begin
-      asml.insertbefore(tai_comment.Create(strpnew(s)), p);
-    end;
-{$else DEBUG_AOPTCPU}
-  procedure TCpuAsmOptimizer.DebugMsg(const s: string;p : tai);inline;
-    begin
-    end;
-{$endif DEBUG_AOPTCPU}
-
   function CanBeCond(p : tai) : boolean;
     begin
       result:=(p.typ=ait_instruction) and (taicpu(p).condition=C_None);
-    end;
-
-
-  function RefsEqual(const r1, r2: treference): boolean;
-    begin
-      refsequal :=
-        (r1.offset = r2.offset) and
-        (r1.base = r2.base) and
-        (r1.index = r2.index) and (r1.scalefactor = r2.scalefactor) and
-        (r1.symbol=r2.symbol) and (r1.refaddr = r2.refaddr) and
-        (r1.relsymbol = r2.relsymbol) and
-        (r1.shiftimm = r2.shiftimm) and
-        (r1.addressmode = r2.addressmode) and
-        (r1.shiftmode = r2.shiftmode) and
-        (r1.volatility=[]) and
-        (r2.volatility=[]);
-    end;
-
-
-  function MatchInstruction(const instr: tai; const op: TAsmOps; const postfix: TOpPostfixes): boolean;
-    begin
-      result :=
-        (instr.typ = ait_instruction) and
-        ((op = []) or (taicpu(instr).opcode in op)) and
-        ((postfix = []) or (taicpu(instr).oppostfix in postfix));
-    end;
-
-
-  function MatchInstruction(const instr: tai; const op: TAsmOp; const postfix: TOpPostfixes): boolean;
-    begin
-      result :=
-        (instr.typ = ait_instruction) and
-        (taicpu(instr).opcode = op) and
-        ((postfix = []) or (taicpu(instr).oppostfix in postfix));
-    end;
-
-
-  function MatchOperand(const oper: TOper; const reg: TRegister): boolean; inline;
-    begin
-      result := (oper.typ = top_reg) and (oper.reg = reg);
-    end;
-
-
-  function MatchOperand(const oper1: TOper; const oper2: TOper): boolean; inline;
-    begin
-      result := oper1.typ = oper2.typ;
-
-      if result then
-        case oper1.typ of
-          top_const:
-            Result:=oper1.val = oper2.val;
-          top_reg:
-            Result:=oper1.reg = oper2.reg;
-          top_conditioncode:
-            Result:=oper1.cc = oper2.cc;
-          top_realconst:
-            Result:=oper1.val_real = oper2.val_real;
-          top_ref:
-            Result:=RefsEqual(oper1.ref^, oper2.ref^);
-          else Result:=false;
-        end
-    end;
-
-
-  function TCpuAsmOptimizer.GetNextInstructionUsingReg(Current: tai;
-    Out Next: tai; reg: TRegister): Boolean;
-    begin
-      Next:=Current;
-      repeat
-        Result:=GetNextInstruction(Next,Next);
-      until not (Result) or
-            not(cs_opt_level3 in current_settings.optimizerswitches) or
-            (Next.typ<>ait_instruction) or
-            RegInInstruction(reg,Next) or
-            is_calljmp(taicpu(Next).opcode);
     end;
 
 
@@ -234,84 +148,6 @@ Implementation
         end;
     end;
 
-
-  function TCpuAsmOptimizer.RemoveSuperfluousMove(const p: tai; movp: tai; const optimizer: string):boolean;
-    var
-      alloc,
-      dealloc : tai_regalloc;
-      hp1 : tai;
-    begin
-      Result:=false;
-      if MatchInstruction(movp, A_MOV, [PF_None]) and
-        (taicpu(p).ops>=3) and
-        { We can't optimize if there is a shiftop }
-        (taicpu(movp).ops=2) and
-        MatchOperand(taicpu(movp).oper[1]^, taicpu(p).oper[0]^.reg) and
-        { don't mess with moves to fp }
-        (taicpu(movp).oper[0]^.reg<>NR_FP) and
-        { the destination register of the mov might not be used beween p and movp }
-        not(RegUsedBetween(taicpu(movp).oper[0]^.reg,p,movp)) and
-        { Take care to only do this for instructions which REALLY load to the first register.
-          Otherwise
-            str reg0, [reg1]
-            mov reg2, reg0
-          will be optimized to
-            str reg2, [reg1]
-        }
-        RegLoadedWithNewValue(taicpu(p).oper[0]^.reg, p) then
-        begin
-          dealloc:=FindRegDeAlloc(taicpu(p).oper[0]^.reg,tai(movp.Next));
-          if assigned(dealloc) then
-            begin
-              DebugMsg('Peephole '+optimizer+' removed superfluous mov', movp);
-              result:=true;
-
-              { taicpu(p).oper[0]^.reg is not used anymore, try to find its allocation
-                and remove it if possible }
-              asml.Remove(dealloc);
-              alloc:=FindRegAllocBackward(taicpu(p).oper[0]^.reg,tai(p.previous));
-              if assigned(alloc) then
-                begin
-                  asml.Remove(alloc);
-                  alloc.free;
-                  dealloc.free;
-                end
-              else
-                asml.InsertAfter(dealloc,p);
-
-              { try to move the allocation of the target register }
-              GetLastInstruction(movp,hp1);
-              alloc:=FindRegAlloc(taicpu(movp).oper[0]^.reg,tai(hp1.Next));
-              if assigned(alloc) then
-                begin
-                  asml.Remove(alloc);
-                  asml.InsertBefore(alloc,p);
-                  { adjust used regs }
-                  IncludeRegInUsedRegs(taicpu(movp).oper[0]^.reg,UsedRegs);
-                end;
-
-              { finally get rid of the mov }
-              taicpu(p).loadreg(0,taicpu(movp).oper[0]^.reg);
-              { Remove preindexing and postindexing for LDR in some cases.
-                For example:
-                  ldr	reg2,[reg1, xxx]!
-                  mov reg1,reg2
-                must be translated to:
-                  ldr	reg1,[reg1, xxx]
-
-                Preindexing must be removed there, since the same register is used as the base and as the target.
-                Such case is not allowed for ARM CPU and produces crash. }
-              if (taicpu(p).opcode = A_LDR) and (taicpu(p).oper[1]^.typ = top_ref)
-                and (taicpu(movp).oper[0]^.reg = taicpu(p).oper[1]^.ref^.base)
-              then
-                taicpu(p).oper[1]^.ref^.addressmode:=AM_OFFSET;
-              asml.remove(movp);
-              movp.free;
-            end;
-        end;
-    end;
-
-
   {
     optimize
       ldr/str regX,[reg1]
@@ -356,6 +192,82 @@ Implementation
           asml.Remove(hp1);
           hp1.Free;
           Result:=true;
+        end;
+    end;
+
+
+  function TCpuAsmOptimizer.RemoveSuperfluousFMov(const p: tai; movp: tai; const optimizer: string):boolean;
+    var
+      alloc,
+      dealloc : tai_regalloc;
+      hp1 : tai;
+    begin
+      Result:=false;
+      if ((MatchInstruction(movp, A_FMOV, [taicpu(p).condition], [taicpu(p).oppostfix]) and
+           ((getregtype(taicpu(movp).oper[0]^.reg)=R_MMREGISTER) { or (taicpu(p).opcode in [A_LDUR])})
+          ) { or
+          (((taicpu(p).oppostfix in [PF_F64F32,PF_F64S16,PF_F64S32,PF_F64U16,PF_F64U32]) or (getsubreg(taicpu(p).oper[0]^.reg)=R_SUBFD)) and MatchInstruction(movp, A_VMOV, [taicpu(p).condition], [PF_F64])) or
+          (((taicpu(p).oppostfix in [PF_F32F64,PF_F32S16,PF_F32S32,PF_F32U16,PF_F32U32]) or (getsubreg(taicpu(p).oper[0]^.reg)=R_SUBFS)) and MatchInstruction(movp, A_VMOV, [taicpu(p).condition], [PF_F32])) }
+         ) and
+         (taicpu(movp).ops=2) and
+         MatchOperand(taicpu(movp).oper[1]^, taicpu(p).oper[0]^.reg) and
+         { the destination register of the mov might not be used beween p and movp }
+         not(RegUsedBetween(taicpu(movp).oper[0]^.reg,p,movp)) and
+         { Take care to only do this for instructions which REALLY load to the first register.
+           Otherwise
+             str reg0, [reg1]
+             fmov reg2, reg0
+           will be optimized to
+             str reg2, [reg1]
+         }
+         RegLoadedWithNewValue(taicpu(p).oper[0]^.reg, p) then
+        begin
+          dealloc:=FindRegDeAlloc(taicpu(p).oper[0]^.reg,tai(movp.Next));
+          if assigned(dealloc) then
+            begin
+              DebugMsg('Peephole '+optimizer+' removed superfluous vmov', movp);
+              result:=true;
+
+              { taicpu(p).oper[0]^.reg is not used anymore, try to find its allocation
+                and remove it if possible }
+              asml.Remove(dealloc);
+              alloc:=FindRegAllocBackward(taicpu(p).oper[0]^.reg,tai(p.previous));
+              if assigned(alloc) then
+                begin
+                  asml.Remove(alloc);
+                  alloc.free;
+                  dealloc.free;
+                end
+              else
+                asml.InsertAfter(dealloc,p);
+
+              { try to move the allocation of the target register }
+              GetLastInstruction(movp,hp1);
+              alloc:=FindRegAlloc(taicpu(movp).oper[0]^.reg,tai(hp1.Next));
+              if assigned(alloc) then
+                begin
+                  asml.Remove(alloc);
+                  asml.InsertBefore(alloc,p);
+                  { adjust used regs }
+                  IncludeRegInUsedRegs(taicpu(movp).oper[0]^.reg,UsedRegs);
+                end;
+
+              { change
+                  vldr reg0,[reg1]
+                  vmov reg2,reg0
+                into
+                  ldr reg2,[reg1]
+
+                if reg2 is an int register
+              if (taicpu(p).opcode=A_VLDR) and (getregtype(taicpu(movp).oper[0]^.reg)=R_INTREGISTER) then
+                taicpu(p).opcode:=A_LDR;
+              }
+
+              { finally get rid of the mov }
+              taicpu(p).loadreg(0,taicpu(movp).oper[0]^.reg);
+              asml.remove(movp);
+              movp.free;
+            end;
         end;
     end;
 
@@ -479,6 +391,105 @@ Implementation
     end;
 
 
+  function TCpuAsmOptimizer.OptPass1STP(var p : tai): boolean;
+    var
+      hp1, hp2, hp3, hp4: tai;
+    begin
+      Result:=false;
+      {
+        change
+
+	stp	x29,x30,[sp, #-16]!
+	mov	x29,sp
+	bl	abc
+	ldp	x29,x30,[sp], #16
+	ret
+
+        into
+
+        b         abc
+      }
+      if MatchInstruction(p, A_STP, [C_None], [PF_None]) and
+        MatchOpType(taicpu(p),top_reg,top_reg,top_ref) and
+        (taicpu(p).oper[0]^.reg = NR_X29) and
+        (taicpu(p).oper[1]^.reg = NR_X30) and
+        (taicpu(p).oper[2]^.ref^.base=NR_STACK_POINTER_REG) and
+        (taicpu(p).oper[2]^.ref^.index=NR_NO) and
+        (taicpu(p).oper[2]^.ref^.offset=-16) and
+        (taicpu(p).oper[2]^.ref^.addressmode=AM_PREINDEXED) and
+        GetNextInstruction(p, hp1) and
+        GetNextInstruction(hp1, hp2) and
+        SkipEntryExitMarker(hp2, hp2) and
+        GetNextInstruction(hp2, hp3) and
+        SkipEntryExitMarker(hp3, hp3) and
+        GetNextInstruction(hp3, hp4) and
+
+        MatchInstruction(hp1, A_MOV, [C_None], [PF_NONE]) and
+        MatchOperand(taicpu(hp1).oper[0]^,taicpu(p).oper[0]^) and
+        (taicpu(hp1).oper[1]^.typ = top_reg) and
+        (taicpu(hp1).oper[1]^.reg = NR_STACK_POINTER_REG) and
+
+        MatchInstruction(hp2, A_BL, [C_None], [PF_NONE]) and
+        (taicpu(hp2).oper[0]^.typ = top_ref) and
+
+        MatchInstruction(hp3, A_LDP, [C_None], [PF_NONE]) and
+        MatchOpType(taicpu(hp3),top_reg,top_reg,top_ref) and
+        (taicpu(hp3).oper[0]^.reg = NR_X29) and
+        (taicpu(hp3).oper[1]^.reg = NR_X30) and
+        (taicpu(hp3).oper[2]^.ref^.base=NR_STACK_POINTER_REG) and
+        (taicpu(hp3).oper[2]^.ref^.index=NR_NO) and
+        (taicpu(hp3).oper[2]^.ref^.offset=16) and
+        (taicpu(hp3).oper[2]^.ref^.addressmode=AM_POSTINDEXED) and
+
+        MatchInstruction(hp4, A_RET, [C_None], [PF_None]) and
+        (taicpu(hp4).ops = 0) then
+        begin
+          asml.Remove(p);
+          asml.Remove(hp1);
+          asml.Remove(hp3);
+          asml.Remove(hp4);
+          taicpu(hp2).opcode:=A_B;
+          p.free;
+          hp1.free;
+          hp3.free;
+          hp4.free;
+          p:=hp2;
+          DebugMsg('Peephole Bl2B done', p);
+          Result:=true;
+        end;
+    end;
+
+
+  function TCpuAsmOptimizer.OptPass1Mov(var p : tai): boolean;
+    var
+      hp1: tai;
+    begin
+     Result:=false;
+     if MatchOperand(taicpu(p).oper[0]^,taicpu(p).oper[1]^) and
+       (taicpu(p).oppostfix=PF_None) then
+       begin
+         RemoveCurrentP(p);
+         DebugMsg('Peephole Mov2None done', p);
+         Result:=true;
+       end
+
+     {
+       optimize
+       mov rX, yyyy
+       ....
+     }
+     else if GetNextInstructionUsingReg(p, hp1, taicpu(p).oper[0]^.reg) then
+       begin
+         if RemoveSuperfluousMove(p, hp1, 'MovMov2Mov') then
+           Result:=true
+         else if (taicpu(p).ops = 2) and
+           (tai(hp1).typ = ait_instruction) and
+           RedundantMovProcess(p,hp1) then
+           Result:=true;
+       end;
+    end;
+
+
   function TCpuAsmOptimizer.OptPostCMP(var p : tai): boolean;
     var
      hp1,hp2: tai;
@@ -513,6 +524,8 @@ Implementation
 
 
   function TCpuAsmOptimizer.PeepHoleOptPass1Cpu(var p: tai): boolean;
+    var
+      hp1: tai;
     begin
       result := false;
       if p.typ=ait_instruction then
@@ -526,6 +539,10 @@ Implementation
               begin
                 Result:=LookForPostindexedPattern(taicpu(p));
               end;
+            A_MOV:
+              Result:=OptPass1Mov(p);
+            A_STP:
+              Result:=OptPass1STP(p);
             A_LSR,
             A_ROR,
             A_ASR,
@@ -541,6 +558,28 @@ Implementation
             A_ORR,
             A_MUL:
               Result:=OptPass1Data(p);
+            A_UXTB:
+              Result:=OptPass1UXTB(p);
+            A_UXTH:
+              Result:=OptPass1UXTH(p);
+            A_SXTB:
+              Result:=OptPass1SXTB(p);
+            A_SXTH:
+              Result:=OptPass1SXTH(p);
+//            A_VLDR,
+            A_FADD,
+            A_FMUL,
+            A_FDIV,
+            A_FSUB,
+            A_FSQRT,
+            A_FNEG,
+            A_FCVT,
+            A_FABS:
+              begin
+                if GetNextInstructionUsingReg(p, hp1, taicpu(p).oper[0]^.reg) and
+                  RemoveSuperfluousFMov(p, hp1, 'FOpFMov2FOp') then
+                  Result:=true;
+              end
             else
               ;
           end;

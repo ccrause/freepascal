@@ -138,7 +138,7 @@ interface
         { watcom }  ( true,  false, false, false ,false, false, false, false, false, false, false, false, false, false,   false, false, false, false, false, false,  false,   false),
         { morphos } ( false, false, true,  false ,false, false, false, false, false, false, false, false, false, false,   false, false, false, false, false, false,  false,   false),
         { netwlibc }( true,  false, false, false, false, false, false, false, false, false, false, false, false, false,   false, false, false, false, false, false,  false,   false),
-        { win64   } ( false, false, false, false, true,  false, false, false, false, false, false, false, false, false,   false, false, false, false, false, false,  false,   false),
+        { win64   } ( false, false, false, false, true,  false, false, false, false, false, false, false, false, false,   false, false, true,  false, false, false,  false,   false),
         { wince    }( true,  false, false, false, false, true,  false, false, false, false, false, false, false, false,   false, false, false, false, false, false,  false,   false),
         { gba    }  ( false, false, false, false, false, true,  false, false, false, false, false, false, false, false,   false, false, false, false, false, false,  false,   false),
         { nds    }  ( false, false, false, false, false, true,  false, false, false, false, false, false, false, false,   false, false, false, false, false, false,  false,   false),
@@ -155,7 +155,7 @@ interface
         {dragonfly} ( false, false, false, false, true,  false, false, false, false, false, false, false, false, false,   false, false, false, false, false, false,  false,   false),
         { win16 }   ( false, false, false, false, false, false, false, false, false, false, false, false, false, false,   false, true , false, false, false, false,  false,   false),
         { wasm }    ( false, false, false, false, false, false, false, false, false, false, false, false, false, false,   false, false, false, true,  false, false,  false,   false),
-        { freertos }( false, false, false, false, false, false, false, false, false, false, false, false, false, false,   false, false, false, false, false, false,  false,   true )
+        { freertos }( false, false, false, false, false, true,  false, false, false, false, false, false, false, false,   false, false, false, false, false, false,  false,   true )
       );
 
     type
@@ -1157,6 +1157,13 @@ implementation
            Result:=true;
            exit;
          end;
+        { for LLVM compiler support, and dwarf eh }
+        for c:=low(tcpu) to high(tcpu) do
+          if FIncludeTargets[c,o_linux] then
+            begin
+              Result:=true;
+              exit;
+            end;
         for c:=low(tcpu) to high(tcpu) do
           for t:=low(tos) to high(tos) do
             if FIncludeTargets[c,t] then

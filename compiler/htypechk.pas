@@ -618,6 +618,7 @@ implementation
         i : longint;
         eq : tequaltype;
         conv : tconverttype;
+        cdo : tcompare_defs_options;
         pd : tprocdef;
         oldcount,
         count: longint;
@@ -663,7 +664,10 @@ implementation
                 { assignment is a special case }
                 if optoken in [_ASSIGNMENT,_OP_EXPLICIT] then
                   begin
-                    eq:=compare_defs_ext(ld,pf.returndef,nothingn,conv,pd,[cdo_explicit]);
+                    cdo:=[];
+                    if optoken=_OP_EXPLICIT then
+                      include(cdo,cdo_explicit);
+                    eq:=compare_defs_ext(ld,pf.returndef,nothingn,conv,pd,cdo);
                     result:=
                       (eq=te_exact) or
                       (
@@ -2775,7 +2779,7 @@ implementation
               internalerror(2015060301);
             { check whether the given parameters are compatible
               to the def's constraints }
-            if not check_generic_constraints(pd,spezcontext.genericdeflist,spezcontext.poslist) then
+            if not check_generic_constraints(pd,spezcontext.paramlist,spezcontext.poslist) then
               exit;
             def:=generate_specialization_phase2(spezcontext,pd,false,'');
             case def.typ of

@@ -193,7 +193,9 @@
              system_x86_64_haiku,       { 102 }
              system_xtensa_embedded,    { 103 }
              system_xtensa_freertos,    { 104 }
-             system_xtensa_linux        { 105 }
+             system_xtensa_linux,       { 105 }
+             system_arm_freertos,       { 106 }
+             system_aarch64_win64       { 107 }
        );
 
      type
@@ -249,6 +251,7 @@
              ,as_wasm_binaryen
              ,as_powerpc_gas_legacy    { for systems with very old GAS versions only, which don't support eg. named sections }
              ,as_llvm_clang
+             ,as_clang_gas
        );
 
        tlink = (ld_none,
@@ -335,6 +338,13 @@
             ,abi_i386_dynalignedstack
             ,abi_xtensa_windowed
             ,abi_xtensa_call0
+       );
+
+       tcgbackend = (
+           { default FPC code generator }
+             cg_fpc
+           { LLVM code generator }
+           , cg_llvm
        );
 
      const
