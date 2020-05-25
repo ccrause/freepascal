@@ -3798,7 +3798,7 @@ new features, etc.):
 # Help pages (option -? and -h)
 #
 # The first character on the line indicates who will display this
-# line, the current possibilities are :
+# line, the current possibilities are:
 #    * = every target
 #    3 = 80x86 targets
 #    4 = x86_64
@@ -3810,14 +3810,18 @@ new features, etc.):
 #    F = help for the 'fpc' binary (independent of the target compiler)
 #    I = VIS
 #    J = JVM
+#    L = LLVM variant
 #    M = MIPS (MIPSEB) targets
 #    m = MIPSEL targets
 #    P = PowerPC targets
 #    p = PowerPC64 targets
+#    R = RiscV32 targets
+#    r = RiscV64 targets
 #    S = Sparc targets
 #    s = Sparc64 targets
 #    V = AVR
 #    x = xtensa targets
+#    Z = Z80
 # The second character also indicates who will display this line,
 # (if the above character was TRUE) the current possibilities are :
 #    * = everyone
@@ -3880,6 +3884,8 @@ F*0*_Only options valid for the default or selected platform are listed.
 A*2Aas_Assemble using GNU AS
 P*2Aas_Assemble using GNU AS
 S*2Aas_Assemble using GNU AS
+Z*2Asdcc-sdasz80_Assemble using SDCC-SDASZ80
+Z*2Az80asm_Assemble using z80asm
 # Used only internally by IDE
 **1b_Generate browser info
 **2bl_Generate local symbol info
@@ -3898,10 +3904,10 @@ S*2Aas_Assemble using GNU AS
 **2Ch<n>[,m]_<n> bytes min heap size (between 1023 and 67107840) and optionally [m] max heap size
 **2Ci_IO-checking
 A*2CI<x>_Select instruction set on ARM: ARM or THUMB
-l*2CL<x>_LLVM code generation options
-l*3CLflto_Enable Link-time optimisation (needed both when compiling units and programs/libraries)
-l*3CLfltonosystem_Disable LTO for the system unit (needed with at least Xcode 10.2 and earlier due to linker bugs)
-l*3CLv<x>_LLVM target version: Xcode-10.1, 7.0, 8.0, .., 10.0
+L*2Cl<x>_LLVM code generation options
+L*3Clflto_Enable Link-time optimisation (needed both when compiling units and programs/libraries)
+L*3Clfltonosystem_Disable LTO for the system unit (needed with at least Xcode 10.2 and earlier due to linker bugs)
+L*3Clv<x>_LLVM target version: Xcode-10.1, 7.0, 8.0, .., 10.0
 **2Cn_Omit linking stage
 P*2CN_Generate nil-pointer checks (AIX-only)
 **2Co_Check overflow of integer operations
@@ -4191,6 +4197,9 @@ V*2Tembedded_Embedded
 x*2Tembedded_Embedded
 x*2Tfreertos_FreeRTOS
 x*2Tlinux_Linux
+# z80 targets
+Z*2Tembedded_Embedded
+Z*2Tzxspectrum_ZX Spectrum
 # end of targets section
 **1u<x>_Undefines the symbol <x>
 **1U_Unit options:
@@ -4271,7 +4280,9 @@ P*2WM<x>_Minimum Mac OS X deployment version: 10.4, 10.5.1, ... (Darwin)
 A*2WN_Do not generate relocation code, needed for debugging (Windows)
 A*2Wp<x>_Specify the controller type; see fpc -i or fpc -iu for possible values
 m*2Wp<x>_Specify the controller type; see fpc -i or fpc -iu for possible values
+R*2Wp<x>_Specify the controller type; see fpc -i or fpc -iu for possible values
 V*2Wp<x>_Specify the controller type; see fpc -i or fpc -iu for possible values
+x*2Wp<x>_Specify the controller type; see fpc -i or fpc -iu for possible values
 3*2WP<x>_Minimum iOS deployment version: 3.0, 5.0.1, ... (iphonesim)
 4*2WP<x>_Minimum iOS deployment version: 8.0, 8.0.2, ... (iphonesim)
 a*2WP<x>_Minimum iOS deployment version: 7.0, 7.1.2, ... (Darwin)

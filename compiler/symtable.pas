@@ -125,7 +125,6 @@ interface
           procedure insertdef(def:TDefEntry);override;
           function is_packed: boolean;
           function has_single_field(out def:tdef): boolean;
-          function get_unit_symtable: tsymtable;
           { collects all management operators of the specified type in list (which
             is not cleared); the entries are copies and thus must be freed by the
             caller }
@@ -1677,14 +1676,6 @@ implementation
         until false;
       end;
 
-    function tabstractrecordsymtable.get_unit_symtable: tsymtable;
-      begin
-        result:=defowner.owner;
-        while assigned(result) and (result.symtabletype in [ObjectSymtable,recordsymtable]) do
-          result:=result.defowner.owner;
-      end;
-
-
     procedure tabstractrecordsymtable.do_get_managementoperator_offset_list(data:tobject;arg:pointer);
       var
         sym : tsym absolute data;
@@ -2637,7 +2628,7 @@ implementation
           begin
             { first check the class... }
             if ([oo_has_class_constructor,oo_has_class_destructor] * tabstractrecorddef(p).objectoptions <> []) then
-              result^:=true;;
+              result^:=true;
             { ... and then also check all subclasses }
             if not result^ then
               tabstractrecorddef(p).symtable.deflist.foreachcall(@CheckForClassConDestructors,arg);

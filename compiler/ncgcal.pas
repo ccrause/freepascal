@@ -35,12 +35,11 @@ interface
     type
        tcgcallparanode = class(tcallparanode)
        protected
-          function push_zero_sized_value_para: boolean; virtual;
-
           procedure push_addr_para;
           procedure push_value_para;virtual;
           procedure push_formal_para;virtual;
           procedure push_copyout_para;virtual;abstract;
+          function maybe_push_unused_para:boolean;virtual;
        public
           tempcgpara : tcgpara;
 
@@ -60,6 +59,7 @@ interface
           procedure release_para_temps;
           procedure reorder_parameters;
           procedure freeparas;
+          function is_parentfp_pushed:boolean;
        protected
           retloc: tcgpara;
           paralocs: array of pcgpara;
@@ -138,6 +138,42 @@ implementation
       wpobase;
 
 
+    function can_opt_unused_para(parasym: tparavarsym): boolean;
+      var
+        pd: tprocdef;
+      begin
+        { The parameter can be optimized as unused when:
+            this is a direct call to a routine, not a procvar
+            and the routine is not an exception filter
+            and the parameter is not used by the routine
+            and implementation of the routine is already processed.
+        }
+        result:=assigned(parasym.Owner) and
+          (parasym.Owner.defowner.typ=procdef);
+        if not result then
+          exit;
+        pd:=tprocdef(parasym.Owner.defowner);
+        result:=(pd.proctypeoption<>potype_exceptfilter) and
+          not parasym.is_used and
+          pd.is_implemented;
+      end;
+
+
+    function can_skip_para_push(parasym: tparavarsym): boolean;
+      begin
+        { We can skip passing the parameter when:
+            the parameter can be optimized as unused
+            and the target does not strictly require all parameters (has_strict_proc_signature = false)
+            and fixed stack is used
+              or the parameter is in a register
+              or the parameter is $parentfp. }
+        result:=can_opt_unused_para(parasym) and
+          not paramanager.has_strict_proc_signature and
+          (paramanager.use_fixed_stack or
+           (vo_is_parentfp in parasym.varoptions) or
+           (parasym.paraloc[callerside].Location^.Loc in [LOC_REGISTER,LOC_CREGISTER]));
+      end;
+
 {*****************************************************************************
                              TCGCALLPARANODE
 *****************************************************************************}
@@ -156,19 +192,14 @@ implementation
       end;
 
 
-    function tcgcallparanode.push_zero_sized_value_para: boolean;
-      begin
-        { nothing to push by default }
-        result:=false;
-      end;
-
-
     procedure tcgcallparanode.push_addr_para;
       var
         valuedef: tdef;
       begin
         if not(left.location.loc in [LOC_CREFERENCE,LOC_REFERENCE]) then
           internalerror(200304235);
+        if maybe_push_unused_para then
+          exit;
         { see the call to keep_para_array_range in ncal: if that call returned
           true, we overwrite the resultdef of left with its original resultdef
           (to keep track of the range of the original array); we inserted a type
@@ -259,7 +290,10 @@ implementation
           -- except on platforms where the parameters are part of the signature
              and checked by the runtime/backend compiler (e.g. JVM, LLVM) }
         if (left.resultdef.size=0) and
-           not push_zero_sized_value_para then
+           not paramanager.has_strict_proc_signature then
+          exit;
+
+        if maybe_push_unused_para then
           exit;
 
         { Move flags and jump in register to make it less complex }
@@ -273,11 +307,25 @@ implementation
 
     procedure tcgcallparanode.push_formal_para;
       begin
+        if maybe_push_unused_para then
+          exit;
         { allow passing of a constant to a const formaldef }
         if (parasym.varspez=vs_const) and
            not(left.location.loc in [LOC_CREFERENCE,LOC_REFERENCE]) then
           hlcg.location_force_mem(current_asmdata.CurrAsmList,left.location,left.resultdef);
         push_addr_para;
+      end;
+
+
+    function tcgcallparanode.maybe_push_unused_para: boolean;
+      begin
+        { Check if the parameter is unused and can be optimized }
+        result:=can_opt_unused_para(parasym);
+        if not result then
+          exit;
+        { If we can't skip loading of the parameter, load an undefined dummy value. }
+        if not can_skip_para_push(parasym) then
+          hlcg.a_load_undefined_cgpara(current_asmdata.CurrAsmList,left.resultdef,tempcgpara);
       end;
 
 
@@ -737,7 +785,8 @@ implementation
          ppn:=tcgcallparanode(left);
          while assigned(ppn) do
            begin
-             if (ppn.left.nodetype<>nothingn) then
+             if (ppn.left.nodetype<>nothingn) and
+               not can_skip_para_push(ppn.parasym) then
                begin
                  { better check for the real location of the parameter here, when stack passed parameters
                    are saved temporary in registers, checking for the tmpparaloc.loc is wrong
@@ -908,6 +957,12 @@ implementation
            end;
        end;
 
+
+    function tcgcallnode.is_parentfp_pushed: boolean;
+      begin
+        result:=(procdefinition.typ<>procdef) or
+          not can_skip_para_push(tparavarsym(tprocdef(procdefinition).parentfpsym));
+      end;
 
 
     procedure tcgcallnode.pass_generate_code;
@@ -1183,44 +1238,6 @@ implementation
          if assigned(left) then
            freeparas;
 
-         { Need to remove the parameters from the stack? }
-         if procdefinition.proccalloption in clearstack_pocalls then
-           begin
-             pop_size:=pushedparasize;
-             { for Cdecl functions we don't need to pop the funcret when it
-               was pushed by para. Except for safecall functions with
-               safecall-exceptions enabled. In that case the funcret is always
-               returned as a para which is considered a normal para on the
-               c-side, so the funcret has to be pop'ed normally. }
-             if not ((procdefinition.proccalloption=pocall_safecall) and
-                     (tf_safecall_exceptions in target_info.flags)) and
-                paramanager.ret_in_param(procdefinition.returndef,procdefinition) then
-               dec(pop_size,sizeof(pint));
-             { Remove parameters/alignment from the stack }
-             pop_parasize(pop_size);
-           end
-         { in case we use a fixed stack, we did not push anything, if the stack is
-           really adjusted because a ret xxx was done, depends on
-           pop_parasize which uses pushedparasize to determine this
-
-           This does not apply to interrupt procedures, their ret statment never clears any stack parameters }
-         else if paramanager.use_fixed_stack and
-                 not(po_interrupt in procdefinition.procoptions) and
-                 (target_info.abi=abi_i386_dynalignedstack) then
-           begin
-             { however, a delphi style frame pointer for a nested subroutine
-               is not cleared by the callee, so we have to compensate for this
-               by passing 4 as pushedparasize does include it }
-             if po_delphi_nested_cc in procdefinition.procoptions then
-               pop_parasize(sizeof(pint))
-             else
-               pop_parasize(0);
-           end
-         { frame pointer parameter is popped by the caller when it's passed the
-           Delphi way }
-         else if (po_delphi_nested_cc in procdefinition.procoptions) and
-           not paramanager.use_fixed_stack then
-           pop_parasize(sizeof(pint));
          { Release registers, but not the registers that contain the
            function result }
          if (not is_void(resultdef)) then
@@ -1261,6 +1278,46 @@ implementation
          if cg.uses_registers(R_ADDRESSREGISTER) then
            cg.dealloccpuregisters(current_asmdata.CurrAsmList,R_ADDRESSREGISTER,regs_to_save_address);
          cg.dealloccpuregisters(current_asmdata.CurrAsmList,R_INTREGISTER,regs_to_save_int);
+
+         { Need to remove the parameters from the stack? }
+         if procdefinition.proccalloption in clearstack_pocalls then
+           begin
+             pop_size:=pushedparasize;
+             { for Cdecl functions we don't need to pop the funcret when it
+               was pushed by para. Except for safecall functions with
+               safecall-exceptions enabled. In that case the funcret is always
+               returned as a para which is considered a normal para on the
+               c-side, so the funcret has to be pop'ed normally. }
+             if not ((procdefinition.proccalloption=pocall_safecall) and
+                     (tf_safecall_exceptions in target_info.flags)) and
+                paramanager.ret_in_param(procdefinition.returndef,procdefinition) then
+               dec(pop_size,sizeof(pint));
+             { Remove parameters/alignment from the stack }
+             pop_parasize(pop_size);
+           end
+         { in case we use a fixed stack, we did not push anything, if the stack is
+           really adjusted because a ret xxx was done, depends on
+           pop_parasize which uses pushedparasize to determine this
+
+           This does not apply to interrupt procedures, their ret statment never clears any stack parameters }
+         else if paramanager.use_fixed_stack and
+                 not(po_interrupt in procdefinition.procoptions) and
+                 (target_info.abi=abi_i386_dynalignedstack) then
+           begin
+             { however, a delphi style frame pointer for a nested subroutine
+               is not cleared by the callee, so we have to compensate for this
+               by passing 4 as pushedparasize does include it }
+             if po_delphi_nested_cc in procdefinition.procoptions then
+               pop_parasize(sizeof(pint))
+             else
+               pop_parasize(0);
+           end
+         { frame pointer parameter is popped by the caller when it's passed the
+           Delphi way and $parentfp is used }
+         else if (po_delphi_nested_cc in procdefinition.procoptions) and
+            not paramanager.use_fixed_stack and
+            is_parentfp_pushed() then
+           pop_parasize(sizeof(pint));
 
          if procdefinition.generate_safecall_wrapper then
            begin

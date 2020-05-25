@@ -229,17 +229,17 @@ interface
           fcontains_stack_tainting_call_cached,
           ffollowed_by_stack_tainting_call_cached : boolean;
        protected
-          { in case of copy-out parameters: initialization code, and the code to
-            copy back the parameter value after the call (including any required
-            finalization code) }
-          fparainit,
-          fparacopyback: tnode;
           procedure handlemanagedbyrefpara(orgparadef: tdef);virtual;
           { on some targets, value parameters that are passed by reference must
             be copied to a temp location by the caller (and then a reference to
             this temp location must be passed) }
           procedure copy_value_by_ref_para;
        public
+          { in case of copy-out parameters: initialization code, and the code to
+            copy back the parameter value after the call (including any required
+            finalization code) }
+          fparainit,
+          fparacopyback: tnode;
           callparaflags : tcallparaflags;
           parasym       : tparavarsym;
           { only the processor specific nodes need to override this }
@@ -744,6 +744,9 @@ implementation
         { this routine is for targets where by-reference value parameters need
           to be copied by the caller. It's basically the node-level equivalent
           of thlcgobj.g_copyvalueparas }
+
+        if assigned(fparainit) then
+          exit;
 
         { in case of an array constructor, we don't need a copy since the array
           constructor itself is already constructed on the fly (and hence if
@@ -1462,8 +1465,38 @@ implementation
 
 
     procedure tcallparanode.printnodetree(var t:text);
+      var
+        hp: tbinarynode;
       begin
-        printnodelist(t);
+        hp:=self;
+        while assigned(hp) do
+         begin
+           write(t,printnodeindention,'(');
+           printnodeindent;
+           hp.printnodeinfo(t);
+           writeln(t);
+           if assigned(tcallparanode(hp).fparainit) then
+             begin
+               writeln(t,printnodeindention,'(parainit =');
+               printnodeindent;
+               printnode(t,tcallparanode(hp).fparainit);
+               printnodeunindent;
+               writeln(t,printnodeindention,')');
+             end;
+           if assigned(tcallparanode(hp).fparacopyback) then
+             begin
+               writeln(t,printnodeindention,'(fparacopyback =');
+               printnodeindent;
+               printnode(t,tcallparanode(hp).fparacopyback);
+               printnodeunindent;
+               writeln(t,printnodeindention,')');
+             end;
+           printnode(t,hp.left);
+           writeln(t);
+           printnodeunindent;
+           writeln(t,printnodeindention,')');
+           hp:=tbinarynode(hp.right);
+         end;
       end;
 
 
@@ -4144,8 +4177,8 @@ implementation
                               That means the for pushes the para with the
                               highest offset (see para3) needs to be pushed first
                             }
-{$if defined(i386) or defined(i8086) or defined(m68k)}
-                            { the i386, i8086, m68k and jvm code generators expect all reference }
+{$if defined(i386) or defined(i8086) or defined(m68k) or defined(z80)}
+                            { the i386, i8086, m68k, z80 and jvm code generators expect all reference }
                             { parameters to be in this order so they can use   }
                             { pushes in case of no fixed stack                 }
                             if (not paramanager.use_fixed_stack and
@@ -5143,13 +5176,10 @@ implementation
               end;
           end;
 
-        { consider it must not be inlined if called
-          again inside the args or itself }
-        exclude(procdefinition.procoptions,po_inline);
         typecheckpass(tnode(inlineblock));
         doinlinesimplify(tnode(inlineblock));
+        node_reset_flags(tnode(inlineblock),[nf_pass1_done]);
         firstpass(tnode(inlineblock));
-        include(procdefinition.procoptions,po_inline);
         result:=inlineblock;
 
         { if the function result is used then verify that the blocknode

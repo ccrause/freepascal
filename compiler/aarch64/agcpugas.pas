@@ -65,7 +65,7 @@ unit agcpugas;
         'uxtb','uxth','uxtw','uxtx',
         'sxtb','sxth','sxtw','sxtx');
 
-    const 
+    const
       cputype_to_gas_march : array[tcputype] of string = (
         '', // cpu_none
         'armv8'
@@ -292,6 +292,7 @@ unit agcpugas;
         if not assigned(list) then
           exit;
 
+        lastsym:=nil;
         tmplist:=nil;
         sehlist:=nil;
         lastsec:=nil;
@@ -303,6 +304,8 @@ unit agcpugas;
         handlerdata:=nil;
         handlerdataidx:=0;
         handlerdatacount:=nil;
+        handlerflags:=0;
+        handlername:='';
 
         hp:=tai(list.first);
         while assigned(hp) do
@@ -789,6 +792,7 @@ unit agcpugas;
             supported_targets : [system_aarch64_linux,system_aarch64_android];
             flags : [af_needar,af_smartlink_sections];
             labelprefix : '.L';
+            labelmaxlen : -1;
             comment : '// ';
             dollarsign: '$';
           );
@@ -802,6 +806,7 @@ unit agcpugas;
             supported_targets : [system_aarch64_darwin];
             flags : [af_needar,af_smartlink_sections,af_supports_dwarf];
             labelprefix : 'L';
+            labelmaxlen : -1;
             comment : '# ';
             dollarsign: '$';
           );
@@ -815,6 +820,7 @@ unit agcpugas;
             supported_targets : [system_aarch64_win64];
             flags : [af_needar,af_smartlink_sections,af_supports_dwarf];
             labelprefix : '.L';
+            labelmaxlen : -1;
             comment : '// ';
             dollarsign: '$';
           );

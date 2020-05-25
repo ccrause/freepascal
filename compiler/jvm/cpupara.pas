@@ -51,6 +51,7 @@ interface
         function param_use_paraloc(const cgpara: tcgpara): boolean; override;
         function ret_in_param(def:tdef;pd:tabstractprocdef):boolean;override;
         function is_stack_paraloc(paraloc: pcgparalocation): boolean;override;
+        function has_strict_proc_signature: boolean;override;
       private
         procedure create_paraloc_info_intern(p : tabstractprocdef; side: tcallercallee; paras: tparalist;
                                              var parasize:longint);
@@ -209,6 +210,12 @@ implementation
       end;
 
 
+    function tcpuparamanager.has_strict_proc_signature: boolean;
+      begin
+        result:=true;
+      end;
+
+
     function tcpuparamanager.create_varargs_paraloc_info(p : tabstractprocdef; side: tcallercallee; varargspara:tvarargsparalist):longint;
       var
         parasize : longint;
@@ -273,7 +280,7 @@ implementation
               left to right (including self, if applicable). At the callee side,
               they're available as local variables 0..n-1 (with 64 bit values
               taking up two slots) }
-            paraloc^.loc:=LOC_REFERENCE;;
+            paraloc^.loc:=LOC_REFERENCE;
             paraloc^.reference.offset:=paraofs;
             paraloc^.size:=paracgsize;
             paraloc^.def:=paradef;

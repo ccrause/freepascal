@@ -89,7 +89,7 @@ const
   FieldCookie = HeaderCookie deprecated;
   FieldSetCookie = HeaderSetCookie deprecated;
 
-  NoHTTPFields    = 27;
+  NoHTTPFields    = 28;
 
   HTTPDateFmt     = httpProtocol.HTTPDateFmt;
   SCookieExpire   = httpProtocol.SCookieExpire;
@@ -97,6 +97,7 @@ const
   SCookiePath     = httpProtocol.SCookiePath;
   SCookieSecure   = httpProtocol.SCookieSecure;
   SCookieHttpOnly = httpProtocol.SCookieHttpOnly;
+  SCookieSameSite = httpProtocol.SCookieSameSite;
 
   HTTPMonths : array[1..12] of string[3] = (
     'Jan', 'Feb', 'Mar', 'Apr',
@@ -129,7 +130,7 @@ Const
                  fieldFrom, fieldIfModifiedSince, fieldLastModified, fieldLocation,
                  fieldPragma, fieldReferer, fieldRetryAfter, fieldServer,
                  fieldSetCookie, fieldUserAgent, fieldWWWAuthenticate,
-                  fieldHost, fieldCacheControl,fieldXRequestedWith) deprecated;
+                  fieldHost, fieldCacheControl,fieldXRequestedWith,fieldIfNoneMatch) deprecated;
 
   // Map header names on indexes in property getter/setter. 0 means not mapped !
   HTTPFieldIndexes : THTTPIndexes
@@ -140,7 +141,7 @@ Const
                        14,15,16,17,
                        18,19,20,21,
                        22,23,24,
-                       34,0,36) deprecated;
+                       34,0,36,26) deprecated;
 
 
 
@@ -148,11 +149,13 @@ type
   TRequest = Class;
 
   { TCookie }
+  TSameSite = (ssEmpty,ssNone,ssStrict,ssLax);
 
   TCookie = class(TCollectionItem)
   private
     FHttpOnly: Boolean;
     FName: string;
+    FSameSite: TSameSite;
     FValue: string;
     FPath: string;
     FDomain: string;
@@ -171,6 +174,7 @@ type
     property Expires: TDateTime read FExpires write FExpires;
     property Secure: Boolean read FSecure write FSecure;
     property HttpOnly: Boolean read FHttpOnly write FHttpOnly;
+    property SameSite: TSameSite Read FSameSite Write FSameSite;
     Property AsString : String Read GetAsString;
   end;
 
@@ -553,6 +557,8 @@ type
     Procedure RemoveVariable(VariableName : String); virtual; abstract;
     // Terminate session
     Procedure Terminate; virtual; abstract;
+    // checks if session variable exists
+    Function SessionVariableExists(VarName : String) : Boolean; Virtual; abstract;
     // Session timeout in minutes
     Property TimeOutMinutes : Integer Read FTimeOut Write FTimeOut default 15;
     // ID of this session.
@@ -595,6 +601,7 @@ type
 
   THandleCORSOption = (hcDetect, // Detect OPTIONS request, send full headers
                        hcFull,   // Force sending full headers
+                       hcHumanReadable, // Human readable result
                        hcSend    // In case of full headers, send response
                        );
   THandleCORSOptions = set of THandleCORSOption;
@@ -1092,7 +1099,7 @@ Const
        6,7,8,
        9,-1,-1,-1,
        10,12,-1,13,-1,
-       14,34,-1,15,-1,
+       14,34,-1,15,26,
        -1,-1,16,17,-1,
        18,-1,-1,-1,19,
        20,21,-1,-1,
@@ -2314,6 +2321,10 @@ function TCookie.GetAsString: string;
     Result:=Result+';'+S;
   end;
 
+Const
+  SSameSiteValues : Array[TSameSite] of string
+                  = ('','None','Strict','Lax');
+
 Var
   Y,M,D : Word;
 
@@ -2335,6 +2346,8 @@ begin
       AddToResult(SCookieHttpOnly);
     if FSecure then
       AddToResult(SCookieSecure);
+    if FSameSite<>ssEmpty then
+      AddToResult(SCookieSameSite+': '+SSameSiteValues[FSameSite]);
   except
 {$ifdef cgidebug}
     On E : Exception do

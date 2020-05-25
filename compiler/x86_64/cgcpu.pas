@@ -353,9 +353,14 @@ unit cgcpu;
         var
           href : treference;
         begin
-          reference_reset_base(href,NR_STACK_POINTER_REG,a,ctempposinvalid,0,[]);
-          { normally, lea is a better choice than an add }
-          list.concat(Taicpu.op_ref_reg(A_LEA,TCGSize2OpSize[OS_ADDR],href,NR_STACK_POINTER_REG));
+          if a=8 then
+            list.concat(Taicpu.op_reg(A_POP,TCGSize2OpSize[OS_ADDR],NR_RCX))
+          else
+            begin
+              reference_reset_base(href,NR_STACK_POINTER_REG,a,ctempposinvalid,0,[]);
+              { normally, lea is a better choice than an add }
+              list.concat(Taicpu.op_ref_reg(A_LEA,TCGSize2OpSize[OS_ADDR],href,NR_STACK_POINTER_REG));
+            end;
         end;
 
       var
@@ -364,7 +369,7 @@ unit cgcpu;
         r : longint;
         regs_to_save_mm: tcpuregisterarray;
       begin
-        regs_to_save_mm:=paramanager.get_saved_registers_mm(current_procinfo.procdef.proccalloption);;
+        regs_to_save_mm:=paramanager.get_saved_registers_mm(current_procinfo.procdef.proccalloption);
         { Prevent return address from a possible call from ending up in the epilogue }
         { (restoring registers happens before epilogue, providing necessary padding) }
         if (current_procinfo.flags*[pi_has_unwind_info,pi_do_call,pi_has_saved_regs])=[pi_has_unwind_info,pi_do_call] then
@@ -418,7 +423,11 @@ unit cgcpu;
             list.concat(tai_regalloc.dealloc(current_procinfo.framepointer,nil));
           end;
 
+        if pi_uses_ymm in current_procinfo.flags then
+          list.Concat(taicpu.op_none(A_VZEROUPPER));
+
         list.concat(Taicpu.Op_none(A_RET,S_NO));
+
         if (pi_has_unwind_info in current_procinfo.flags) then
           begin
             tcpuprocinfo(current_procinfo).dump_scopes(list);

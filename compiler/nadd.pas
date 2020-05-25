@@ -484,6 +484,7 @@ implementation
         begin
           result:=getcopy;
           result.resultdef:=nil;
+          result:=ctypeconvnode.create_internal(result,resultdef);
           do_typecheckpass(result);
         end;
 
@@ -764,7 +765,14 @@ implementation
                           hp:=right;
                           right:=taddnode(left).right;
                           taddnode(left).right:=hp;
-                          left:=left.simplify(false);
+                          left:=left.simplify(forinline);
+                          if resultdef.typ<>pointerdef then
+                            begin
+                              { ensure that the constant is not expanded to a larger type due to overflow,
+                                but this is only useful if no pointer operation is done }
+                              left:=ctypeconvnode.create_internal(left,resultdef);
+                              do_typecheckpass(left);
+                            end;
                           result:=GetCopyAndTypeCheck;
                         end;
                       else
@@ -783,7 +791,14 @@ implementation
                           { keep the order of val+const else pointer operations might cause an error }
                           hp:=taddnode(left).left;
                           taddnode(left).left:=right;
-                          left:=left.simplify(false);
+                          left:=left.simplify(forinline);
+                          if resultdef.typ<>pointerdef then
+                            begin
+                              { ensure that the constant is not expanded to a larger type due to overflow,
+                                but this is only useful if no pointer operation is done }
+                              left:=ctypeconvnode.create_internal(left,resultdef);
+                              do_typecheckpass(left);
+                            end;
                           right:=left;
                           left:=hp;
                           result:=GetCopyAndTypeCheck;
@@ -1364,8 +1379,7 @@ implementation
                    not(might_have_sideeffects(tshlshrnode(left).left)) then
                    begin
                      if (tordconstnode(tshlshrnode(left).right).value=
-                       tshlshrnode(left).left.resultdef.size*8-tordconstnode(tshlshrnode(right).right).value)
-                        then
+                       tshlshrnode(left).left.resultdef.size*8-tordconstnode(tshlshrnode(right).right).value) then
                        begin
                          result:=cinlinenode.create(in_ror_x_y,false,
                            ccallparanode.create(tshlshrnode(left).right,
@@ -1375,8 +1389,7 @@ implementation
                          exit;
                        end
                      else if (tordconstnode(tshlshrnode(right).right).value=
-                       tshlshrnode(left).left.resultdef.size*8-tordconstnode(tshlshrnode(left).right).value)
-                        then
+                       tshlshrnode(left).left.resultdef.size*8-tordconstnode(tshlshrnode(left).right).value) then
                        begin
                          result:=cinlinenode.create(in_rol_x_y,false,
                            ccallparanode.create(tshlshrnode(right).right,
@@ -3226,6 +3239,7 @@ implementation
         end;
       end;
 
+
     function taddnode.first_adddynarray : tnode;
       var
         newstatement : tstatementnode;
@@ -4003,6 +4017,10 @@ implementation
                      result := nil;
 
                      case torddef(resultdef).ordtype of
+                       s8bit:
+                         procname := 'fpc_mul_shortint';
+                       u8bit:
+                         procname := 'fpc_mul_byte';
                        s16bit:
                          procname := 'fpc_mul_integer';
                        u16bit:
@@ -4158,19 +4176,29 @@ implementation
 
          else if is_implicit_pointer_object_type(ld) then
             begin
-              expectloc:=LOC_FLAGS;
+              if ld.size>sizeof(aint) then
+                expectloc:=LOC_JUMP
+              else
+                expectloc:=LOC_FLAGS;
             end
 
          else if (ld.typ=classrefdef) then
             begin
-              expectloc:=LOC_FLAGS;
+              if ld.size>sizeof(aint) then
+                expectloc:=LOC_JUMP
+              else
+                expectloc:=LOC_FLAGS;
             end
 
          { support procvar=nil,procvar<>nil }
          else if ((ld.typ=procvardef) and (rt=niln)) or
                  ((rd.typ=procvardef) and (lt=niln)) then
             begin
-              expectloc:=LOC_FLAGS;
+              if (ld.typ=procvardef) and (tprocvardef(ld).size>sizeof(aint)) or
+                 (rd.typ=procvardef) and (tprocvardef(rd).size>sizeof(aint)) then
+                expectloc:=LOC_JUMP
+              else
+                expectloc:=LOC_FLAGS;
             end
 
 {$ifdef SUPPORT_MMX}
@@ -4192,12 +4220,18 @@ implementation
                   (ld.typ=procvardef) and
                   equal_defs(rd,ld) then
            begin
-             expectloc:=LOC_FLAGS;
+             if tprocvardef(ld).size>sizeof(aint) then
+               expectloc:=LOC_JUMP
+             else
+               expectloc:=LOC_FLAGS;
            end
 
          else if (ld.typ=enumdef) then
            begin
-              expectloc:=LOC_FLAGS;
+              if tenumdef(ld).size>sizeof(aint) then
+                expectloc:=LOC_JUMP
+              else
+                expectloc:=LOC_FLAGS;
            end
 
 {$ifdef SUPPORT_MMX}

@@ -107,7 +107,7 @@ implementation
     defutil,
     procinfo,paramgr,
     dbgbase,
-    nbas,ncon,nld,nmem,nutils,
+    nadd,nbas,ncon,nld,nmem,nutils,
     tgobj,cgobj,hlcgobj,hlcgcpu
 {$ifdef powerpc}
     , cpupi
@@ -191,7 +191,9 @@ implementation
       begin
          { always calculate boolean AND and OR from left to right }
          if (p.nodetype in [orn,andn]) and
-            is_boolean(p.left.resultdef) then
+            is_boolean(p.left.resultdef) and
+            (might_have_sideeffects(p.left,[mhs_exceptions]) or might_have_sideeffects(p.right,[mhs_exceptions]) or
+            (nf_short_bool in taddnode(p).flags)) then
            begin
              if nf_swapped in p.flags then
                internalerror(200709253);
@@ -864,6 +866,12 @@ implementation
                       location_reset(vs.initialloc,LOC_REGISTER,OS_ADDR);
                       vs.initialloc.register:=NR_FRAME_POINTER_REG;
                     end
+                  { Unused parameters need to be kept in the original location
+                    to prevent allocation of registers/resources for them. }
+                  else if not tparavarsym(vs).is_used then
+                    begin
+                      tparavarsym(vs).paraloc[calleeside].get_location(vs.initialloc);
+                    end
                   else
                     begin
                       { if an open array is used, also its high parameter is used,
@@ -1054,6 +1062,9 @@ implementation
           loadn:
             if (tloadnode(n).symtableentry.typ in [staticvarsym,localvarsym,paravarsym]) then
               add_regvars(rv^,tabstractnormalvarsym(tloadnode(n).symtableentry).localloc);
+          loadparentfpn:
+            if current_procinfo.procdef.parast.symtablelevel>tloadparentfpnode(n).parentpd.parast.symtablelevel then
+              add_regvars(rv^,tparavarsym(current_procinfo.procdef.parentfpsym).localloc);
           vecn:
             begin
               { range checks sometimes need the high parameter }

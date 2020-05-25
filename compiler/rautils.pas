@@ -54,6 +54,8 @@ type
       OPR_CONSTANT  : (val:longint);
 {$elseif defined(i8086)}
       OPR_CONSTANT  : (val:longint);
+{$elseif defined(Z80)}
+      OPR_CONSTANT  : (val:longint);
 {$else}
       OPR_CONSTANT  : (val:aint);
 {$endif}
@@ -1182,7 +1184,7 @@ begin
           localsegment:=opr.localsegment;
 {$endif x86}
           localindexreg:=opr.localindexreg;
-          localscale:=opr.localscale;;
+          localscale:=opr.localscale;
           opr.typ:=OPR_REFERENCE;
           hasvar:=false;
           Fillchar(opr.ref,sizeof(treference),0);

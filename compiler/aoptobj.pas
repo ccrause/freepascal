@@ -341,6 +341,9 @@ Unit AoptObj;
         { removes p from asml, updates registers and replaces it by a valid value, if this is the case true is returned }
         function RemoveCurrentP(var p : tai): boolean;
 
+        { removes p from asml, updates registers and replaces p with hp1 (if the next instruction was known beforehand) }
+        procedure RemoveCurrentP(var p: tai; const hp1: tai); inline;
+
        { traces sucessive jumps to their final destination and sets it, e.g.
          je l1                je l3
          <code>               <code>
@@ -1498,6 +1501,15 @@ Unit AoptObj;
       end;
 
 
+    procedure TAOptObj.RemoveCurrentP(var p: tai; const hp1: tai); inline;
+      begin
+        UpdateUsedRegs(tai(p.Next));
+        AsmL.Remove(p);
+        p.Free;
+        p := hp1;
+      end;
+
+
     function FindLiveLabel(hp: tai; var l: tasmlabel): Boolean;
       var
         next: tai;
@@ -1545,14 +1557,14 @@ Unit AoptObj;
     { Returns True if hp is an unconditional jump to a label }
     function IsJumpToLabelUncond(hp: taicpu): boolean;
       begin
-{$if defined(avr)}
+{$if defined(avr) or defined(z80)}
         result:=(hp.opcode in aopt_uncondjmp) and
-{$else avr}
+{$else}
         result:=(hp.opcode=aopt_uncondjmp) and
-{$endif avr}
-{$if defined(arm) or defined(aarch64)}
+{$endif}
+{$if defined(arm) or defined(aarch64) or defined(z80)}
           (hp.condition=c_None) and
-{$endif arm or aarch64}
+{$endif arm or aarch64 or z80}
           (hp.ops>0) and
 {$if defined(riscv32) or defined(riscv64)}
           (hp.oper[0]^.reg=NR_X0) and
@@ -1614,7 +1626,9 @@ Unit AoptObj;
 {$else powerpc}
         p.condition := C_None;
 {$endif powerpc}
+{$ifndef z80}
         p.opcode := aopt_uncondjmp;
+{$endif not z80}
 {$ifdef RISCV}
         p.loadoper(1, p.oper[p.ops-1]^);
         p.loadreg(0, NR_X0);
@@ -2219,7 +2233,7 @@ Unit AoptObj;
                         stoploop := False;
                     end
 {$ifndef JVM}
-                  else if (taicpu(p).opcode = aopt_condjmp) then
+                  else if (taicpu(p).opcode {$ifdef z80}in{$else}={$endif} aopt_condjmp) then
                     ThisPassResult := OptimizeConditionalJump(ThisLabel, p, hp1, stoploop)
 {$endif JVM}
                     ;

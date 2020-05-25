@@ -758,6 +758,9 @@ begin
 {$ifdef llvm}
       'L',
 {$endif}
+{$ifdef z80}
+      'Z',
+{$endif}
       '*' : show:=true;
      end;
      if show then
@@ -3360,6 +3363,8 @@ begin
       lets disable the feature. }
     system_m68k_amiga:
       target_unsup_features:=[f_dynlibs];
+    system_z80_zxspectrum:
+      target_unsup_features:=[f_threading,f_dynlibs{,f_fileio,f_textio},f_commandargs,f_exitcode];
     else
       target_unsup_features:=[];
   end;
@@ -3783,6 +3788,13 @@ procedure read_arguments(cmd:TCmdStr);
         def_system_macro('FPC_REQUIRES_PROPER_ALIGNMENT');
       {$endif xtensa}
 
+      {$ifdef z80}
+        def_system_macro('CPUZ80');
+        def_system_macro('CPU16');
+        def_system_macro('FPC_CURRENCY_IS_INT64');
+        def_system_macro('FPC_COMP_IS_INT64');
+      {$endif z80}
+
       {$if defined(cpu8bitalu)}
         def_system_macro('CPUINT8');
       {$elseif defined(cpu16bitalu)}
@@ -3940,7 +3952,7 @@ begin
     end;
 
   { Set up default value for the heap }
-  if target_info.system in (systems_embedded+systems_freertos) then
+  if target_info.system in (systems_embedded+systems_freertos+[system_z80_zxspectrum]) then
     begin
       case target_info.system of
 {$ifdef AVR}
@@ -4235,28 +4247,27 @@ begin
   { set Mac OS X version default macros if not specified explicitly }
   option.MaybeSetDefaultMacVersionMacro;
 
+{$ifdef cpufpemu}
   { force fpu emulation on arm/wince, arm/gba, arm/embedded and arm/nds
     if fpu type not explicitly set }
   if not(option.FPUSetExplicitly) and
      ((target_info.system in [system_arm_wince,system_arm_gba,
          system_m68k_amiga,system_m68k_atari,
-         system_arm_nds,system_arm_embedded,
-         system_riscv32_embedded,system_riscv64_embedded,system_xtensa_embedded])
+         system_arm_nds,system_arm_embedded,system_arm_freertos,
+         system_riscv32_embedded,system_riscv64_embedded,system_xtensa_linux,
+         system_z80_embedded,system_z80_zxspectrum])
 {$ifdef arm}
       or (target_info.abi=abi_eabi)
 {$endif arm}
      )
-{$if defined(arm) or defined(riscv32) or defined(riscv64) or defined (m68k)}
      or (init_settings.fputype=fpu_soft)
-{$endif arm or m68k}
   then
     begin
-{$ifdef cpufpemu}
       include(init_settings.moduleswitches,cs_fp_emulation);
       { cs_fp_emulation and fpu_soft are equal on arm and m68k }
       init_settings.fputype:=fpu_soft;
-{$endif cpufpemu}
     end;
+{$endif cpufpemu}
 
 {$ifdef i386}
   case target_info.system of
@@ -4277,8 +4288,13 @@ begin
 {$endif i386}
 
 {$ifdef xtensa}
-  if not(option.FPUSetExplicitly) then
-    init_settings.fputype:=embedded_controllers[init_settings.controllertype].fputype;
+  { xtensa-linux target does not support controller setting option -Wp }
+  if not(option.FPUSetExplicitly) and not(target_info.system = system_xtensa_linux) then
+    begin
+      init_settings.fputype:=embedded_controllers[init_settings.controllertype].fputype;
+      if (init_settings.fputype=fpu_soft) then
+        include(init_settings.moduleswitches,cs_fp_emulation);
+    end;
 {$endif xtensa}
 
 {$ifdef arm}
@@ -4594,6 +4610,17 @@ begin
     end;
 {$endif}
 
+{$ifdef xtensa}
+  if (target_info.system=system_xtensa_embedded) and not(option.ABISetExplicitly) then
+    begin
+      if CPUXTENSA_REGWINDOW in cpu_capabilities[init_settings.cputype] then
+        target_info.abi:=abi_xtensa_windowed
+      else
+        target_info.abi:=abi_xtensa_call0;
+    end;
+{$endif xtensa}
+
+
 {$if defined(powerpc) or defined(powerpc64)}
   { define _CALL_ELF symbol like gcc }
   case target_info.abi of
@@ -4680,7 +4707,7 @@ begin
   option.free;
   Option:=nil;
 
-  clearstack_pocalls := [pocall_cdecl,pocall_cppdecl,pocall_syscall,pocall_mwpascal,pocall_sysv_abi_cdecl,pocall_ms_abi_cdecl];
+  clearstack_pocalls := [pocall_cdecl,pocall_cppdecl,pocall_syscall,pocall_mwpascal,pocall_sysv_abi_cdecl,pocall_ms_abi_cdecl{$ifdef z80},pocall_stdcall{$endif}];
   cdecl_pocalls := [pocall_cdecl, pocall_cppdecl, pocall_mwpascal, pocall_sysv_abi_cdecl, pocall_ms_abi_cdecl];
   if (tf_safecall_clearstack in target_info.flags) then
     begin

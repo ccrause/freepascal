@@ -29,7 +29,8 @@ interface
   uses
     globtype,constexp,
     symtype,symsym,symbase,symtable,
-    node,compinnr;
+    node,compinnr,
+    nbas;
 
   const
     NODE_COMPLEXITY_INF = 255;
@@ -175,6 +176,10 @@ interface
     { returns true if the node is an inline node of type i }
     function is_inlinefunction(p : tnode;i : tinlinenumber) : Boolean;
 
+    { checks if p is a series of length(a) statments, if yes, they are returned
+      in a and the function returns true }
+    function GetStatements(p : tnode;var a : array of tstatementnode) : Boolean;
+
     type
       TMatchProc2 = function(n1,n2 : tnode) : Boolean is nested;
       TTransformProc2 = function(n1,n2 : tnode) : tnode is nested;
@@ -189,7 +194,7 @@ implementation
       cutils,verbose,globals,
       symconst,symdef,
       defcmp,defutil,
-      nbas,ncon,ncnv,nld,nflw,nset,ncal,nadd,nmem,ninl,
+      ncon,ncnv,nld,nflw,nset,ncal,nadd,nmem,ninl,
       cpubase,cgbase,procinfo,
       pass_1;
 
@@ -213,6 +218,11 @@ implementation
               result := foreachnode(procmethod,tcallnode(n).methodpointer,f,arg) or result;
               result := foreachnode(procmethod,tcallnode(n).funcretnode,f,arg) or result;
               result := foreachnode(procmethod,tnode(tcallnode(n).callcleanupblock),f,arg) or result;
+            end;
+          callparan:
+            begin
+              result := foreachnode(procmethod,tnode(tcallparanode(n).fparainit),f,arg) or result;
+              result := foreachnode(procmethod,tcallparanode(n).fparacopyback,f,arg) or result;
             end;
           ifn, whilerepeatn, forn, tryexceptn:
             begin
@@ -316,6 +326,11 @@ implementation
               result := foreachnodestatic(procmethod,tcallnode(n).methodpointer,f,arg) or result;
               result := foreachnodestatic(procmethod,tcallnode(n).funcretnode,f,arg) or result;
               result := foreachnodestatic(procmethod,tnode(tcallnode(n).callcleanupblock),f,arg) or result;
+            end;
+          callparan:
+            begin
+              result := foreachnodestatic(procmethod,tnode(tcallparanode(n).fparainit),f,arg) or result;
+              result := foreachnodestatic(procmethod,tcallparanode(n).fparacopyback,f,arg) or result;
             end;
           ifn, whilerepeatn, forn, tryexceptn:
             begin
@@ -1580,6 +1595,24 @@ implementation
     function is_inlinefunction(p: tnode; i: tinlinenumber): Boolean;
       begin
         Result:=(p.nodetype=inlinen) and (tinlinenode(p).inlinenumber=i);
+      end;
+
+
+    { checks if p is a series of length(a) statments, if yes, they are returned
+      in a and the function returns true }
+    function GetStatements(p : tnode;var a : array of tstatementnode) : Boolean;
+      var
+        i: Integer;
+      begin
+        Result:=false;
+        for i:=0 to high(a) do
+          begin
+            if not(assigned(p)) or not(p.nodetype=statementn) then
+              exit;
+            a[i]:=tstatementnode(p);
+            p:=tstatementnode(p).right;
+          end;
+        Result:=true;
       end;
 
 

@@ -53,6 +53,7 @@ unit cgcpu;
         procedure a_op_reg_reg(list : TAsmList; Op: TOpCG; size: TCGSize; src, dst: TRegister); override;
         procedure a_op_ref_reg(list : TAsmList; Op: TOpCG; size: TCGSize; const ref: TReference; reg: TRegister); override;
         procedure a_op_reg_ref(list : TAsmList; Op: TOpCG; size: TCGSize;reg: TRegister; const ref: TReference); override;
+        procedure a_op_ref(list : TAsmList; Op: TOpCG; size: TCGSize; const ref: TReference); override;
 
         procedure push_const(list:TAsmList;size:tcgsize;a:tcgint);
 
@@ -105,6 +106,7 @@ unit cgcpu;
         procedure a_op64_reg_reg(list : TAsmList;op:TOpCG;size : tcgsize;regsrc,regdst : tregister64);override;
         procedure a_op64_const_reg(list : TAsmList;op:TOpCG;size : tcgsize;value : int64;reg : tregister64);override;
         procedure a_op64_const_ref(list : TAsmList;op:TOpCG;size : tcgsize;value : int64;const ref : treference);override;
+        procedure a_op64_ref(list : TAsmList;op:TOpCG;size : tcgsize;const ref : treference);override;
       private
         procedure get_64bit_ops(op:TOpCG;var op1,op2:TAsmOp);
       end;
@@ -1138,7 +1140,7 @@ unit cgcpu;
       begin
         tmpref:=ref;
         make_simple_ref(list,tmpref);
-        if not (op in [OP_NEG,OP_NOT,OP_SHR,OP_SHL,OP_SAR,OP_ROL,OP_ROR]) then
+        if not (op in [OP_SHR,OP_SHL,OP_SAR,OP_ROL,OP_ROR]) then
           check_register_size(size,reg);
 
         if size in [OS_64, OS_S64] then
@@ -1147,27 +1149,8 @@ unit cgcpu;
         if size in [OS_32, OS_S32] then
           begin
             case op of
-              OP_NEG:
-                begin
-                  if reg<>NR_NO then
-                    internalerror(200109237);
-                  inc(tmpref.offset, 2);
-                  list.concat(taicpu.op_ref(A_NOT, S_W, tmpref));
-                  dec(tmpref.offset, 2);
-                  cg.a_reg_alloc(list,NR_DEFAULTFLAGS);
-                  list.concat(taicpu.op_ref(A_NEG, S_W, tmpref));
-                  inc(tmpref.offset, 2);
-                  list.concat(taicpu.op_const_ref(A_SBB, S_W,-1, tmpref));
-                  cg.a_reg_dealloc(list,NR_DEFAULTFLAGS);
-                end;
-              OP_NOT:
-                begin
-                  if reg<>NR_NO then
-                    internalerror(200109237);
-                  list.concat(taicpu.op_ref(A_NOT, S_W, tmpref));
-                  inc(tmpref.offset, 2);
-                  list.concat(taicpu.op_ref(A_NOT, S_W, tmpref));
-                end;
+              OP_NEG,OP_NOT:
+                inherited;
               OP_IMUL:
                 begin
                   { this one needs a load/imul/store, which is the default }
@@ -1257,6 +1240,45 @@ unit cgcpu;
           end
         else
           inherited a_op_reg_ref(list,Op,size,reg,tmpref);
+      end;
+
+
+    procedure tcg8086.a_op_ref(list: TAsmList; Op: TOpCG; size: TCGSize; const ref: TReference);
+      var
+        tmpref: treference;
+      begin
+        tmpref:=ref;
+        make_simple_ref(list,tmpref);
+
+        if size in [OS_64, OS_S64] then
+          internalerror(2013050803);
+
+        if size in [OS_32, OS_S32] then
+          begin
+            case op of
+              OP_NEG:
+                begin
+                  inc(tmpref.offset, 2);
+                  list.concat(taicpu.op_ref(A_NOT, S_W, tmpref));
+                  dec(tmpref.offset, 2);
+                  cg.a_reg_alloc(list,NR_DEFAULTFLAGS);
+                  list.concat(taicpu.op_ref(A_NEG, S_W, tmpref));
+                  inc(tmpref.offset, 2);
+                  list.concat(taicpu.op_const_ref(A_SBB, S_W,-1, tmpref));
+                  cg.a_reg_dealloc(list,NR_DEFAULTFLAGS);
+                end;
+              OP_NOT:
+                begin
+                  list.concat(taicpu.op_ref(A_NOT, S_W, tmpref));
+                  inc(tmpref.offset, 2);
+                  list.concat(taicpu.op_ref(A_NOT, S_W, tmpref));
+                end;
+              else
+                internalerror(2020050709);
+            end;
+          end
+        else
+          inherited;
       end;
 
 
@@ -2824,39 +2846,8 @@ unit cgcpu;
         tempref : treference;
       begin
         case op of
-          OP_NOT:
-            begin
-              tempref:=ref;
-              tcgx86(cg).make_simple_ref(list,tempref);
-              list.concat(taicpu.op_ref(A_NOT,S_W,tempref));
-              inc(tempref.offset,2);
-              list.concat(taicpu.op_ref(A_NOT,S_W,tempref));
-              inc(tempref.offset,2);
-              list.concat(taicpu.op_ref(A_NOT,S_W,tempref));
-              inc(tempref.offset,2);
-              list.concat(taicpu.op_ref(A_NOT,S_W,tempref));
-            end;
-          OP_NEG:
-            begin
-              tempref:=ref;
-              tcgx86(cg).make_simple_ref(list,tempref);
-              inc(tempref.offset,6);
-              list.concat(taicpu.op_ref(A_NOT,S_W,tempref));
-              dec(tempref.offset,2);
-              list.concat(taicpu.op_ref(A_NOT,S_W,tempref));
-              dec(tempref.offset,2);
-              list.concat(taicpu.op_ref(A_NOT,S_W,tempref));
-              dec(tempref.offset,2);
-              cg.a_reg_alloc(list,NR_DEFAULTFLAGS);
-              list.concat(taicpu.op_ref(A_NEG,S_W,tempref));
-              inc(tempref.offset,2);
-              list.concat(taicpu.op_const_ref(A_SBB,S_W,-1,tempref));
-              inc(tempref.offset,2);
-              list.concat(taicpu.op_const_ref(A_SBB,S_W,-1,tempref));
-              inc(tempref.offset,2);
-              list.concat(taicpu.op_const_ref(A_SBB,S_W,-1,tempref));
-              cg.a_reg_dealloc(list,NR_DEFAULTFLAGS);
-            end;
+          OP_NOT,OP_NEG:
+            inherited;
           else
             begin
               get_64bit_ops(op,op1,op2);
@@ -3307,6 +3298,45 @@ unit cgcpu;
             internalerror(200204022);
         end;
       end;
+
+
+    procedure tcg64f8086.a_op64_ref(list : TAsmList;op:TOpCG;size : tcgsize;const ref : treference);
+      var
+        tempref: treference;
+      begin
+        tempref:=ref;
+        tcgx86(cg).make_simple_ref(list,tempref);
+        case op of
+          OP_NOT:
+            begin
+              cg.a_op_ref(list,op,OS_32,tempref);
+              inc(tempref.offset,4);
+              cg.a_op_ref(list,op,OS_32,tempref);
+            end;
+          OP_NEG :
+            begin
+              inc(tempref.offset,6);
+              cg.a_op_ref(list,OP_NOT,OS_16,tempref);
+              dec(tempref.offset,2);
+              cg.a_op_ref(list,OP_NOT,OS_16,tempref);
+              dec(tempref.offset,2);
+              cg.a_op_ref(list,OP_NOT,OS_16,tempref);
+              dec(tempref.offset,2);
+              cg.a_reg_alloc(list,NR_DEFAULTFLAGS);
+              list.concat(taicpu.op_ref(A_NEG,S_W,tempref));
+              inc(tempref.offset,2);
+              list.concat(taicpu.op_const_ref(A_SBB,S_W,-1,tempref));
+              inc(tempref.offset,2);
+              list.concat(taicpu.op_const_ref(A_SBB,S_W,-1,tempref));
+              inc(tempref.offset,2);
+              list.concat(taicpu.op_const_ref(A_SBB,S_W,-1,tempref));
+              cg.a_reg_dealloc(list,NR_DEFAULTFLAGS);
+            end;
+          else
+            inherited;
+        end;
+      end;
+
 
     procedure create_codegen;
       begin

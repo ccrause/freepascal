@@ -316,6 +316,8 @@ implementation
           internalerror(200309284);
         parentpd:=pd;
         kind:=fpkind;
+        if current_procinfo.procdef.parast.symtablelevel>pd.parast.symtablelevel then
+          current_procinfo.set_needs_parentfp(pd.parast.symtablelevel);
       end;
 
 
@@ -370,32 +372,9 @@ implementation
 
 
     function tloadparentfpnode.pass_typecheck:tnode;
-{$ifdef dummy}
-      var
-        currpi : tprocinfo;
-        hsym   : tparavarsym;
-{$endif dummy}
       begin
         result:=nil;
         resultdef:=parentfpvoidpointertype;
-{$ifdef dummy}
-        { currently parentfps are never loaded in registers (FK) }
-        if (current_procinfo.procdef.parast.symtablelevel<>parentpd.parast.symtablelevel) then
-          begin
-            currpi:=current_procinfo;
-            { walk parents }
-            while (currpi.procdef.owner.symtablelevel>parentpd.parast.symtablelevel) do
-              begin
-                currpi:=currpi.parent;
-                if not assigned(currpi) then
-                  internalerror(2005040602);
-                hsym:=tparavarsym(currpi.procdef.parast.Find('parentfp'));
-                if not assigned(hsym) then
-                  internalerror(2005040601);
-                hsym.varregable:=vr_none;
-              end;
-          end;
-{$endif dummy}
       end;
 
 
@@ -404,7 +383,6 @@ implementation
         result:=nil;
         expectloc:=LOC_REGISTER;
       end;
-
 
 {*****************************************************************************
                              TADDRNODE

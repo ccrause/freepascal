@@ -105,6 +105,9 @@ unit aoptbase;
         { compares reg1 and reg2 having the same type and being the same super registers
           so the register size is neglected }
         class function SuperRegistersEqual(reg1,reg2 : TRegister) : Boolean; static; {$ifdef USEINLINE}inline;{$endif}
+
+        { returns true if changing reg1 changes reg2 or vice versa }
+        class function RegistersInterfere(reg1,reg2 : TRegister) : Boolean; static; {$ifdef USEINLINE}inline;{$endif}
     end;
 
     function labelCanBeSkipped(p: tai_label): boolean; {$ifdef USEINLINE}inline;{$endif}
@@ -143,7 +146,7 @@ unit aoptbase;
   class function TAOptBase.RegInOp(Reg: TRegister; const op: toper): Boolean;
     Begin
       Case op.typ Of
-        Top_Reg: RegInOp := SuperRegistersEqual(Reg,op.reg);
+        Top_Reg: RegInOp := RegistersInterfere(Reg,op.reg);
         Top_Ref: RegInOp := RegInRef(Reg, op.ref^);
         {$ifdef arm}
         Top_Shifterop: RegInOp := op.shifterop^.rs = Reg;
@@ -156,16 +159,16 @@ unit aoptbase;
 
   class function TAOptBase.RegInRef(Reg: TRegister; Const Ref: TReference): Boolean;
   Begin
-    RegInRef := SuperRegistersEqual(Ref.Base,Reg)
+    RegInRef := RegistersInterfere(Ref.Base,Reg)
 {$ifdef cpurefshaveindexreg}
-    Or SuperRegistersEqual(Ref.Index,Reg)
+    Or RegistersInterfere(Ref.Index,Reg)
 {$endif cpurefshaveindexreg}
 {$ifdef x86}
     or (Reg=Ref.segment)
     { if Ref.segment isn't set, the cpu uses implicitly ss or ds, depending on the base register }
     or ((Ref.segment=NR_NO) and (
-      ((Reg=NR_SS) and (SuperRegistersEqual(Ref.base,NR_EBP) or SuperRegistersEqual(Ref.base,NR_ESP))) or
-      ((Reg=NR_DS) and not(SuperRegistersEqual(Ref.base,NR_EBP) or SuperRegistersEqual(Ref.base,NR_ESP)))
+      ((Reg=NR_SS) and (RegistersInterfere(Ref.base,NR_EBP) or RegistersInterfere(Ref.base,NR_ESP))) or
+      ((Reg=NR_DS) and not(RegistersInterfere(Ref.base,NR_EBP) or RegistersInterfere(Ref.base,NR_ESP)))
     ))
 {$endif x86}
   End;
@@ -335,8 +338,24 @@ unit aoptbase;
 
       as SuperRegistersEqual is used a lot
     }
+{$ifdef Z80}
+    { Z80 registers are indexed in an incompatible way (without R_SUBH), so it
+      needs a special check. }
+    Result:=super_registers_equal(reg1,reg2);
+{$else Z80}
     Result:=(DWord(reg1) and $ff00ffff)=(DWord(reg2) and $ff00ffff);
+{$endif Z80}
   end;
+
+
+  class function TAOptBase.RegistersInterfere(reg1,reg2 : TRegister) : Boolean; static; {$ifdef USEINLINE}inline;{$endif}
+    begin
+{$ifdef Z80}
+      result:=registers_interfere(reg1,reg2);
+{$else Z80}
+      result:=SuperRegistersEqual(reg1,reg2);
+{$endif Z80}
+    end;
 
   { ******************* Processor dependent stuff *************************** }
 

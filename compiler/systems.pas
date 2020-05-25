@@ -88,6 +88,7 @@ interface
           supported_targets : set of tsystem;
           flags        : set of tasmflags;
           labelprefix : string[3];
+          labelmaxlen : integer;
           comment     : string[3];
           { set to '$' if that character is allowed in symbol names, otherwise
             to alternate character by which '$' should be replaced }
@@ -100,7 +101,7 @@ interface
           addfilecmd  : string[10];
           arfirstcmd  : string[50];
           arcmd       : string[50];
-          arfinishcmd : string[10];
+          arfinishcmd : string[11];
        end;
 
        presinfo = ^tresinfo;
@@ -186,7 +187,7 @@ interface
        tsysteminfo = record
           system       : tsystem;
           name         : string[34];
-          shortname    : string[9];
+          shortname    : string[10];
           flags        : set of tsystemflags;
           cpu          : tsystemcpu;
           unit_env     : string[16];
@@ -302,7 +303,7 @@ interface
                            system_powerpc64_embedded,system_avr_embedded,
                            system_jvm_java32,system_mipseb_embedded,system_mipsel_embedded,
                            system_i8086_embedded,system_riscv32_embedded,system_riscv64_embedded,
-                           system_xtensa_embedded];
+                           system_xtensa_embedded,system_z80_embedded];
 
        { all FreeRTOS systems }
        systems_freertos = [system_xtensa_freertos,system_arm_freertos];
@@ -377,7 +378,8 @@ interface
                                    system_i386_haiku,system_x86_64_haiku,
                                    system_i386_openbsd,system_x86_64_openbsd,
                                    system_riscv32_linux,system_riscv64_linux,
-                                   system_aarch64_win64
+                                   system_aarch64_win64,
+                                   system_z80_zxspectrum
                                   ]+systems_darwin+systems_amigalike;
 
        { all systems that use the PE+ header in the PE/COFF file
@@ -441,7 +443,8 @@ interface
        cpu2str : array[TSystemCpu] of string[10] =
             ('','i386','m68k','alpha','powerpc','sparc','vm','ia64','x86_64',
              'mips','arm', 'powerpc64', 'avr', 'mipsel','jvm', 'i8086',
-             'aarch64', 'wasm', 'sparc64', 'riscv32', 'riscv64', 'xtensa');
+             'aarch64', 'wasm', 'sparc64', 'riscv32', 'riscv64', 'xtensa',
+             'z80');
 
        abiinfo : array[tabi] of tabiinfo = (
          (name: 'DEFAULT'; supported: true),
@@ -1130,7 +1133,11 @@ begin
 
 {$ifdef wasm}
   default_target(system_wasm_wasm32);
-{$endif}
+{$endif wasm}
+
+{$ifdef z80}
+  default_target(system_z80_embedded);
+{$endif z80}
 
 {$ifdef riscv32}
   default_target(system_riscv32_linux);

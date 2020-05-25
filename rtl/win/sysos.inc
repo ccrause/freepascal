@@ -231,6 +231,9 @@ type
    procedure SetLastError(dwErrCode : DWORD);
      {$ifdef wince}cdecl{$else}stdcall{$endif};external KernelDLL name 'SetLastError';
 
+   procedure RaiseException(dwExceptionCode: DWORD; dwExceptionFlags: DWORD; dwArgCount: DWORD; lpArguments: Pointer);
+     {$ifdef wince}cdecl{$else}stdcall{$endif}; external KernelDLL name 'RaiseException';
+
    { time and date functions }
    function GetTickCount : DWORD;
      {$ifdef wince}cdecl{$else}stdcall{$endif};external KernelDLL name 'GetTickCount';
@@ -250,10 +253,6 @@ type
 
   function GetCommandLineW : pwidechar;
      stdcall;external KernelDLL name 'GetCommandLineW';
-  function GetCommandLineA : pansichar;
-     stdcall;external KernelDLL name 'GetCommandLineA';
-  function CommandLineToArgvW(lpCmdLine: PWideChar; out pNumArgs: longint): PPWideChar;
-     stdcall; external 'shell32.dll' name 'CommandLineToArgvW';
 
   function GetCurrentProcessId:DWORD;
     stdcall; external KernelDLL name 'GetCurrentProcessId';
@@ -358,8 +357,6 @@ type
      stdcall; external 'oleaut32.dll' name 'SysFreeString';
    function SysReAllocStringLen(var bstr:pointer;psz: pointer;
      len:dword): Integer; stdcall;external 'oleaut32.dll' name 'SysReAllocStringLen';
-   function GlobalFree(hMem: pointer): pointer;
-     stdcall; external KernelDLL name 'GlobalFree';
 {$endif WINCE}
 
    Procedure Errno2InOutRes(oserror: longword);

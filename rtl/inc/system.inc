@@ -44,7 +44,9 @@ type
 {$endif FPC_HAS_FEATURE_TEXTIO}
 
 const
-{$ifdef CPUAVR}
+{$if defined(CPUAVR)}
+  STACK_MARGIN = 64;    { Stack size margin for stack checking }
+{$elseif defined(CPUZ80)}
   STACK_MARGIN = 64;    { Stack size margin for stack checking }
 {$else}
   STACK_MARGIN = 16384;    { Stack size margin for stack checking }
@@ -304,6 +306,14 @@ function do_isdevice(handle:thandle):boolean;forward;
   {$i xtensa.inc}  { Case dependent, don't change }
   {$define SYSPROCDEFINED}
 {$endif cpuxtensa}
+
+{$ifdef cpuz80}
+  {$ifdef SYSPROCDEFINED}
+    {$Error Can't determine processor type !}
+  {$endif}
+  {$i z80.inc}  { Case dependent, don't change }
+  {$define SYSPROCDEFINED}
+{$endif cpuz80}
 
 {$ifndef SYSPROCDEFINED}
   {$Error Can't determine processor type !}
