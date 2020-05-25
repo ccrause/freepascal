@@ -75,12 +75,19 @@ begin
   with Info do
    begin
      if target_info.system=system_xtensa_freertos then
-       ExeCmd[1]:='ld -g '+platform_select+' $OPT $DYNLINK $STATIC $GCSECTIONS $STRIP $MAP -L. -o $EXE -T $RES '+
-         '-u call_user_start_cpu0 -u ld_include_panic_highint_hdl -u esp_app_desc -u vfs_include_syscalls_impl -u pthread_include_pthread_impl -u pthread_include_pthread_cond_impl -u pthread_include_pthread_local_storage_impl -u newlib_include_locks_impl -u newlib_include_heap_impl -u newlib_include_syscalls_impl -u newlib_include_pthread_impl -u app_main -u uxTopUsedPriority '+
-         '-L $IDF_PATH/components/esp_rom/esp32/ld '+
-         '-T esp32.rom.ld -T esp32.rom.libgcc.ld -T esp32.rom.newlib-data.ld -T esp32.rom.syscalls.ld -T esp32.rom.newlib-funcs.ld '+
-         '-L . -T esp32_out.ld -T esp32.project.ld '+
-         '-L $IDF_PATH/components/esp32/ld -T esp32.peripherals.ld'
+       if current_settings.controllertype = ct_esp8266 then
+         ExeCmd[1]:='ld -g '+platform_select+' $OPT $DYNLINK $STATIC $GCSECTIONS $STRIP $MAP -L. -o $EXE -T $RES '+
+           '-u call_user_start_cpu -u esp_app_desc '+
+           '-L /home/christo/xtensa/ESP8266_RTOS_SDK/libs -T build-linker-script.ld'
+           //'-L $IDF_PATH/components/esp8266/ld -T esp8266.peripherals.ld -T esp8266.rom.ld ' +
+           //'-L . -T esp8266_out.ld -T esp8266.project.ld '
+       else
+         ExeCmd[1]:='ld -g '+platform_select+' $OPT $DYNLINK $STATIC $GCSECTIONS $STRIP $MAP -L. -o $EXE -T $RES '+
+           '-u call_user_start_cpu0 -u ld_include_panic_highint_hdl -u esp_app_desc -u vfs_include_syscalls_impl -u pthread_include_pthread_impl -u pthread_include_pthread_cond_impl -u pthread_include_pthread_local_storage_impl -u newlib_include_locks_impl -u newlib_include_heap_impl -u newlib_include_syscalls_impl -u newlib_include_pthread_impl -u app_main -u uxTopUsedPriority '+
+           '-L $IDF_PATH/components/esp_rom/esp32/ld '+
+           '-T esp32.rom.ld -T esp32.rom.libgcc.ld -T esp32.rom.newlib-data.ld -T esp32.rom.syscalls.ld -T esp32.rom.newlib-funcs.ld '+
+           '-L . -T esp32_out.ld -T esp32.project.ld '+
+           '-L $IDF_PATH/components/esp32/ld -T esp32.peripherals.ld'
      else
        ExeCmd[1]:='ld -g '+platform_select+' $OPT $DYNLINK $STATIC $GCSECTIONS $STRIP $MAP -L. -o $EXE -T $RES';
    end;
@@ -922,13 +929,373 @@ begin
   {$ifdef XTENSA}
   with linkres do
     begin
-      Add('SECTIONS');
-      Add('{');
-      Add('  .data :');
-      Add('  {');
-      Add('    KEEP (*(.fpc .fpc.n_version .fpc.n_links))');
-      Add('  }');
-      Add('}');
+      if current_settings.controllertype = ct_esp32 then
+        begin
+          Add('SECTIONS');
+          Add('{');
+          Add('  .data :');
+          Add('  {');
+          Add('    KEEP (*(.fpc .fpc.n_version .fpc.n_links))');
+          Add('  }');
+          Add('}');
+        end
+      else // for ESP8266 use internal linker script
+        begin
+          Add('/* esp8266_out.ld */');
+          Add('MEMORY');
+          Add('{');
+          Add('  /* All these values assume the flash cache is on, and have the blocks this uses subtracted from the length');
+          Add('  of the various regions. */');
+          Add('  /* IRAM for cpu. The length is due to the cache mode which is able to be set half or full mode. */');
+          Add('  iram0_0_seg (RX) : org = 0x40100000, len = 0xC000');
+          Add('  /* Even though the segment name is iram, it is actually mapped to flash and mapped constant data */');
+          Add('  iram0_2_seg (RX) : org = 0x40200010 + (0x10000 & (0x100000 - 1)),');
+          Add('                                     len = 0xf0000 - 0x10');
+          Add('  /*');
+          Add('    (0x18 offset above is a convenience for the app binary image generation. The .bin file which is flashed');
+          Add('    to the chip has a 0x10 byte file header. Setting this offset makes it simple to meet the flash cache.)');
+          Add('  */');
+          Add('  /* Length of this section is 96KB */');
+          Add('  dram0_0_seg (RW) : org = 0x3FFE8000, len = 0x18000');
+          Add('  /* (See iram0_2_seg for meaning of 0x10 offset in the above.) */');
+          Add('  /* RTC memory. Persists over deep sleep */');
+          Add('  rtc_data_seg(RW) : org = 0x60001200, len = 0x200');
+          Add('}');
+          Add('/* esp8266.project.ld */');
+          Add('/*  Default entry point:  */');
+          Add('ENTRY(call_start_cpu);');
+          Add('');
+          Add('SECTIONS');
+          Add('{');
+          Add('  /* RTC data section holds RTC wake data/rodata');
+          Add('     marked with RTC_DATA_ATTR, RTC_RODATA_ATTR attributes.');
+          Add('  */');
+          Add('  .rtc.data :');
+          Add('  {');
+          Add('    _rtc_data_start = ABSOLUTE(.);');
+          Add('');
+          Add('    *( .rtc.data  .rtc.data.*  .rtc.rodata  .rtc.rodata.*)');
+          Add('');
+          Add('    _rtc_data_end = ABSOLUTE(.);');
+          Add('  } > rtc_data_seg');
+          Add('');
+          Add('  /* RTC bss */');
+          Add('  .rtc.bss (NOLOAD) :');
+          Add('  {');
+          Add('    _rtc_bss_start = ABSOLUTE(.);');
+          Add('    *( .rtc.bss)');
+          Add('    _rtc_bss_end = ABSOLUTE(.);');
+          Add('  } > rtc_data_seg');
+          Add('');
+          Add('  /* This section holds data that should not be initialized at power up');
+          Add('     and will be retained during deep sleep.');
+          Add('     User data marked with RTC_NOINIT_ATTR will be placed');
+          Add('     into this section. See the file "esp_attr.h" for more information.');
+          Add('  */');
+          Add('  .rtc_noinit (NOLOAD):');
+          Add('  {');
+          Add('    . = ALIGN(4);');
+          Add('    _rtc_noinit_start = ABSOLUTE(.);');
+          Add('    *(.rtc_noinit .rtc_noinit.*)');
+          Add('    . = ALIGN(4) ;');
+          Add('    _rtc_noinit_end = ABSOLUTE(.);');
+          Add('  } > rtc_data_seg');
+          Add('');
+          Add('  ASSERT(((_rtc_noinit_end - ORIGIN(rtc_data_seg)) <= LENGTH(rtc_data_seg)), "RTC segment data does not fit.")');
+          Add('');
+          Add('  /* Send .iram0 code to iram */');
+          Add('  .iram0.vectors :');
+          Add('  {');
+          Add('    _iram_start = ABSOLUTE(.);');
+          Add('    /* Vectors go to IRAM */');
+          Add('    _init_start = ABSOLUTE(.);');
+          Add('    KEEP(*(.SystemInfoVector.text));');
+          Add('    . = 0x10;');
+          Add('    KEEP(*(.DebugExceptionVector.text));');
+          Add('    . = 0x20;');
+          Add('    KEEP(*(.NMIExceptionVector.text));');
+          Add('    . = 0x30;');
+          Add('    KEEP(*(.KernelExceptionVector.text));');
+          Add('    . = 0x50;');
+          Add('    KEEP(*(.UserExceptionVector.text));');
+          Add('    . = 0x70;');
+          Add('    KEEP(*(.DoubleExceptionVector.text));');
+          Add('');
+          Add('    *(.text .literal) ');
+          Add('');
+          Add('    *(.*Vector.literal)');
+          Add('');
+          Add('    *(.UserEnter.literal);');
+          Add('    *(.UserEnter.text);');
+          Add('    . = ALIGN (16);');
+          Add('    *(.entry.text)');
+          Add('    *(.init.literal)');
+          Add('    *(.init)');
+          Add('    _init_end = ABSOLUTE(.);');
+          Add('  } > iram0_0_seg');
+          Add('');
+          Add('  .iram0.text :');
+          Add('  {');
+          Add('    /* Code marked as runnning out of IRAM */');
+          Add('    _iram_text_start = ABSOLUTE(.);');
+          Add('');
+          Add('    *( .iram1  .iram1.*)');
+          Add('    *libphy.a:( .literal  .literal.*  .text  .text.*)');
+          Add('    *libspi_flash.a:spi_flash_raw.*( .literal  .literal.*  .text  .text.*)');
+          Add('    *libpp.a:( .literal  .literal.*  .text  .text.*)');
+          Add('');
+          Add('    _iram_text_end = ABSOLUTE(.);');
+          Add('  } > iram0_0_seg');
+          Add('');
+          Add('  .iram0.bss :');
+          Add('  {');
+          Add('    . = ALIGN (4);');
+          Add('    /* Code marked as runnning out of IRAM */');
+          Add('    _iram_bss_start = ABSOLUTE(.);');
+          Add('');
+          Add('    *libcore.a:( .bss  .bss.*  COMMON)');
+          Add('    *libfreertos.a:freertos_hooks.*( .bss  .bss.*  COMMON)');
+          Add('    *libfreertos.a:impure.*( .bss  .bss.*  COMMON)');
+          Add('    *libfreertos.a:timers.*( .bss  .bss.*  COMMON)');
+          Add('    *libfreertos.a:queue.*( .bss  .bss.*  COMMON)');
+          Add('    *libfreertos.a:stream_buffer.*( .bss  .bss.*  COMMON)');
+          Add('    *libfreertos.a:event_groups.*( .bss  .bss.*  COMMON)');
+          Add('    *libfreertos.a:list.*( .bss  .bss.*  COMMON)');
+          Add('    *libfreertos.a:tasks.*( .bss  .bss.*  COMMON)');
+          Add('    *liblwip.a:( .bss  .bss.*  COMMON)');
+          Add('');
+          Add('    . = ALIGN (4);');
+          Add('    _iram_bss_end = ABSOLUTE(.);');
+          Add('    _iram_end = ABSOLUTE(.);');
+          Add('  } > iram0_0_seg');
+          Add('');
+          Add('  ASSERT(((_iram_end - ORIGIN(iram0_0_seg)) <= LENGTH(iram0_0_seg)), "IRAM0 segment data does not fit.")');
+          Add('');
+          Add('  .dram0.data :');
+          Add('  {');
+          Add('    _data_start = ABSOLUTE(.);');
+          Add('    *(.gnu.linkonce.d.*)');
+          Add('    *(.data1)');
+          Add('    *(.sdata)');
+          Add('    *(.sdata.*)');
+          Add('    *(.gnu.linkonce.s.*)');
+          Add('    *(.sdata2)');
+          Add('    *(.sdata2.*)');
+          Add('    *(.gnu.linkonce.s2.*)');
+          Add('    *(.jcr)');
+          Add('    *(.dram0 .dram0.*)');
+          Add('');
+          Add('    *( .data  .data.*  .dram1  .dram1.*)');
+          Add('    *libspi_flash.a:spi_flash_raw.*( .rodata  .rodata.*)');
+          Add('    *liblog.a:( .rodata  .rodata.*)');
+          Add('');
+          Add('    _data_end = ABSOLUTE(.);');
+          Add('    . = ALIGN(4);');
+          Add('  } > dram0_0_seg');
+          Add('');
+          Add('  /*This section holds data that should not be initialized at power up.');
+          Add('    The section located in Internal SRAM memory region. The macro _NOINIT');
+          Add('    can be used as attribute to place data into this section.');
+          Add('    See the esp_attr.h file for more information.');
+          Add('  */');
+          Add('  .noinit (NOLOAD):');
+          Add('  {');
+          Add('    . = ALIGN(4);');
+          Add('    _noinit_start = ABSOLUTE(.);');
+          Add('    *(.noinit .noinit.*)');
+          Add('    . = ALIGN(4) ;');
+          Add('    _noinit_end = ABSOLUTE(.);');
+          Add('  } > dram0_0_seg');
+          Add('');
+          Add('  /* Shared RAM */');
+          Add('  .dram0.bss (NOLOAD) :');
+          Add('  {');
+          Add('    . = ALIGN (8);');
+          Add('    _bss_start = ABSOLUTE(.);');
+          Add('');
+          Add('    *(EXCLUDE_FILE(*libcore.a *libfreertos.a:tasks.* *libfreertos.a:list.* *libfreertos.a:event_groups.* *libfreertos.a:stream_buffer.* *libfreertos.a:queue.* *libfreertos.a:timers.* *libfreertos.a:impure.* *libfreertos.a:freertos_hooks.* *liblwip.a) .bss EXCLUDE_FILE(*libcore.a *libfreertos.a:tasks.* *libfreertos.a:list.* *libfreertos.a:event_groups.* *libfreertos.a:stream_buffer.* *libfreertos.a:queue.* *libfreertos.a:timers.* *libfreertos.a:impure.* *libfreertos.a:freertos_hooks.* *liblwip.a) .bss.* EXCLUDE_FILE(*libcore.a *libfreertos.a:tasks.* *libfreertos.a:list.* *libfreertos.a:event_groups.* *libfreertos.a:stream_buffer.* *libfreertos.a:queue.* *libfreertos.a:timers.* *libfreertos.a:impure.* *libfreertos.a:freertos_hooks.* *liblwip.a) COMMON)');
+          Add('');
+          Add('    *(.dynsbss)');
+          Add('    *(.sbss)');
+          Add('    *(.sbss.*)');
+          Add('    *(.gnu.linkonce.sb.*)');
+          Add('    *(.scommon)');
+          Add('    *(.sbss2)');
+          Add('    *(.sbss2.*)');
+          Add('    *(.gnu.linkonce.sb2.*)');
+          Add('    *(.dynbss)');
+          Add('    *(.share.mem)');
+          Add('    *(.gnu.linkonce.b.*)');
+          Add('');
+          Add('    . = ALIGN (8);');
+          Add('    _bss_end = ABSOLUTE(.);');
+          Add('  } > dram0_0_seg');
+          Add('');
+          Add('  ASSERT(((_bss_end - ORIGIN(dram0_0_seg)) <= LENGTH(dram0_0_seg)), "DRAM segment data does not fit.")');
+          Add('');
+          Add('  .flash.text :');
+          Add('  {');
+          Add('    _stext = .;');
+          Add('    _text_start = ABSOLUTE(.);');
+          Add('');
+          Add('    *(EXCLUDE_FILE(*libphy.a *libspi_flash.a:spi_flash_raw.* *libpp.a) .literal EXCLUDE_FILE(*libphy.a *libspi_flash.a:spi_flash_raw.* *libpp.a) .literal.* EXCLUDE_FILE(*libphy.a *libspi_flash.a:spi_flash_raw.* *libpp.a) .text EXCLUDE_FILE(*libphy.a *libspi_flash.a:spi_flash_raw.* *libpp.a) .text.*  .wifi0iram  .wifi0iram.*)');
+          Add('');
+          Add('    /* For ESP8266 library function */');
+          Add('    *(.irom0.literal .irom0.text)');
+          Add('    *(.irom.literal .irom.text .irom.text.literal)');
+          Add('    *(.text2 .text2.* .literal2 .literal2.*)');
+          Add('    *(.stub .gnu.warning .gnu.linkonce.literal.* .gnu.linkonce.t.*.literal .gnu.linkonce.t.*)');
+          Add('    *(.irom0.text) /* catch stray ICACHE_RODATA_ATTR */');
+          Add('    *(.fini.literal)');
+          Add('    *(.fini)');
+          Add('    *(.gnu.version)');
+          Add('    _text_end = ABSOLUTE(.);');
+          Add('    _etext = .;');
+          Add('');
+          Add('    /* Similar to _iram_start, this symbol goes here so it is');
+          Add('       resolved by addr2line in preference to the first symbol in');
+          Add('       the flash.text segment.');
+          Add('    */');
+          Add('    _flash_cache_start = ABSOLUTE(0);');
+          Add('  } >iram0_2_seg');
+          Add('');
+          Add('  .flash.rodata ALIGN(4) :');
+          Add('  {');
+          Add('    _rodata_start = ABSOLUTE(.);');
+          Add('   /**');
+          Add('      Insert 8 bytes data to make realy rodata section''s link address offset to be 0x8,');
+          Add('      esptool will remove these data and add real segment header');
+          Add('    */');
+          Add('    . = 0x8;');
+          Add('    *(.rodata_desc .rodata_desc.*)               /* Should be the first.  App version info.        DO NOT PUT ANYTHING BEFORE IT! */');
+          Add('    *(.rodata_custom_desc .rodata_custom_desc.*) /* Should be the second. Custom app version info. DO NOT PUT ANYTHING BEFORE IT! */');
+          Add('    *(.rodata2 .rodata2.*)                       /* For ESP8266 library function */');
+          Add('    *(EXCLUDE_FILE(*libspi_flash.a:spi_flash_raw.* *liblog.a) .rodata EXCLUDE_FILE(*libspi_flash.a:spi_flash_raw.* *liblog.a) .rodata.*)');
+          Add('');
+          Add('    *(.irom1.text) /* catch stray ICACHE_RODATA_ATTR */');
+          Add('    *(.gnu.linkonce.r.*)');
+          Add('    *(.rodata1)');
+          Add('    __XT_EXCEPTION_TABLE_ = ABSOLUTE(.);');
+          Add('    *(.xt_except_table)');
+          Add('    *(.gcc_except_table .gcc_except_table.*)');
+          Add('    *(.gnu.linkonce.e.*)');
+          Add('    *(.gnu.version_r)');
+          Add('    . = (. + 3) & ~ 3;');
+          Add('    __eh_frame = ABSOLUTE(.);');
+          Add('    KEEP(*(.eh_frame))');
+          Add('    . = (. + 7) & ~ 3;');
+          Add('    /*  C++ constructor and destructor tables');
+          Add('');
+          Add('        Make a point of not including anything from crtbegin.o or crtend.o, as IDF doesn''t use toolchain crt');
+          Add('      */');
+          Add('    __init_array_start = ABSOLUTE(.);');
+          Add('    KEEP (*(EXCLUDE_FILE (*crtend.* *crtbegin.*) .ctors .ctors.*))');
+          Add('    __init_array_end = ABSOLUTE(.);');
+          Add('    KEEP (*crtbegin.*(.dtors))');
+          Add('    KEEP (*(EXCLUDE_FILE (*crtend.*) .dtors))');
+          Add('    KEEP (*(SORT(.dtors.*)))');
+          Add('    KEEP (*(.dtors))');
+          Add('    /*  C++ exception handlers table:  */');
+          Add('    __XT_EXCEPTION_DESCS_ = ABSOLUTE(.);');
+          Add('    *(.xt_except_desc)');
+          Add('    *(.gnu.linkonce.h.*)');
+          Add('    __XT_EXCEPTION_DESCS_END__ = ABSOLUTE(.);');
+          Add('    *(.xt_except_desc_end)');
+          Add('    *(.dynamic)');
+          Add('    *(.gnu.version_d)');
+          Add('    /* Addresses of memory regions reserved via');
+          Add('       SOC_RESERVE_MEMORY_REGION() */');
+          Add('    soc_reserved_memory_region_start = ABSOLUTE(.);');
+          Add('    KEEP (*(.reserved_memory_address))');
+          Add('    soc_reserved_memory_region_end = ABSOLUTE(.);');
+          Add('    _rodata_end = ABSOLUTE(.);');
+          Add('    /* Literals are also RO data. */');
+          Add('    _lit4_start = ABSOLUTE(.);');
+          Add('    *(*.lit4)');
+          Add('    *(.lit4.*)');
+          Add('    *(.gnu.linkonce.lit4.*)');
+          Add('    _lit4_end = ABSOLUTE(.);');
+          Add('    . = ALIGN(4);');
+          Add('    _thread_local_start = ABSOLUTE(.);');
+          Add('    *(.tdata)');
+          Add('    *(.tdata.*)');
+          Add('    *(.tbss)');
+          Add('    *(.tbss.*)');
+          Add('    _thread_local_end = ABSOLUTE(.);');
+          Add('    . = ALIGN(4);');
+          Add('  } >iram0_2_seg');
+          Add('}');
+          Add('/* esp8266.rom.ld */');
+          Add('PROVIDE ( SPI_sector_erase = 0x400040c0 );');
+          Add('PROVIDE ( SPI_page_program = 0x40004174 );');
+          Add('PROVIDE ( SPI_read_data = 0x400042ac );');
+          Add('PROVIDE ( SPI_read_status = 0x400043c8 );');
+          Add('PROVIDE ( SPI_write_status = 0x40004400 );');
+          Add('PROVIDE ( SPI_write_enable = 0x4000443c );');
+          Add('PROVIDE ( Wait_SPI_Idle = 0x4000448c );');
+          Add('PROVIDE ( Enable_QMode = 0x400044c0 );');
+          Add('PROVIDE ( Disable_QMode = 0x40004508 );');
+          Add('PROVIDE ( Cache_Read_Enable = 0x40004678 );');
+          Add('PROVIDE ( Cache_Read_Disable = 0x400047f0 );');
+          Add('PROVIDE ( lldesc_build_chain = 0x40004f40 );');
+          Add('PROVIDE ( lldesc_num2link = 0x40005050 );');
+          Add('PROVIDE ( lldesc_set_owner = 0x4000507c );');
+          Add('PROVIDE ( __adddf3 = 0x4000c538 );');
+          Add('PROVIDE ( __addsf3 = 0x4000c180 );');
+          Add('PROVIDE ( __divdf3 = 0x4000cb94 );');
+          Add('PROVIDE ( __divdi3 = 0x4000ce60 );');
+          Add('PROVIDE ( __divsi3 = 0x4000dc88 );');
+          Add('PROVIDE ( __extendsfdf2 = 0x4000cdfc );');
+          Add('PROVIDE ( __fixdfsi = 0x4000ccb8 );');
+          Add('PROVIDE ( __fixunsdfsi = 0x4000cd00 );');
+          Add('PROVIDE ( __fixunssfsi = 0x4000c4c4 );');
+          Add('PROVIDE ( __floatsidf = 0x4000e2f0 );');
+          Add('PROVIDE ( __floatsisf = 0x4000e2ac );');
+          Add('PROVIDE ( __floatunsidf = 0x4000e2e8 );');
+          Add('PROVIDE ( __floatunsisf = 0x4000e2a4 );');
+          Add('PROVIDE ( __muldf3 = 0x4000c8f0 );');
+          Add('PROVIDE ( __muldi3 = 0x40000650 );');
+          Add('PROVIDE ( __mulsf3 = 0x4000c3dc );');
+          Add('PROVIDE ( __subdf3 = 0x4000c688 );');
+          Add('PROVIDE ( __subsf3 = 0x4000c268 );');
+          Add('PROVIDE ( __truncdfsf2 = 0x4000cd5c );');
+          Add('PROVIDE ( __udivdi3 = 0x4000d310 );');
+          Add('PROVIDE ( __udivsi3 = 0x4000e21c );');
+          Add('PROVIDE ( __umoddi3 = 0x4000d770 );');
+          Add('PROVIDE ( __umodsi3 = 0x4000e268 );');
+          Add('PROVIDE ( __umulsidi3 = 0x4000dcf0 );');
+          Add('PROVIDE ( bzero = 0x4000de84 );');
+          Add('PROVIDE ( memcmp = 0x4000dea8 );');
+          Add('PROVIDE ( memcpy = 0x4000df48 );');
+          Add('PROVIDE ( memmove = 0x4000e04c );');
+          Add('PROVIDE ( memset = 0x4000e190 );');
+          Add('PROVIDE ( strcmp = 0x4000bdc8 );');
+          Add('PROVIDE ( strcpy = 0x4000bec8 );');
+          Add('PROVIDE ( strlen = 0x4000bf4c );');
+          Add('PROVIDE ( strncmp = 0x4000bfa8 );');
+          Add('PROVIDE ( strncpy = 0x4000c0a0 );');
+          Add('PROVIDE ( strstr = 0x4000e1e0 );');
+          Add('PROVIDE ( gpio_input_get = 0x40004cf0 );');
+          Add('PROVIDE ( gpio_pin_wakeup_disable = 0x40004ed4 );');
+          Add('PROVIDE ( gpio_pin_wakeup_enable = 0x40004e90 );');
+          Add('PROVIDE ( ets_io_vprintf = 0x40001f00 );');
+          Add('PROVIDE ( uart_rx_one_char = 0x40003b8c );');
+          Add('PROVIDE ( rom_i2c_readReg = 0x40007268 );');
+          Add('PROVIDE ( rom_i2c_readReg_Mask = 0x4000729c );');
+          Add('PROVIDE ( rom_i2c_writeReg = 0x400072d8 );');
+          Add('PROVIDE ( rom_i2c_writeReg_Mask = 0x4000730c );');
+          Add('PROVIDE ( rom_software_reboot = 0x40000080 );');
+          Add('/* esp8266.peripherals.ld */');
+          Add('PROVIDE ( GPIO = 0x60000300);');
+          Add('PROVIDE ( uart0 = 0x60000000 );');
+          Add('PROVIDE ( uart1 = 0x60000f00 );');
+          Add('PROVIDE ( frc1 = 0x60000600 );');
+          Add('PROVIDE ( rtc_sys_info = 0x60001100 );');
+          Add('PROVIDE ( SLC0 = 0x60000B00 );');
+          Add('PROVIDE ( I2S0 = 0x60000e00 );');
+          Add('PROVIDE ( SPI1 = 0x60000100 );');
+          Add('PROVIDE ( SPI0 = 0x60000200 );');
+        end;
     end;
 {$endif XTENSA}
 
@@ -966,7 +1333,7 @@ begin
   success:=true;
   Result:=false;
 
-  if target_info.system=system_xtensa_freertos then
+  if (target_info.system=system_xtensa_freertos) and (current_settings.controllertype = ct_esp32) then
     begin
       { generate a sdkconfig.h if none is provided,
         only a few fields are provided to far }
@@ -978,11 +1345,13 @@ begin
           if ioresult<>0 then
             exit;
           writeln(t,'#pragma once');
-          writeln(t,'#define CONFIG_APP_BUILD_USE_FLASH_SECTIONS 1');
-          writeln(t,'#define CONFIG_BT_RESERVE_DRAM 0x0');
-          writeln(t,'#define CONFIG_ESP32_ULP_COPROC_RESERVE_MEM 0');
-          writeln(t,'#define CONFIG_ESP32_TRACEMEM_RESERVE_DRAM 0x0');
-
+          if current_settings.controllertype <> ct_esp8266 then
+            begin
+              writeln(t,'#define CONFIG_APP_BUILD_USE_FLASH_SECTIONS 1');
+              writeln(t,'#define CONFIG_BT_RESERVE_DRAM 0x0');
+              writeln(t,'#define CONFIG_ESP32_ULP_COPROC_RESERVE_MEM 0');
+              writeln(t,'#define CONFIG_ESP32_TRACEMEM_RESERVE_DRAM 0x0');
+            end;
           Close(t);
           if ioresult<>0 then
             exit;
@@ -1146,6 +1515,13 @@ begin
       Replace(cmdstr,'$IDF_PATH',maybequoted(GetEnvironmentVariable('IDF_PATH')));
       if success and not(cs_link_nolink in current_settings.globalswitches) then
         success:=DoExec(binstr,cmdstr,true,false);
+    end
+  else  // esp8266
+    begin
+      Info.ExeCmd[1]:='ld -g $OPT $DYNLINK $STATIC $GCSECTIONS $STRIP $MAP '+
+       '-u call_user_start_cpu -u esp_app_desc '+
+       '-L /home/christo/xtensa/ESP8266_RTOS_SDK/libs '+
+       '-L. -o $EXE -T $RES'; //-T build-linker-script.ld'
     end;
 
   FixedExeFileName:=maybequoted(ScriptFixFileName(ChangeFileExt(current_module.exefilename,'.elf')));
@@ -1198,16 +1574,28 @@ begin
     success:=PostProcessExecutable(FixedExeFileName,false);
 
   if success and (target_info.system=system_xtensa_freertos) then
-    begin
-      binstr:='$IDF_PATH/components/esptool_py/esptool/esptool.py';
-      Replace(binstr,'$IDF_PATH',maybequoted(GetEnvironmentVariable('IDF_PATH')));
-      success:=DoExec(binstr,'--chip esp32 elf2image --flash_mode dio --flash_freq 40m '+
-        '--flash_size '+tostr(embedded_controllers[current_settings.controllertype].flashsize div (1024*1024))+'MB '+
-        '--elf-sha256-offset 0xb0 '+
-        '-o '+maybequoted(ScriptFixFileName(ChangeFileExt(current_module.exefilename,'.bin')))+' '+
-        FixedExeFileName,
-        true,false);
-    end
+    if (current_settings.controllertype = ct_esp32) then
+      begin
+        binstr:='$IDF_PATH/components/esptool_py/esptool/esptool.py';
+        Replace(binstr,'$IDF_PATH',maybequoted(GetEnvironmentVariable('IDF_PATH')));
+        success:=DoExec(binstr,'--chip esp32 elf2image --flash_mode dio --flash_freq 40m '+
+          '--flash_size '+tostr(embedded_controllers[current_settings.controllertype].flashsize div (1024*1024))+'MB '+
+          '--elf-sha256-offset 0xb0 '+
+          '-o '+maybequoted(ScriptFixFileName(ChangeFileExt(current_module.exefilename,'.bin')))+' '+
+          FixedExeFileName,
+          true,false);
+      end
+    else if (current_settings.controllertype = ct_esp8266) then
+      begin
+        binstr:='/home/christo/xtensa/ESP8266_RTOS_SDK/components/esptool_py/esptool/esptool.py';
+        //Replace(binstr,'$IDF_PATH',maybequoted(GetEnvironmentVariable('IDF_PATH')));
+        success:=DoExec(binstr,'--chip esp8266 elf2image --flash_mode dout --flash_freq 40m '+
+          '--flash_size '+tostr(embedded_controllers[current_settings.controllertype].flashsize div (1024*1024))+'MB '+
+          '--version=3 '+
+          '-o '+maybequoted(ScriptFixFileName(ChangeFileExt(current_module.exefilename,'.bin')))+' '+
+          FixedExeFileName,
+          true,false);
+      end
   else
     if success then
       success:=DoExec(FindUtil(utilsprefix+'objcopy'),'-O binary '+
