@@ -52,44 +52,48 @@ unit esp8266;
     procedure PASCALMAIN; external name 'PASCALMAIN';
 
     procedure esp_deep_sleep(us: uint32); external;
-    //procedure putchar(c : char);external;
-    //function getchar : char;external;
-    //function __getreent : pointer;external;
-    //procedure fflush(f : pointer);external;
+    procedure putchar(c : char);external;
+    function getchar : char;external;
+    function __getreent : pointer;external;
+    procedure fflush(f : pointer);external;
 
-    //procedure printpchar(p : pchar);
-    //  begin
-    //    while p^<>#0 do
-    //       begin
-    //         putchar(p^);
-    //         inc(p);
-    //       end;
-    //    fflush(ppointer(__getreent+8)^);
-    //  end;
+    procedure esp_task_wdt_reset(); external;
+
+    procedure printpchar(p : pchar);
+      begin
+        while p^<>#0 do
+           begin
+             putchar(p^);
+             inc(p);
+           end;
+        fflush(ppointer(__getreent+8)^);
+      end;
 
 
-    //procedure printdword(d : dword);
-    //  const
-    //    s = '0123456789ABCDEF';
-    //  var
-    //    i : longint;
-    //  begin
-    //    for i:=1 to 8 do
-    //       begin
-    //         putchar(s[(d and $f)+1]);
-    //         d:=d shr 4;
-    //       end;
-    //    fflush(ppointer(__getreent+8)^);
-    //  end;
+    procedure printdword(d : dword);
+      const
+        s = '0123456789ABCDEF';
+      var
+        i : longint;
+      begin
+        for i:=1 to 8 do
+           begin
+             putchar(s[(d and $f)+1]);
+             d:=d shr 4;
+           end;
+        fflush(ppointer(__getreent+8)^);
+      end;
 
 
     procedure _FPC_haltproc; public name '_haltproc';noreturn;
       begin
-        //printpchar('_haltproc called, going to deep sleep, exit code: $');
-        //printdword(operatingsystem_result);
-        //printpchar(#10);
-        while true do ;
-           //esp_deep_sleep(0);
+        printpchar('_haltproc called, going to deep sleep, exit code: $');
+        printdword(operatingsystem_result);
+        printpchar(#10);
+
+        while true do
+           //esp_task_wdt_reset;
+          esp_deep_sleep(0);
       end;
 
 
@@ -99,18 +103,18 @@ unit esp8266;
         _FPC_haltproc;
       end;
 
-    //function WriteChar(ACh: char; AUserData: pointer): boolean;
-    //  begin
-    //    WriteChar:=true;
-    //    putchar(ACh);
-    //  end;
-    //
-    //
-    //function ReadChar(var ACh: char; AUserData: pointer): boolean;
-    //  begin
-    //    ReadChar:=true;
-    //    ACh:=getchar;
-    //  end;
+    function WriteChar(ACh: char; AUserData: pointer): boolean;
+      begin
+        WriteChar:=true;
+        putchar(ACh);
+      end;
+
+
+    function ReadChar(var ACh: char; AUserData: pointer): boolean;
+      begin
+        ReadChar:=true;
+        ACh:=getchar;
+      end;
 
 begin
   //OpenIO(Input, @WriteChar, @ReadChar, fmInput, nil);
