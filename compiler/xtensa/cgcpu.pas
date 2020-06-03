@@ -140,9 +140,15 @@ implementation
     procedure tcgcpu.init_register_allocators;
       begin
         inherited init_register_allocators;
-        rg[R_INTREGISTER]:=trgintcpu.create(R_INTREGISTER,R_SUBWHOLE,
-            [RS_A2,RS_A3,RS_A4,RS_A5,RS_A6,RS_A7,RS_A8,RS_A9,
-             RS_A10,RS_A11,RS_A12,RS_A13,RS_A14,RS_A15],first_int_imreg,[]);
+        if target_info.abi = abi_xtensa_call0 then
+          rg[R_INTREGISTER]:=trgintcpu.create(R_INTREGISTER,R_SUBWHOLE,
+              [RS_A2,RS_A3,RS_A4,RS_A5,RS_A6,RS_A7,{RS_A8,}RS_A9,
+               RS_A10,RS_A11,RS_A12,RS_A13,RS_A14{,RS_A15}],first_int_imreg,[])
+        else
+          rg[R_INTREGISTER]:=trgintcpu.create(R_INTREGISTER,R_SUBWHOLE,
+              [RS_A2,RS_A3,RS_A4,RS_A5,RS_A6,RS_A7,RS_A8,RS_A9,
+               RS_A10,RS_A11,RS_A12,RS_A13,RS_A14,RS_A15],first_int_imreg,[]);
+
         rg[R_FPUREGISTER]:=trgcpu.create(R_FPUREGISTER,R_SUBNONE,
             [RS_F0,RS_F1,RS_F2,RS_F3,RS_F4,RS_F5,RS_F6,RS_F7,RS_F8,RS_F9,
              RS_F10,RS_F11,RS_F12,RS_F13,RS_F14,RS_F15],first_fpu_imreg,[]);
@@ -785,7 +791,7 @@ implementation
                         begin
                           if ref.offset<=1024+32512 then
                             begin
-                              // actual allocation done in proc_entry
+                              // allocation done in proc_entry
                               //list.concat(taicpu.op_reg_reg_const(A_ADDMI,NR_A8,NR_STACK_POINTER_REG,ref.offset and $fffffc00));
                               ref.offset:=ref.offset and $3ff;
                               ref.base:=NR_A8;
@@ -803,7 +809,7 @@ implementation
                           a_reg_dealloc(list,NR_FRAME_POINTER_REG);
                         end;
 
-                      // restore rest or registers
+                      // restore rest of registers
                       if regs<>[] then
                         begin
                           for r:=RS_A14 downto RS_A0 do
