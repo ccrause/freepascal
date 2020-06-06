@@ -1,6 +1,5 @@
 {******************************************************************************
-Startup code for xtensa-esp32 using idf
-
+Startup code for xtensa-esp8266 using ESP8266_RTOS_SDK
 ******************************************************************************}
 unit esp8266;
 
@@ -10,15 +9,15 @@ unit esp8266;
   interface
 
 {$linklib esp8266, static}
-  {$linklib util, static}  // esp_crc8
-  {$linklib log, static}   // putchar
-  {$linklib c_fnano, static} // provides a bunch of libc functionality
+  {$linklib util, static}
+  {$linklib log, static}
+  {$linklib c_fnano, static}
   {$linklib newlib, static}
   {$linklib heap, static}
   {$linklib vfs, static}
   {$linklib esp_common, static}
   {$linklib core, static}
-  {$linklib freertos, static}  // __reent
+  {$linklib freertos, static}
   {$linklib phy, static}
   {$linklib net80211, static}
   {$linklib hal, static}
@@ -35,15 +34,10 @@ unit esp8266;
   {$linklib wpa, static}
   {$linklib lwip, static}
 
-//{$linklib soc_esp32,static}
-//{$linklib libm,static}
-//{$linklib libg,static}
-//{$linklib c,static}
-
   implementation
 
-    //uses
-    //  consoleio,heapmgr;
+    uses
+      consoleio,heapmgr;
 
     var
       _stack_top: record end; public name '_stack_top';
@@ -90,9 +84,7 @@ unit esp8266;
         printpchar('_haltproc called, going to deep sleep, exit code: $');
         printdword(operatingsystem_result);
         printpchar(#10);
-
         while true do
-           //esp_task_wdt_reset;
           esp_deep_sleep(0);
       end;
 
@@ -117,9 +109,9 @@ unit esp8266;
       end;
 
 begin
-  //OpenIO(Input, @WriteChar, @ReadChar, fmInput, nil);
-  //OpenIO(Output, @WriteChar, @ReadChar, fmOutput, nil);
-  //OpenIO(ErrOutput, @WriteChar, @ReadChar, fmOutput, nil);
-  //OpenIO(StdOut, @WriteChar, @ReadChar, fmOutput, nil);
-  //OpenIO(StdErr, @WriteChar, @ReadChar, fmOutput, nil);
+  OpenIO(Input, @WriteChar, @ReadChar, fmInput, nil);
+  OpenIO(Output, @WriteChar, @ReadChar, fmOutput, nil);
+  OpenIO(ErrOutput, @WriteChar, @ReadChar, fmOutput, nil);
+  OpenIO(StdOut, @WriteChar, @ReadChar, fmOutput, nil);
+  OpenIO(StdErr, @WriteChar, @ReadChar, fmOutput, nil);
 end.
