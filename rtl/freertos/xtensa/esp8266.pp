@@ -63,6 +63,27 @@ unit esp8266;
         fflush(ppointer(__getreent+8)^);
       end;
 
+    procedure printDecimalDword(val : dword);
+      const
+        s = '0123456789';
+      var
+        i : longint;
+        d, q: uint32;
+        LeadingZeroes: boolean = true;
+      begin
+        d := 1000000000;
+        while d > 0 do
+           begin
+             q := val div d;
+             if LeadingZeroes and (q > 0) then
+               LeadingZeroes := false;
+             if not LeadingZeroes then
+               putchar(s[q + 1]);
+             val := val - (q*d);
+             d := d div 10;
+           end;
+        fflush(ppointer(__getreent+8)^);
+      end;
 
     procedure printdword(d : dword);
       const
@@ -72,8 +93,8 @@ unit esp8266;
       begin
         for i:=1 to 8 do
            begin
-             putchar(s[(d and $f)+1]);
-             d:=d shr 4;
+             putchar(s[(d shr 28) + 1]);
+             d := d shl 4;
            end;
         fflush(ppointer(__getreent+8)^);
       end;
@@ -81,9 +102,13 @@ unit esp8266;
 
     procedure _FPC_haltproc; public name '_haltproc';noreturn;
       begin
-        printpchar('_haltproc called, going to deep sleep, exit code: $');
-        printdword(operatingsystem_result);
-        printpchar(#10);
+        writeln;
+        if operatingsystem_result <> 0 then
+          writeln('Runtime error ', operatingsystem_result);
+
+        write('_haltproc called, going to deep sleep.');
+        // Flush output buffer before sleeping
+        fflush(ppointer(__getreent+8)^);
         while true do
           esp_deep_sleep(0);
       end;
