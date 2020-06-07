@@ -51,54 +51,10 @@ unit esp8266;
     function __getreent : pointer;external;
     procedure fflush(f : pointer);external;
 
-    procedure esp_task_wdt_reset(); external;
-
-    procedure printpchar(p : pchar);
+    procedure flushOutput(var t : TextRec);
       begin
-        while p^<>#0 do
-           begin
-             putchar(p^);
-             inc(p);
-           end;
         fflush(ppointer(__getreent+8)^);
       end;
-
-    procedure printDecimalDword(val : dword);
-      const
-        s = '0123456789';
-      var
-        i : longint;
-        d, q: uint32;
-        LeadingZeroes: boolean = true;
-      begin
-        d := 1000000000;
-        while d > 0 do
-           begin
-             q := val div d;
-             if LeadingZeroes and (q > 0) then
-               LeadingZeroes := false;
-             if not LeadingZeroes then
-               putchar(s[q + 1]);
-             val := val - (q*d);
-             d := d div 10;
-           end;
-        fflush(ppointer(__getreent+8)^);
-      end;
-
-    procedure printdword(d : dword);
-      const
-        s = '0123456789ABCDEF';
-      var
-        i : longint;
-      begin
-        for i:=1 to 8 do
-           begin
-             putchar(s[(d shr 28) + 1]);
-             d := d shl 4;
-           end;
-        fflush(ppointer(__getreent+8)^);
-      end;
-
 
     procedure _FPC_haltproc; public name '_haltproc';noreturn;
       begin
@@ -108,7 +64,7 @@ unit esp8266;
 
         write('_haltproc called, going to deep sleep.');
         // Flush output buffer before sleeping
-        fflush(ppointer(__getreent+8)^);
+        flushOutput(TextRec(Output));
         while true do
           esp_deep_sleep(0);
       end;
@@ -132,6 +88,7 @@ unit esp8266;
         ReadChar:=true;
         ACh:=getchar;
       end;
+
 
 begin
   OpenIO(Input, @WriteChar, @ReadChar, fmInput, nil);
