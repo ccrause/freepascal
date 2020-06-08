@@ -63,8 +63,6 @@ unit esp8266;
           writeln('Runtime error ', operatingsystem_result);
 
         write('_haltproc called, going to deep sleep.');
-        // Flush output buffer before sleeping
-        flushOutput(TextRec(Output));
         while true do
           esp_deep_sleep(0);
       end;
@@ -92,8 +90,8 @@ unit esp8266;
 
 begin
   OpenIO(Input, @WriteChar, @ReadChar, fmInput, nil);
-  OpenIO(Output, @WriteChar, @ReadChar, fmOutput, nil);
-  OpenIO(ErrOutput, @WriteChar, @ReadChar, fmOutput, nil);
-  OpenIO(StdOut, @WriteChar, @ReadChar, fmOutput, nil);
-  OpenIO(StdErr, @WriteChar, @ReadChar, fmOutput, nil);
+  OpenIO(Output, @WriteChar, @ReadChar, fmOutput, nil, @flushOutput);
+  OpenIO(ErrOutput, @WriteChar, @ReadChar, fmOutput, nil, @flushOutput);
+  OpenIO(StdOut, @WriteChar, @ReadChar, fmOutput, nil, @flushOutput);
+  OpenIO(StdErr, @WriteChar, @ReadChar, fmOutput, nil, @flushOutput);
 end.
