@@ -19,10 +19,8 @@ Unit consoleio;
     type
       TWriteCharFunc = function(ACh: char; AUserData: pointer): boolean;
       TReadCharFunc = function(var ACh: char; AUserData: pointer): boolean;
-      TFlushProc = procedure(var t : TextRec); // from system.inc
 
-    procedure OpenIO(var f: Text; AWrite: TWriteCharFunc; ARead: TReadCharFunc; AMode: word; AUserData: pointer); overload;
-    procedure OpenIO(var f: Text; AWrite: TWriteCharFunc; ARead: TReadCharFunc; AMode: word; AUserData: pointer; flushfunc: TFlushProc); overload;
+    procedure OpenIO(var f: Text; AWrite: TWriteCharFunc; ARead: TReadCharFunc; AMode: word; AUserData: pointer);
 
   implementation
 
@@ -34,7 +32,6 @@ Unit consoleio;
         WriteChar: TWriteCharFunc;
         ReadChar: TReadCharFunc;
         UserData: Pointer;
-        FlushOutputProc: TFlushProc;
       end;
 
     function EmptyWrite(ACh: char; AUserData: pointer): boolean;
@@ -106,18 +103,6 @@ Unit consoleio;
         t.BufPos:=0;
       end;
 
-    procedure Console_FlushOutput(var t:TextRec);
-      var
-        userdata: PUserData;
-    begin
-      // Ensure internal buffer gets written
-      Console_Write(t);
-      // Call low level flush if assigned
-      userdata := @t.UserData[1];
-      if userdata^.FlushOutputProc <> nil then
-        userdata^.FlushOutputProc(system.TextRec(t));
-    end;
-
     procedure OpenIO(var f: Text; AWrite: TWriteCharFunc; ARead: TReadCharFunc; AMode: word; AUserData: pointer);
       var
         userdata: PUserData;
@@ -151,20 +136,6 @@ Unit consoleio;
         userdata^.WriteChar := AWrite;
         userdata^.ReadChar := ARead;
         userdata^.UserData := AUserData;
-      end;
-
-    procedure OpenIO(var f: Text; AWrite: TWriteCharFunc; ARead: TReadCharFunc;
-      AMode: word; AUserData: pointer; flushfunc: TFlushProc);
-      var
-        userdata: PUserData;
-      begin
-        OpenIO (f, AWrite, ARead, AMode, AUserData);
-        if (flushfunc <> nil) and (AMode = fmOutput) then
-          begin
-            userdata:=@TextRec(f).UserData[1];
-            userdata^.FlushOutputProc :=flushfunc;
-            TextRec(f).FlushFunc:=@Console_FlushOutput;
-          end;
       end;
 
     procedure SysInitStdIO;
