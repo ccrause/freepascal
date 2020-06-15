@@ -31,8 +31,9 @@ unit esp8266;
   {$linklib pthread, static}
   {$linklib wpa_supplicant, static}
   {$linklib esp_event, static}
-  {$linklib wpa, static}
+  //{$linklib wpa, static}
   {$linklib lwip, static}
+  {$linklib mbedtls, static}
 
   implementation
 
