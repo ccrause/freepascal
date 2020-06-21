@@ -1,5 +1,5 @@
 {******************************************************************************
-Startup code for xtensa-esp8266 using ESP8266_RTOS_SDK
+Startup code for xtensa-esp8266 using ESP8266_RTOS_SDK V3.3
 ******************************************************************************}
 unit esp8266;
 
@@ -9,31 +9,31 @@ unit esp8266;
   interface
 
 {$linklib esp8266, static}
-  {$linklib util, static}
-  {$linklib log, static}
-  {$linklib c_fnano, static}
-  {$linklib newlib, static}
-  {$linklib heap, static}
-  {$linklib vfs, static}
-  {$linklib esp_common, static}
-  {$linklib core, static}
-  {$linklib freertos, static}
-  {$linklib phy, static}
-  {$linklib net80211, static}
-  {$linklib hal, static}
-  {$linklib nvs_flash, static}
-  {$linklib rtc, static}
-  {$linklib spi_flash, static}
-  {$linklib esp_ringbuf, static}
-  {$linklib gcc, static}
-  {$linklib pp, static}
-  {$linklib stdc++, static}
-  {$linklib pthread, static}
-  {$linklib wpa_supplicant, static}
-  {$linklib esp_event, static}
-  //{$linklib wpa, static}
-  {$linklib lwip, static}
-  {$linklib mbedtls, static}
+{$linklib util, static}
+{$linklib log, static}
+{$linklib c_fnano, static}
+{$linklib newlib, static}
+{$linklib heap, static}
+{$linklib vfs, static}
+{$linklib esp_common, static}
+{$linklib core, static}
+{$linklib freertos, static}
+{$linklib phy, static}
+{$linklib net80211, static}
+{$linklib hal, static}
+{$linklib nvs_flash, static}
+{$linklib rtc, static}
+{$linklib spi_flash, static}
+{$linklib esp_ringbuf, static}
+{$linklib gcc, static}
+{$linklib pp, static}
+{$linklib stdc++, static}
+{$linklib pthread, static}
+{$linklib wpa_supplicant, static}
+//{$linklib esp_event, static} // Not in V3.3
+{$linklib wpa, static}  // not in master version
+{$linklib lwip, static}
+{$linklib mbedtls, static}
 
   implementation
 
@@ -46,7 +46,8 @@ unit esp8266;
 
     procedure PASCALMAIN; external name 'PASCALMAIN';
 
-    procedure esp_deep_sleep(us: uint32); external;
+    procedure vTaskDelete(xTaskToDelete: pointer); external;
+
     procedure putchar(c : char);external;
     function getchar : char;external;
     function __getreent : pointer;external;
@@ -63,11 +64,17 @@ unit esp8266;
         if operatingsystem_result <> 0 then
           writeln('Runtime error ', operatingsystem_result);
 
-        write('_haltproc called, going to deep sleep.');
+        writeln('_haltproc called, deleting self');
         // Flush output buffer before sleeping
         flushOutput(TextRec(Output));
-        while true do
-          esp_deep_sleep(0);
+        // Delete this task as per user_init_entry in SDK. Other tasks keep on running.
+        // At this point finalization of the RTL has been done and use of
+        // RTL functionality in other tasks may not work correctly.
+        // Perhaps don't call finalization? This will keep RTL functionality
+        // available for other FPC created tasks.
+        // This means PASCALMAIN needs to be rewritten.
+        // Also need to think about re-entrancy of RTL code.
+        vTaskDelete(nil);
       end;
 
 
