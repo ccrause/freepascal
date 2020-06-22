@@ -26,7 +26,7 @@ unit PasTree;
 
 interface
 
-uses Classes;
+uses SysUtils, Classes;
 
 resourcestring
   // Parse tree node type names
@@ -91,6 +91,7 @@ resourcestring
   SPasTreeDestructorImpl = 'destructor implementation';
 
 type
+  EPasTree = Class(Exception);
 
   // Visitor pattern.
   TPassTreeVisitor = class;
@@ -119,7 +120,8 @@ type
                         ccHardFloat,ccSysV_ABI_Default,ccSysV_ABI_CDecl,
                         ccMS_ABI_Default,ccMS_ABI_CDecl,
                         ccVectorCall);
-  TProcTypeModifier = (ptmOfObject,ptmIsNested,ptmStatic,ptmVarargs,ptmReferenceTo);
+  TProcTypeModifier = (ptmOfObject,ptmIsNested,ptmStatic,ptmVarargs,
+                       ptmReferenceTo,ptmAsync);
   TProcTypeModifiers = set of TProcTypeModifier;
   TPackMode = (pmNone,pmPacked,pmBitPacked);
 
@@ -762,12 +764,14 @@ type
     okObject, okClass, okInterface,
     // okGeneric  removed in FPC 3.3.1  check instead GenericTemplateTypes<>nil
     // okSpecialize removed in FPC 3.1.1
-    okClassHelper,okRecordHelper,okTypeHelper,
-    okDispInterface);
+    okClassHelper, okRecordHelper, okTypeHelper,
+    okDispInterface, okObjcClass, okObjcCategory,
+    okObjcProtocol);
 const
-  okWithFields = [okObject, okClass];
+  okWithFields = [okObject, okClass, okObjcClass, okObjcCategory];
   okAllHelpers = [okClassHelper,okRecordHelper,okTypeHelper];
   okWithClassFields = okWithFields+okAllHelpers;
+  okObjCClasses = [okObjcClass, okObjcCategory, okObjcProtocol];
 
 type
 
@@ -801,6 +805,7 @@ type
     ExternalNameSpace : String;
     ExternalName : String;
     InterfaceType: TPasClassInterfaceType;
+    Function IsObjCClass : Boolean;
     Function FindMember(MemberClass : TPTreeElement; Const MemberName : String) : TPasElement;
     Function FindMemberInAncestors(MemberClass : TPTreeElement; Const MemberName : String) : TPasElement;
     Function InterfaceGUID : string;
@@ -832,9 +837,11 @@ type
 
   TPasProcedureType = class(TPasGenericType)
   private
+    function GetIsAsync: Boolean; inline;
     function GetIsNested: Boolean; inline;
     function GetIsOfObject: Boolean; inline;
     function GetIsReference: Boolean; inline;
+    procedure SetIsAsync(const AValue: Boolean);
     procedure SetIsNested(const AValue: Boolean);
     procedure SetIsOfObject(const AValue: Boolean);
     procedure SetIsReference(AValue: Boolean);
@@ -856,10 +863,11 @@ type
     property IsOfObject: Boolean read GetIsOfObject write SetIsOfObject;
     property IsNested : Boolean read GetIsNested write SetIsNested;
     property IsReferenceTo : Boolean Read GetIsReference write SetIsReference;
+    property IsAsync: Boolean read GetIsAsync write SetIsAsync;
   end;
   TPasProcedureTypeClass = class of TPasProcedureType;
 
-  { TPasResultElement }
+  { TPasResultElement - parent is TPasFunctionType }
 
   TPasResultElement = class(TPasElement)
   public
@@ -1049,7 +1057,7 @@ type
                         pmExport, pmOverload, pmMessage, pmReintroduce,
                         pmInline, pmAssembler, pmPublic,
                         pmCompilerProc, pmExternal, pmForward, pmDispId,
-                        pmNoReturn, pmFar, pmFinal, pmAsync);
+                        pmNoReturn, pmFar, pmFinal);
   TProcedureModifiers = Set of TProcedureModifier;
   TProcedureMessageType = (pmtNone,pmtInteger,pmtString);
 
@@ -1541,7 +1549,9 @@ type
   TPasImplCaseElse = class(TPasImplBlock)
   end;
 
-  { TPasImplForLoop }
+  { TPasImplForLoop
+    - for VariableName in StartExpr do Body
+    - for VariableName := StartExpr to EndExpr do Body }
 
   TLoopType = (ltNormal,ltDown,ltIn);
   TPasImplForLoop = class(TPasImplStatement)
@@ -1680,7 +1690,8 @@ const
   ObjKindNames: array[TPasObjKind] of string = (
     'object', 'class', 'interface',
     'class helper','record helper','type helper',
-    'dispinterface');
+    'dispinterface', 'ObjcClass', 'ObjcCategory',
+    'ObjcProtocol');
 
   InterfaceTypeNames: array[TPasClassInterfaceType] of string = (
     'COM',
@@ -1741,14 +1752,14 @@ const
                         'MS_ABI_Default','MS_ABI_CDecl',
                         'VectorCall');
   ProcTypeModifiers : Array[TProcTypeModifier] of string =
-      ('of Object', 'is nested','static','varargs','reference to');
+      ('of Object', 'is nested','static','varargs','reference to','async');
 
   ModifierNames : Array[TProcedureModifier] of string
                 = ('virtual', 'dynamic','abstract', 'override',
                    'export', 'overload', 'message', 'reintroduce',
                    'inline','assembler','public',
                    'compilerproc','external','forward','dispid',
-                   'noreturn','far','final','async');
+                   'noreturn','far','final');
 
   VariableModifierNames : Array[TVariableModifier] of string
      = ('cvar', 'external', 'public', 'export', 'class', 'static');
@@ -1759,6 +1770,8 @@ procedure ReleaseElementList(ElList: TFPList{$IFDEF CheckPasTreeRefCount}; const
 function GenericTemplateTypesAsString(List: TFPList): string;
 procedure ReleaseProcNameParts(var NameParts: TProcedureNameParts);
 
+function dbgs(const s: TProcTypeModifiers): string; overload;
+
 {$IFDEF HasPTDumpStack}
 procedure PTDumpStack;
 function GetPTDumpStack: string;
@@ -1766,7 +1779,6 @@ function GetPTDumpStack: string;
 
 implementation
 
-uses SysUtils;
 
 procedure ReleaseAndNil(var El: TPasElement {$IFDEF CheckPasTreeRefCount}; const Id: string{$ENDIF});
 begin
@@ -1858,6 +1870,19 @@ begin
     end;
   NameParts.Free;
   NameParts:=nil;
+end;
+
+function dbgs(const s: TProcTypeModifiers): string;
+var
+  m: TProcTypeModifier;
+begin
+  Result:='';
+  for m in s do
+    begin
+    if Result<>'' then Result:=Result+',';
+    Result:=Result+ProcTypeModifiers[m];
+    end;
+  Result:='['+Result+']';
 end;
 
 Function IndentStrings(S : TStrings; indent : Integer) : string;
@@ -2771,7 +2796,7 @@ begin
     writeln('ERROR: TPasElement.ChangeRefId ',Name,':',ClassName,' Old="'+OldId+'" New="'+NewId+'" Old not found');
     writeln(RefIds.Text);
     {AllowWriteln-}
-    raise Exception.Create('');
+    raise EPasTree.Create('');
     end;
   RefIds.Delete(i);
   RefIds.Add(NewId);
@@ -2817,7 +2842,7 @@ begin
       end;
     FreeAndNil(RefIds);
     {$ENDIF}
-    raise Exception.Create('');
+    raise EPasTree.Create(ClassName+'Destroy called wrong');
     end;
   {$IFDEF CheckPasTreeRefCount}
   FreeAndNil(RefIds);
@@ -2901,7 +2926,7 @@ begin
     {$if defined(VerbosePasResolver) or defined(VerbosePCUFiler)}
     Writeln('TPasElement.Released : ',ClassName,' ',Name);
     {$endif}
-    raise Exception.Create('');
+    raise EPasTree.Create(ClassName+': Destroy called wrong');
     end
   else
     begin
@@ -3378,6 +3403,12 @@ begin
   ForEachChildCall(aMethodCall,Arg,GUIDExpr,false);
 end;
 
+function TPasClassType.IsObjCClass: Boolean;
+
+begin
+  Result:=ObjKind in okObjCClasses;
+end;
+
 function TPasClassType.FindMember(MemberClass: TPTreeElement; const MemberName: String): TPasElement;
 
 Var
@@ -3460,19 +3491,36 @@ end;
 
 { TPasProcedureType }
 
+// inline
+function TPasProcedureType.GetIsAsync: Boolean;
+begin
+  Result:=ptmAsync in Modifiers;
+end;
+
+// inline
 function TPasProcedureType.GetIsNested: Boolean;
 begin
   Result:=ptmIsNested in Modifiers;
 end;
 
+// inline
 function TPasProcedureType.GetIsOfObject: Boolean;
 begin
   Result:=ptmOfObject in Modifiers;
 end;
 
+// inline
 function TPasProcedureType.GetIsReference: Boolean;
 begin
   Result:=ptmReferenceTo in Modifiers;
+end;
+
+procedure TPasProcedureType.SetIsAsync(const AValue: Boolean);
+begin
+  if AValue then
+    Include(Modifiers,ptmAsync)
+  else
+    Exclude(Modifiers,ptmAsync);
 end;
 
 procedure TPasProcedureType.SetIsNested(const AValue: Boolean);
@@ -3760,7 +3808,7 @@ begin
     Element.AddRef{$IFDEF CheckPasTreeRefCount}('TPasImplIfElse.ElseBranch'){$ENDIF};
     end
   else
-    raise Exception.Create('TPasImplIfElse.AddElement if and else already set - please report this bug');
+    raise EPasTree.Create('TPasImplIfElse.AddElement if and else already set - please report this bug');
 end;
 
 function TPasImplIfElse.CloseOnSemicolon: boolean;
@@ -3782,7 +3830,9 @@ end;
 function TPasImplIfElse.Condition: string;
 begin
   If Assigned(ConditionExpr) then
-    Result:=ConditionExpr.GetDeclaration(True);
+    Result:=ConditionExpr.GetDeclaration(True)
+  else
+    Result:='';
 end;
 
 destructor TPasImplForLoop.Destroy;
@@ -3804,7 +3854,7 @@ begin
     Body.AddRef{$IFDEF CheckPasTreeRefCount}('TPasImplForLoop.Body'){$ENDIF};
     end
   else
-    raise Exception.Create('TPasImplForLoop.AddElement body already set - please report this bug');
+    raise EPasTree.Create('TPasImplForLoop.AddElement body already set - please report this bug');
 end;
 
 procedure TPasImplForLoop.ForEachCall(const aMethodCall: TOnForEachPasElement;
@@ -4579,6 +4629,8 @@ function TPasVariable.Value: String;
 begin
   If Assigned(Expr) then
     Result:=Expr.GetDeclaration(True)
+  else
+    Result:='';
 end;
 
 function TPasProperty.GetDeclaration (full : boolean) : string;
@@ -4588,6 +4640,7 @@ Var
   I : Integer;
 
 begin
+  Result:='';
   If Assigned(VarType) then
     begin
     If VarType.Name='' then
@@ -4800,7 +4853,7 @@ end;
 
 function TPasProcedure.IsAsync: Boolean;
 begin
-  Result:=pmAsync in FModifiers;
+  Result:=ProcType.IsAsync;
 end;
 
 function TPasProcedure.GetProcTypeEnum: TProcType;
@@ -5056,7 +5109,7 @@ var
   l: Integer;
 begin
   if (InFilename<>nil) and (InFilename.Kind<>pekString) then
-    raise Exception.Create('');
+    raise EPasTree.Create('Wrong In expression for '+aUnitName);
   if aModule=nil then
     aModule:=TPasUnresolvedUnitRef.Create(AUnitName, Self);
   l:=length(UsesClause);
@@ -5066,8 +5119,8 @@ begin
     UsesUnit:=TPasUsesUnit.Create(AUnitName,Self);
     if aName<>nil then
       begin
-      Result.SourceFilename:=aName.SourceFilename;
-      Result.SourceLinenumber:=aName.SourceLinenumber;
+      UsesUnit.SourceFilename:=aName.SourceFilename;
+      UsesUnit.SourceLinenumber:=aName.SourceLinenumber;
       end;
     end;
   UsesClause[l]:=UsesUnit;
@@ -5149,7 +5202,7 @@ begin
     Body.AddRef{$IFDEF CheckPasTreeRefCount}('TPasImplWhileDo.Body'){$ENDIF};
     end
   else
-    raise Exception.Create('TPasImplWhileDo.AddElement body already set');
+    raise EPasTree.Create('TPasImplWhileDo.AddElement body already set');
 end;
 
 procedure TPasImplWhileDo.ForEachCall(const aMethodCall: TOnForEachPasElement;
@@ -5164,7 +5217,9 @@ end;
 function TPasImplWhileDo.Condition: string;
 begin
   If Assigned(ConditionExpr) then
-    Result:=ConditionExpr.GetDeclaration(True);
+    Result:=ConditionExpr.GetDeclaration(True)
+  else
+    Result:='';
 end;
 
 { TPasImplCaseOf }
@@ -5246,7 +5301,7 @@ begin
     Body.AddRef{$IFDEF CheckPasTreeRefCount}('TPasImplCaseStatement.Body'){$ENDIF};
     end
   else
-    raise Exception.Create('TPasImplCaseStatement.AddElement body already set');
+    raise EPasTree.Create('TPasImplCaseStatement.AddElement body already set');
 end;
 
 procedure TPasImplCaseStatement.AddExpression(const Expr: TPasExpr);
@@ -5295,7 +5350,7 @@ begin
     Body.AddRef{$IFDEF CheckPasTreeRefCount}('TPasImplWithDo.Body'){$ENDIF};
     end
   else
-    raise Exception.Create('TPasImplWithDo.AddElement body already set');
+    raise EPasTree.Create('TPasImplWithDo.AddElement body already set');
 end;
 
 procedure TPasImplWithDo.AddExpression(const Expression: TPasExpr);

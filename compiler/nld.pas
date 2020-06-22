@@ -357,6 +357,7 @@ implementation
                    if assigned(left) then
                      internalerror(200309289);
                    left:=cloadparentfpnode.create(tprocdef(symtable.defowner),lpf_forload);
+                   current_procinfo.set_needs_parentfp(tprocdef(symtable.defowner).parast.symtablelevel);
                    { reference in nested procedures, variable needs to be in memory }
                    { and behaves as if its address escapes its parent block         }
                    make_not_regable(self,[ra_different_scope]);
@@ -388,6 +389,9 @@ implementation
                  typeconvn need this as resultdef so they know
                  that the address needs to be returned }
                resultdef:=fprocdef;
+
+               if is_nested_pd(fprocdef) and is_nested_pd(current_procinfo.procdef) then
+                 current_procinfo.set_needs_parentfp(tprocdef(fprocdef.owner.defowner).parast.symtablelevel);
 
                { process methodpointer/framepointer }
                if assigned(left) then

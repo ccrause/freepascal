@@ -430,7 +430,7 @@ interface
        { Allocation }
        procedure alloc(len:TObjSectionOfs);
        procedure allocalign(len:longint);
-       procedure writebytes(const Data;len:aword);
+       procedure writebytes(const Data;len:TObjSectionOfs);
        procedure writeReloc(Data:TRelocDataInt;len:aword;p:TObjSymbol;Reloctype:TObjRelocationType);virtual;abstract;
        procedure beforealloc;virtual;
        procedure beforewrite;virtual;
@@ -638,7 +638,7 @@ interface
         { Objects }
         FObjDataList  : TFPObjectList;
         { Position calculation }
-        FImageBase    : aword;
+        FImageBase    : qword;
         FCurrMemPos       : qword;
         procedure SetCurrMemPos(const AValue: qword);
       protected
@@ -728,7 +728,7 @@ interface
         property IndirectObjSymbols:TFPObjectList read FIndirectObjSymbols;
         property ExeVTableList:TFPObjectList read FExeVTableList;
         property EntryName:string read FEntryName write FEntryName;
-        property ImageBase:aword read FImageBase write FImageBase;
+        property ImageBase:qword read FImageBase write FImageBase;
         property CurrExeSec:TExeSection read FCurrExeSec;
         property ExeWriteMode:TExeWriteMode read FExeWriteMode write FExeWriteMode;
         property CurrMemPos:qword read FCurrMemPos write SetCurrMemPos;
@@ -1531,7 +1531,7 @@ implementation
       end;
 
 
-    procedure TObjData.writebytes(const Data;len:aword);
+    procedure TObjData.writebytes(const Data;len:TObjSectionOfs);
       begin
         if not assigned(CurrObjSec) then
           internalerror(200402251);

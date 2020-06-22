@@ -33,7 +33,10 @@ implementation
        SysUtils,
        cutils,cfileutl,cclasses,
        globtype,globals,systems,verbose,comphook,cscript,fmodule,i_zxspectrum,link,
-       cpuinfo;
+       cpuinfo,ogbase,ogrel,owar;
+
+    const
+       DefaultOrigin=23800;
 
     type
 
@@ -56,6 +59,20 @@ implementation
           procedure InitSysInitUnitName; override;
 
           function postprocessexecutable(const fn : string;isdll:boolean): boolean;
+       end;
+
+       { TInternalLinkerZXSpectrum }
+
+       TInternalLinkerZXSpectrum=class(tinternallinker)
+       private
+         FOrigin: Word;
+       protected
+         procedure DefaultLinkScript;override;
+       public
+         constructor create;override;
+         procedure InitSysInitUnitName;override;
+         function MakeExecutable: boolean; override;
+         function postprocessexecutable(const fn : string): boolean;
        end;
 
 
@@ -172,7 +189,10 @@ procedure TLinkerZXSpectrum.SetDefaultInfo_Sdld;
   const
     ExeName='sdldz80';
   begin
-    FOrigin:={32768}23800;
+    if ImageBaseSetExplicity then
+      FOrigin:=ImageBase
+    else
+      FOrigin:=DefaultOrigin;
     with Info do
      begin
        ExeCmd[1]:=ExeName+' -n $OPT -i $MAP $EXE -f $RES'
@@ -183,7 +203,10 @@ procedure TLinkerZXSpectrum.SetDefaultInfo_Vlink;
   const
     ExeName='vlink';
   begin
-    FOrigin:={32768}23800;
+    if ImageBaseSetExplicity then
+      FOrigin:=ImageBase
+    else
+      FOrigin:=DefaultOrigin;
     with Info do
      begin
        ExeCmd[1]:=ExeName+' -bihex $GCSECTIONS -e $STARTSYMBOL $STRIP $OPT -o $EXE -T $RES'
@@ -305,9 +328,114 @@ end;
 
 function TLinkerZXSpectrum.postprocessexecutable(const fn: string; isdll: boolean): boolean;
   begin
-    result:=DoExec(FindUtil(utilsprefix+'ihx2tzx'),' '+fn,true,false);
+    result:=DoExec(FindUtil(utilsprefix+'ihxutil'),' '+fn,true,false);
   end;
 
+
+{*****************************************************************************
+                          TInternalLinkerZXSpectrum
+*****************************************************************************}
+
+procedure TInternalLinkerZXSpectrum.DefaultLinkScript;
+  var
+    s        : TCmdStr;
+    prtobj: string[80];
+  begin
+    prtobj:='prt0';
+
+    if not (target_info.system in systems_internal_sysinit) and (prtobj <> '') then
+      LinkScript.Concat('READOBJECT ' + maybequoted(FindObjectFile(prtobj,'',false)));
+
+    while not ObjectFiles.Empty do
+      begin
+        s:=ObjectFiles.GetFirst;
+        if s<>'' then
+          begin
+            if not(cs_link_on_target in current_settings.globalswitches) then
+              s:=FindObjectFile(s,'',false);
+            LinkScript.Concat('READOBJECT ' + maybequoted(s));
+          end;
+      end;
+
+    LinkScript.Concat('GROUP');
+    { Write staticlibraries }
+    if not StaticLibFiles.Empty then
+      begin
+        while not StaticLibFiles.Empty do
+          begin
+            S:=StaticLibFiles.GetFirst;
+            if s<>'' then
+              LinkScript.Concat('READSTATICLIBRARY '+MaybeQuoted(s));
+          end;
+      end;
+    LinkScript.Concat('ENDGROUP');
+
+    LinkScript.Concat('IMAGEBASE '+tostr(FOrigin));
+
+    LinkScript.Concat('EXESECTION .text');
+    LinkScript.Concat('  OBJSECTION _CODE');
+    LinkScript.Concat('ENDEXESECTION');
+    LinkScript.Concat('EXESECTION .data');
+    LinkScript.Concat('  OBJSECTION _DATA');
+    LinkScript.Concat('ENDEXESECTION');
+    LinkScript.Concat('EXESECTION .bss');
+    LinkScript.Concat('  OBJSECTION _BSS');
+    LinkScript.Concat('  OBJSECTION _BSSEND');
+    LinkScript.Concat('  OBJSECTION _HEAP');
+    LinkScript.Concat('  OBJSECTION _STACK');
+    LinkScript.Concat('ENDEXESECTION');
+
+    LinkScript.Concat('ENTRYNAME start');
+  end;
+
+constructor TInternalLinkerZXSpectrum.create;
+  begin
+    inherited create;
+    CArObjectReader:=TArObjectReader;
+    CExeOutput:=TZXSpectrumIntelHexExeOutput;
+    CObjInput:=TRelObjInput;
+    if ImageBaseSetExplicity then
+      FOrigin:=ImageBase
+    else
+      FOrigin:=DefaultOrigin;
+  end;
+
+procedure TInternalLinkerZXSpectrum.InitSysInitUnitName;
+  begin
+    sysinitunit:='si_prc';
+  end;
+
+function TInternalLinkerZXSpectrum.MakeExecutable: boolean;
+  begin
+    result:=inherited;
+    { Post process }
+    if result and not(cs_link_nolink in current_settings.globalswitches) then
+      result:=PostProcessExecutable(current_module.exefilename);
+  end;
+
+function TInternalLinkerZXSpectrum.postprocessexecutable(const fn: string): boolean;
+  var
+    exitcode: longint;
+    FoundBin: ansistring;
+    Found: Boolean;
+    utilexe: TCmdStr;
+  begin
+    result:=false;
+
+    utilexe:=utilsprefix+'ihxutil';
+    FoundBin:='';
+    Found:=false;
+    if utilsdirectory<>'' then
+      Found:=FindFile(utilexe,utilsdirectory,false,Foundbin);
+    if (not Found) then
+      Found:=FindExe(utilexe,false,Foundbin);
+
+    if Found then
+      begin
+        exitcode:=RequotedExecuteProcess(foundbin,' '+fn);
+        result:=exitcode<>0;
+      end;
+  end;
 
 {*****************************************************************************
                                      Initialize
@@ -315,6 +443,7 @@ function TLinkerZXSpectrum.postprocessexecutable(const fn: string; isdll: boolea
 
 initialization
 {$ifdef z80}
+  RegisterLinker(ld_int_zxspectrum,TInternalLinkerZXSpectrum);
   RegisterLinker(ld_zxspectrum,TLinkerZXSpectrum);
   RegisterTarget(system_z80_zxspectrum_info);
 {$endif z80}

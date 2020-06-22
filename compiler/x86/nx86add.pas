@@ -875,14 +875,14 @@ unit nx86add;
 
         pass_left_right;
         { fpu operands are always in reversed order on the stack }
-        if (left.location.loc=LOC_FPUREGISTER) and (right.location.loc=LOC_FPUREGISTER) then
+        if (left.location.loc in [LOC_FPUREGISTER,LOC_CFPUREGISTER]) and (right.location.loc in [LOC_FPUREGISTER,LOC_CFPUREGISTER]) then
           toggleflag(nf_swapped);
 
         if (nf_swapped in flags) then
           { can't use swapleftright if both are on the fpu stack, since then }
           { both are "R_ST" -> nothing would change -> manually switch       }
-          if (left.location.loc = LOC_FPUREGISTER) and
-             (right.location.loc = LOC_FPUREGISTER) then
+          if (left.location.loc in [LOC_FPUREGISTER,LOC_CFPUREGISTER]) and
+             (right.location.loc in [LOC_FPUREGISTER,LOC_CFPUREGISTER]) then
             emit_none(A_FXCH,S_NO)
           else
             swapleftright;
@@ -1018,14 +1018,14 @@ unit nx86add;
 
         pass_left_right;
         { fpu operands are always in reversed order on the stack }
-        if (left.location.loc=LOC_FPUREGISTER) and (right.location.loc=LOC_FPUREGISTER) then
+        if (left.location.loc in [LOC_FPUREGISTER,LOC_CFPUREGISTER]) and (right.location.loc in [LOC_FPUREGISTER,LOC_CFPUREGISTER]) then
           toggleflag(nf_swapped);
 
         if (nf_swapped in flags) then
           { can't use swapleftright if both are on the fpu stack, since then }
           { both are "R_ST" -> nothing would change -> manually switch       }
-          if (left.location.loc = LOC_FPUREGISTER) and
-             (right.location.loc = LOC_FPUREGISTER) then
+          if (left.location.loc in [LOC_FPUREGISTER,LOC_CFPUREGISTER]) and
+             (right.location.loc in [LOC_FPUREGISTER,LOC_CFPUREGISTER]) then
             emit_none(A_FXCH,S_NO)
           else
             swapleftright;
@@ -1190,6 +1190,10 @@ unit nx86add;
         else
           internalerror(200402222);
         pass_left_right;
+
+        { fpu operands are always in reversed order on the stack }
+        if (left.location.loc in [LOC_FPUREGISTER,LOC_CFPUREGISTER]) and (right.location.loc in [LOC_FPUREGISTER,LOC_CFPUREGISTER]) then
+          toggleflag(nf_swapped);
 
         location_reset(location,LOC_FLAGS,OS_NO);
 
@@ -1401,6 +1405,8 @@ unit nx86add;
                 emit_none(A_SAHF,S_NO);
                 cg.ungetcpuregister(current_asmdata.CurrAsmList,NR_AX);
               end;
+            if cs_fpu_fwait in current_settings.localswitches then
+              current_asmdata.CurrAsmList.concat(Taicpu.Op_none(A_FWAIT,S_NO));
           end
         else
 {$endif x86_64}
@@ -1512,6 +1518,13 @@ unit nx86add;
          make no sense if right is a reference }
        if ((left.location.loc<>LOC_REGISTER) and (right.location.loc<>LOC_REGISTER) and
            ((nodetype<>subn) or not(right.location.loc in [LOC_REFERENCE,LOC_CREFERENCE])) and
+           { 3 op mul makes only sense if a constant is involed }
+           ((nodetype<>muln) or (left.location.loc=LOC_CONSTANT) or (right.location.loc=LOC_CONSTANT)
+{$ifndef i8086}
+            or ((CPUX86_HAS_BMI2 in cpu_capabilities[current_settings.cputype]) and (not(needoverflowcheck))
+               )
+{$endif i8086}
+           ) and
            (not(nodetype in [orn,andn,xorn]))) or
          ((nodetype=addn) and (left.location.loc in [LOC_REGISTER,LOC_CREGISTER,LOC_CONSTANT]) and (right.location.loc in [LOC_REGISTER,LOC_CREGISTER,LOC_CONSTANT])) then
          begin

@@ -40,9 +40,9 @@ Unit raz80asm;
         AS_HASH,AS_LSBRACKET,AS_RSBRACKET,AS_LBRACKET,AS_RBRACKET,
         AS_EQUAL,
         {------------------ Assembler directives --------------------}
-        AS_DEFB,AS_DEFW,AS_END,
+        AS_DEFB,AS_DEFW,AS_AREA,AS_END,
         {------------------ Assembler Operators  --------------------}
-        AS_TYPE,AS_SIZEOF,AS_VMTOFFSET,AS_MOD,AS_SHL,AS_SHR,AS_NOT,AS_AND,AS_OR,AS_XOR,AS_NOR,AS_AT,
+        AS_TYPE,AS_OFFSET,AS_SIZEOF,AS_VMTOFFSET,AS_MOD,AS_SHL,AS_SHR,AS_NOT,AS_AND,AS_OR,AS_XOR,AS_NOR,AS_AT,
         AS_RELTYPE, // common token for relocation types
         {------------------ Target-specific directive ---------------}
         AS_TARGET_DIRECTIVE
@@ -61,8 +61,8 @@ Unit raz80asm;
         ';','identifier','register','opcode','condition','/','$',
         '#','{','}','[',']',
         '=',
-        'defb','defw','END',
-        'TYPE','SIZEOF','VMTOFFSET','%','<<','>>','!','&','|','^','~','@','reltype',
+        'defb','defw','area','END',
+        'TYPE','OFFSET','SIZEOF','VMTOFFSET','%','<<','>>','!','&','|','^','~','@','reltype',
         'directive');
 
     type
@@ -112,6 +112,7 @@ Unit raz80asm;
         procedure BuildReference(oper : tz80operand);
         procedure BuildOperand(oper: tz80operand;istypecast:boolean);
         procedure BuildOpCode(instr:TZ80Instruction);
+        procedure BuildConstant(constsize: byte);
         procedure handleopcode;
         procedure ConvertCalljmp(instr : tz80instruction);
         function Assemble: tlinkedlist;override;
@@ -226,6 +227,9 @@ Unit raz80asm;
                 firsttoken:=true;
                 exit;
               end;
+            { Directive ? }
+            if is_asmdirective(actasmpattern) then
+              exit;
             { Opcode ? }
             if is_asmopcode(upper(actasmpattern)) then
               begin
@@ -297,6 +301,11 @@ Unit raz80asm;
                   if actasmpattern = 'TYPE' then
                     begin
                       actasmtoken:=AS_TYPE;
+                      exit;
+                    end;
+                  if actasmpattern = 'OFFSET' then
+                    begin
+                      actasmtoken:=AS_OFFSET;
                       exit;
                     end;
                   if actasmpattern = 'SIZEOF' then
@@ -1149,15 +1158,15 @@ Unit raz80asm;
                  Message(asmr_e_seg_without_identifier);
               end;
 {$endif i8086}
-            AS_VMTOFFSET{,
-            AS_OFFSET}:
+            AS_VMTOFFSET,
+            AS_OFFSET:
               begin
-                {if (actasmtoken = AS_OFFSET) then
+                if (actasmtoken = AS_OFFSET) then
                   begin
                     include(in_flags,cseif_needofs);
                     include(out_flags,cseof_hasofs);
                   end
-                else}
+                else
                   needvmtofs:=true;
                 Consume(actasmtoken);
                 if actasmtoken<>AS_ID then
@@ -1345,14 +1354,13 @@ Unit raz80asm;
                          if actasmtoken<>AS_DOT then
                           delete(expr,length(expr),1);
                        end
+                      else if (cseif_needofs in in_flags) then
+                        begin
+                          if (prevtok<>AS_OFFSET) then
+                            Message(asmr_e_need_offset);
+                        end
                       else
-                       //if (cseif_needofs in in_flags) then
-                       //  begin
-                       //    if (prevtok<>AS_OFFSET) then
-                       //      Message(asmr_e_need_offset);
-                       //  end
-                       //else
-                         Message(asmr_e_only_add_relocatable_symbol);
+                        Message(asmr_e_only_add_relocatable_symbol);
                     end;
                    if (actasmtoken=AS_DOT) or
                       (assigned(sym) and
@@ -1404,10 +1412,8 @@ Unit raz80asm;
                  Message(asmr_e_only_add_relocatable_symbol);
               end;
             //AS_ALIGN,
-            //AS_DB,
-            //AS_DW,
-            //AS_DD,
-            //AS_DQ,
+            AS_DEFB,
+            AS_DEFW,
             AS_END,
             AS_RBRACKET,
             AS_SEPARATOR,
@@ -1834,11 +1840,11 @@ Unit raz80asm;
                 GotStar:=false;
               end;
 
-            //AS_OFFSET :
-            //  begin
-            //    Consume(AS_OFFSET);
-            //    GotOffset:=true;
-            //  end;
+            AS_OFFSET :
+              begin
+                Consume(AS_OFFSET);
+                GotOffset:=true;
+              end;
 
             AS_TYPE,
             AS_NOT,
@@ -1999,7 +2005,7 @@ Unit raz80asm;
       begin
         repeat
           case actasmtoken of
-            //AS_OFFSET,
+            AS_OFFSET,
             AS_SIZEOF,
             AS_VMTOFFSET,
             AS_TYPE,
@@ -2253,6 +2259,67 @@ Unit raz80asm;
       end;
 
 
+    procedure tz80reader.BuildConstant(constsize: byte);
+      var
+       asmsymtyp : TAsmSymType;
+       asmsym,
+       expr : string;
+       value, sz : tcgint;
+       inflags : tconstsymbolexpressioninputflags;
+       outflags : tconstsymbolexpressionoutputflags;
+      begin
+        repeat
+          case actasmtoken of
+            AS_STRING:
+              Begin
+                expr:=actasmpattern;
+                if length(expr) > 1 then
+                 Message(asmr_e_string_not_allowed_as_const);
+                Consume(AS_STRING);
+                case actasmtoken of
+                  AS_COMMA: Consume(AS_COMMA);
+                  AS_END,
+                  AS_SEPARATOR: ;
+                else
+                  Message(asmr_e_invalid_string_expression);
+                end; { end case }
+                ConcatString(curlist,expr);
+              end;
+            AS_INTNUM,
+            AS_PLUS,
+            AS_MINUS,
+            AS_LPAREN,
+            AS_TYPE,
+            AS_SIZEOF,
+            AS_NOT,
+            AS_VMTOFFSET,
+            AS_ID :
+              begin
+                inflags:=[];
+                BuildConstSymbolExpression(inflags,value,asmsym,asmsymtyp,sz,outflags);
+                if asmsym<>'' then
+                  begin
+                    if constsize<>sizeof(pint) then
+                      Message(asmr_w_32bit_const_for_address);
+                     ConcatConstSymbol(curlist,asmsym,asmsymtyp,value,constsize,true)
+                  end
+                else
+                  ConcatConstant(curlist,value,constsize);
+              end;
+            AS_COMMA:
+              Consume(AS_COMMA);
+            AS_END,
+            AS_SEPARATOR:
+              break;
+            else
+              begin
+                Message(asmr_e_syn_constant);
+                RecoverConsume(false);
+              end
+          end; { end case }
+        until false;
+      end;
+
     procedure tz80reader.handleopcode;
       var
         instr: TZ80Instruction;
@@ -2291,6 +2358,8 @@ Unit raz80asm;
     function tz80reader.Assemble: tlinkedlist;
       var
         hl: tasmlabel;
+        sectionname: String;
+        section: tai_section;
       begin
         Message1(asmr_d_start_reading,'Z80');
         firsttoken:=TRUE;
@@ -2339,6 +2408,84 @@ Unit raz80asm;
             AS_SEPARATOR:
               begin
                 Consume(AS_SEPARATOR);
+              end;
+
+            AS_DEFB :
+              Begin
+                inexpression:=true;
+                Consume(AS_DEFB);
+                BuildConstant(1);
+                inexpression:=false;
+              end;
+
+            AS_DEFW :
+              Begin
+                inexpression:=true;
+                Consume(AS_DEFW);
+                BuildConstant(2);
+                inexpression:=false;
+              end;
+
+            AS_AREA :
+              begin
+                Consume(AS_AREA);
+                sectionname:=actasmpattern;
+                {secflags:=[];
+                secprogbits:=SPB_None;}
+                Consume(AS_STRING);
+                {if actasmtoken=AS_COMMA then
+                  begin
+                    Consume(AS_COMMA);
+                    if actasmtoken=AS_STRING then
+                      begin
+                        case actasmpattern of
+                          'a':
+                            Include(secflags,SF_A);
+                          'w':
+                            Include(secflags,SF_W);
+                          'x':
+                            Include(secflags,SF_X);
+                          '':
+                            ;
+                          else
+                            Message(asmr_e_syntax_error);
+                        end;
+                        Consume(AS_STRING);
+                        if actasmtoken=AS_COMMA then
+                          begin
+                            Consume(AS_COMMA);
+                            if (actasmtoken=AS_MOD) or (actasmtoken=AS_AT) then
+                              begin
+                                Consume(actasmtoken);
+                                if actasmtoken=AS_ID then
+                                  begin
+                                    case actasmpattern of
+                                      'PROGBITS':
+                                        secprogbits:=SPB_PROGBITS;
+                                      'NOBITS':
+                                        secprogbits:=SPB_NOBITS;
+                                      'NOTE':
+                                        secprogbits:=SPB_NOTE;
+                                      else
+                                        Message(asmr_e_syntax_error);
+                                    end;
+                                    Consume(AS_ID);
+                                  end
+                                else
+                                  Message(asmr_e_syntax_error);
+                              end
+                            else
+                              Message(asmr_e_syntax_error);
+                          end;
+                      end
+                    else
+                      Message(asmr_e_syntax_error);
+                  end;}
+
+                //curList.concat(tai_section.create(sec_user, actasmpattern, 0));
+                section:=new_section(curlist, sec_user, sectionname, 0);
+                //section.secflags:=secflags;
+                //section.secprogbits:=secprogbits;
               end;
 
             AS_OPCODE:
