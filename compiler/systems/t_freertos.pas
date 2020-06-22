@@ -88,10 +88,6 @@ begin
            ExeCmd[1]:=ExeCmd[1]+
              '-u call_user_start_cpu0 -u ld_include_panic_highint_hdl -u esp_app_desc -u vfs_include_syscalls_impl -u pthread_include_pthread_impl -u pthread_include_pthread_cond_impl -u pthread_include_pthread_local_storage_impl -u newlib_include_locks_impl -u newlib_include_heap_impl -u newlib_include_syscalls_impl -u newlib_include_pthread_impl -u app_main -u uxTopUsedPriority '+
              '-L $IDF_PATH/libs -T build-linker-script.ld';
-             //'-L $IDF_PATH/components/esp_rom/esp32/ld '+
-             //'-T esp32.rom.ld -T esp32.rom.libgcc.ld -T esp32.rom.newlib-data.ld -T esp32.rom.syscalls.ld -T esp32.rom.newlib-funcs.ld '+
-             //'-L . -T esp32_out.ld -T esp32.project.ld '+
-             //'-L $IDF_PATH/components/esp32/ld -T esp32.peripherals.ld';
            IDF_PATH := 'IDF_PATH';
          end;
    end;
@@ -3430,8 +3426,7 @@ begin
     Replace(cmdstr,'$GCSECTIONS',GCSectionsStr);
     Replace(cmdstr,'$DYNLINK',DynLinkStr);
    end;
-  //if success and not(cs_link_nolink in current_settings.globalswitches) then
-    success:=DoExec(FindUtil(utilsprefix+BinStr),cmdstr,true,false);
+  success:=DoExec(FindUtil(utilsprefix+BinStr),cmdstr,true,false);
 
 { Remove ReponseFile }
   if success and not(cs_link_nolink in current_settings.globalswitches) then
