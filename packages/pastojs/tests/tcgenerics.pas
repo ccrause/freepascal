@@ -16,9 +16,8 @@ type
   Published
     // generic record
     Procedure TestGen_RecordEmpty;
-    Procedure TestGen_Record_ClassProc_ObjFPC;
-    //Procedure TestGen_Record_ClassProc_Delphi;
-    //Procedure TestGen_Record_ReferGenClass_DelphiFail;
+    Procedure TestGen_Record_ClassProc;
+    Procedure TestGen_Record_DelayProgram; // ToDo
 
     // generic class
     Procedure TestGen_ClassEmpty;
@@ -29,19 +28,24 @@ type
     Procedure TestGen_Class_TypeInfo;
     Procedure TestGen_Class_TypeOverload; // ToDo TBird, TBird<T>, TBird<S,T>
     Procedure TestGen_Class_ClassProperty;
-    Procedure TestGen_Class_ClassProc_ObjFPC;
-    //Procedure TestGen_Class_ClassProc_Delphi;
-    //Procedure TestGen_Class_ReferGenClass_DelphiFail;
+    Procedure TestGen_Class_ClassProc;
+    //Procedure TestGen_Record_ReferGenClass_DelphiFail; TBird<T> = class x:TBird; end;
     Procedure TestGen_Class_ClassConstructor;
-    // ToDo: rename local const T
     Procedure TestGen_Class_TypeCastSpecializesWarn;
     Procedure TestGen_Class_TypeCastSpecializesJSValueNoWarn;
+    procedure TestGen_Class_VarArgsOfType;
+    procedure TestGen_Class_OverloadsInUnit;
+    procedure TestGen_ClassForward_CircleRTTI;
 
     // generic external class
     procedure TestGen_ExtClass_Array;
     procedure TestGen_ExtClass_GenJSValueAssign;
     procedure TestGen_ExtClass_AliasMemberType;
-    Procedure TestGen_ExtClass_RTTI;
+    Procedure TestGen_ExtClass_RTTI; // ToDo: use "TGJSSET<JSValue>"
+
+    // class interfaces
+    procedure TestGen_ClassInterface_Corba;
+    procedure TestGen_ClassInterface_InterfacedObject;
 
     // statements
     Procedure TestGen_InlineSpec_Constructor;
@@ -100,7 +104,7 @@ begin
     ]));
 end;
 
-procedure TTestGenerics.TestGen_Record_ClassProc_ObjFPC;
+procedure TTestGenerics.TestGen_Record_ClassProc;
 begin
   StartProgram(false);
   Add([
@@ -147,6 +151,54 @@ begin
     '$mod.TPoint$G1.x = $mod.p.x + 10;',
     '$mod.p.Fly();',
     '$mod.p.Fly();',
+    '']));
+end;
+
+procedure TTestGenerics.TestGen_Record_DelayProgram;
+begin
+  exit;
+
+  StartProgram(false);
+  Add([
+  '{$modeswitch AdvancedRecords}',
+  'type',
+  '  generic TAnt<T> = record',
+  '    class var x: T;',
+  '  end;',
+  '  TBird = record',
+  '    b: word;',
+  '  end;',
+  'var f: specialize TAnt<TBird>;',
+  'begin',
+  '  f.x.b:=f.x.b+10;',
+  '']);
+  ConvertProgram;
+  CheckSource('TestGen_Record_DelayProgram',
+    LinesToStr([ // statements
+    'rtl.recNewS($mod, "TAnt$G1", function () {',
+    '  this.x = $mod.TBird.$new();',
+    '  this.$eq = function (b) {',
+    '    return true;',
+    '  };',
+    '  this.$assign = function (s) {',
+    '    return this;',
+    '  };',
+    '}, true);',
+    'rtl.recNewT($mod, "TBird", function () {',
+    '  this.b = 0;',
+    '  this.$eq = function (b) {',
+    '    return this.b === b.b;',
+    '  };',
+    '  this.$assign = function (s) {',
+    '    this.b = s.b;',
+    '    return this;',
+    '  };',
+    '});',
+    '$mod.TAnt$G1();',
+    'this.f = $mod.TAnt$G1.$new();',
+    '']),
+    LinesToStr([ // $mod.$main
+    '$mod.f.x.b = $mod.f.x.b + 10;',
     '']));
 end;
 
@@ -403,8 +455,9 @@ begin
   '  p:=typeinfo(b);',
   '']);
   ConvertProgram;
-  CheckSource('TestGen_TypeInfo',
+  CheckSource('TestGen_Class_TypeInfo',
     LinesToStr([ // statements
+    '$mod.$rtti.$Class("TBird$G1");',
     'rtl.createClass($mod, "TObject", null, function () {',
     '  this.$init = function () {',
     '  };',
@@ -496,7 +549,7 @@ begin
     '']));
 end;
 
-procedure TTestGenerics.TestGen_Class_ClassProc_ObjFPC;
+procedure TTestGenerics.TestGen_Class_ClassProc;
 begin
   StartProgram(false);
   Add([
@@ -728,6 +781,198 @@ begin
   CheckResolverUnexpectedHints();
 end;
 
+procedure TTestGenerics.TestGen_Class_VarArgsOfType;
+begin
+  StartProgram(false);
+  Add([
+  '{$mode objfpc}',
+  '{$modeswitch externalclass}',
+  'type',
+  '  TJSObject = class external name ''Object''',
+  '  end;',
+  '  generic TGJSSet<T> = class external name ''Set''',
+  '    constructor new(aElement1: T); varargs of T; overload;',
+  '    function bind(thisArg: TJSObject): T; varargs of T;',
+  '  end;',
+  '  TJSWordSet = specialize TGJSSet<word>;',
+  'var',
+  '  s: TJSWordSet;',
+  '  w: word;',
+  'begin',
+  '  s:=TJSWordSet.new(3);',
+  '  s:=TJSWordSet.new(3,5);',
+  '  w:=s.bind(nil);',
+  '  w:=s.bind(nil,6);',
+  '  w:=s.bind(nil,7,8);',
+  '']);
+  ConvertProgram;
+  CheckSource('TestGen_Class_VarArgsOfType',
+    LinesToStr([ // statements
+    'this.s = null;',
+    'this.w = 0;',
+    '']),
+    LinesToStr([ // $mod.$main
+    '$mod.s = new Set(3);',
+    '$mod.s = new Set(3, 5);',
+    '$mod.w = $mod.s.bind(null);',
+    '$mod.w = $mod.s.bind(null, 6);',
+    '$mod.w = $mod.s.bind(null, 7, 8);',
+    '']));
+end;
+
+procedure TTestGenerics.TestGen_Class_OverloadsInUnit;
+begin
+  StartProgram(true,[supTObject]);
+  AddModuleWithIntfImplSrc('UnitA.pas',
+  LinesToStr([
+    'type',
+    '  generic TBird<T> = class',
+    '  const c = 13;',
+    '    constructor Create(w: T);',
+    '    constructor Create(b: boolean);',
+    '  end;',
+    '']),
+  LinesToStr([
+    'constructor TBird.Create(w: T);',
+    'const c = 14;',
+    'begin',
+    'end;',
+    'constructor TBird.Create(b: boolean);',
+    'const c = 15;',
+    'begin',
+    'end;',
+    '']));
+  Add([
+  'uses UnitA;',
+  'type',
+  '  TWordBird = specialize TBird<word>;',
+  '  TDoubleBird = specialize TBird<double>;',
+  'var',
+  '  wb: TWordBird;',
+  '  db: TDoubleBird;',
+  'begin',
+  '  wb:=TWordBird.Create(3);',
+  '  wb:=TWordBird.Create(true);',
+  '  db:=TDoubleBird.Create(1.3);',
+  '  db:=TDoubleBird.Create(true);',
+  '']);
+  ConvertProgram;
+  CheckUnit('UnitA.pas',
+    LinesToStr([ // statements
+    'rtl.module("UnitA", ["system"], function () {',
+    '  var $mod = this;',
+    '  rtl.createClass($mod, "TBird$G1", pas.system.TObject, function () {',
+    '    this.c = 13;',
+    '    var c$1 = 14;',
+    '    this.Create$1 = function (w) {',
+    '      return this;',
+    '    };',
+    '    var c$2 = 15;',
+    '    this.Create$2 = function (b) {',
+    '      return this;',
+    '    };',
+    '  });',
+    '  rtl.createClass($mod, "TBird$G2", pas.system.TObject, function () {',
+    '    this.c = 13;',
+    '    var c$1 = 14;',
+    '    this.Create$1 = function (w) {',
+    '      return this;',
+    '    };',
+    '    var c$2 = 15;',
+    '    this.Create$2 = function (b) {',
+    '      return this;',
+    '    };',
+    '  });',
+    '});',
+    '']));
+  CheckSource('TestGen_Class_OverloadsInUnit',
+    LinesToStr([ // statements
+    'this.wb = null;',
+    'this.db = null;',
+    '']),
+    LinesToStr([ // $mod.$main
+    '$mod.wb = pas.UnitA.TBird$G1.$create("Create$1", [3]);',
+    '$mod.wb = pas.UnitA.TBird$G1.$create("Create$2", [true]);',
+    '$mod.db = pas.UnitA.TBird$G2.$create("Create$1", [1.3]);',
+    '$mod.db = pas.UnitA.TBird$G2.$create("Create$2", [true]);',
+    '']));
+end;
+
+procedure TTestGenerics.TestGen_ClassForward_CircleRTTI;
+begin
+  Converter.Options:=Converter.Options-[coNoTypeInfo];
+  StartProgram(false);
+  Add([
+  '{$mode objfpc}',
+  'type',
+  '  TObject = class end;',
+  '  {$M+}',
+  '  TPersistent = class end;',
+  '  {$M-}',
+  '  generic TAnt<T> = class;',
+  '  generic TFish<U> = class(TPersistent)',
+  '    private type AliasU = U;',
+  '  published',
+  '    a: specialize TAnt<AliasU>;',
+  '  end;',
+  '  generic TAnt<T> = class(TPersistent)',
+  '    private type AliasT = T;',
+  '  published',
+  '    f: specialize TFish<AliasT>;',
+  '  end;',
+  'var',
+  '  WordFish: specialize TFish<word>;',
+  '  p: pointer;',
+  'begin',
+  '  p:=typeinfo(specialize TAnt<word>);',
+  '  p:=typeinfo(specialize TFish<word>);',
+  '']);
+  ConvertProgram;
+  CheckSource('TestGen_ClassForward_CircleRTTI',
+    LinesToStr([ // statements
+    '$mod.$rtti.$Class("TAnt$G2");',
+    '$mod.$rtti.$Class("TFish$G2");',
+    'rtl.createClass($mod, "TObject", null, function () {',
+    '  this.$init = function () {',
+    '  };',
+    '  this.$final = function () {',
+    '  };',
+    '});',
+    'rtl.createClass($mod, "TPersistent", $mod.TObject, function () {',
+    '});',
+    'rtl.createClass($mod, "TAnt$G2", $mod.TPersistent, function () {',
+    '  this.$init = function () {',
+    '    $mod.TPersistent.$init.call(this);',
+    '    this.f = null;',
+    '  };',
+    '  this.$final = function () {',
+    '    this.f = undefined;',
+    '    $mod.TPersistent.$final.call(this);',
+    '  };',
+    '  var $r = this.$rtti;',
+    '  $r.addField("f", $mod.$rtti["TFish$G2"]);',
+    '});',
+    'rtl.createClass($mod, "TFish$G2", $mod.TPersistent, function () {',
+    '  this.$init = function () {',
+    '    $mod.TPersistent.$init.call(this);',
+    '    this.a = null;',
+    '  };',
+    '  this.$final = function () {',
+    '    this.a = undefined;',
+    '    $mod.TPersistent.$final.call(this);',
+    '  };',
+    '  var $r = this.$rtti;',
+    '  $r.addField("a", $mod.$rtti["TAnt$G2"]);',
+    '});',
+    'this.WordFish = null;',
+    'this.p = null;',
+    '']),
+    LinesToStr([ // $mod.$main
+    '$mod.p = $mod.$rtti["TAnt$G2"];',
+    '$mod.p = $mod.$rtti["TFish$G2"];',
+    '']));
+end;
+
 procedure TTestGenerics.TestGen_ExtClass_Array;
 begin
   StartProgram(false);
@@ -875,6 +1120,95 @@ begin
     '']),
     LinesToStr([ // $mod.$main
     '$mod.p = $mod.$rtti["TJSSetEventProc"];',
+    '']));
+end;
+
+procedure TTestGenerics.TestGen_ClassInterface_Corba;
+begin
+  StartProgram(false);
+  Add([
+  '{$interfaces corba}',
+  'type',
+  '  IUnknown = interface;',
+  '  IUnknown = interface',
+  '    [''{00000000-0000-0000-C000-000000000046}'']',
+  '  end;',
+  '  IInterface = IUnknown;',
+  '  generic IBird<T> = interface(IInterface)',
+  '    function GetSize: T;',
+  '    procedure SetSize(i: T);',
+  '    property Size: T read GetSize write SetSize;',
+  '    procedure DoIt(i: T);',
+  '  end;',
+  '  TObject = class',
+  '  end;',
+  '  generic TBird<T> = class(TObject,specialize IBird<T>)',
+  '    function GetSize: T; virtual; abstract;',
+  '    procedure SetSize(i: T); virtual; abstract;',
+  '    procedure DoIt(i: T); virtual; abstract;',
+  '  end;',
+  '  IWordBird = specialize IBird<Word>;',
+  '  TWordBird = specialize TBird<Word>;',
+  'var',
+  '  BirdIntf: IWordBird;',
+  'begin',
+  '  BirdIntf.Size:=BirdIntf.Size;',
+  '']);
+  ConvertProgram;
+  CheckSource('TestGen_ClassInterface_Corba',
+    LinesToStr([ // statements
+    'rtl.createInterface($mod, "IUnknown", "{00000000-0000-0000-C000-000000000046}", [], null);',
+    'rtl.createInterface($mod, "IBird$G2", "{7D9907A1-5178-37B5-9D32-7BC020005905}", ["GetSize", "SetSize", "DoIt"], $mod.IUnknown);',
+    'rtl.createClass($mod, "TObject", null, function () {',
+    '  this.$init = function () {',
+    '  };',
+    '  this.$final = function () {',
+    '  };',
+    '});',
+    'rtl.createClass($mod, "TBird$G1", $mod.TObject, function () {',
+    '  rtl.addIntf(this, $mod.IBird$G2);',
+    '});',
+    'this.BirdIntf = null;',
+    '']),
+    LinesToStr([ // $mod.$main
+    '$mod.BirdIntf.SetSize($mod.BirdIntf.GetSize());',
+    '']));
+end;
+
+procedure TTestGenerics.TestGen_ClassInterface_InterfacedObject;
+begin
+  StartProgram(true,[supTInterfacedObject]);
+  Add([
+  '{$mode delphi}',
+  'type',
+  '  IComparer<T> = interface [''{505778ED-F783-4456-9691-32F419CC5E18}'']',
+  '    function Compare(const Left, Right: T): Integer; overload;',
+  '  end;',
+  '  TComparer<T> = class(TInterfacedObject, IComparer<T>)',
+  '    function Compare(const Left, Right: T): Integer;',
+  '  end;',
+  'function TComparer<T>.Compare(const Left, Right: T): Integer; begin end;',
+  'var',
+  '  aComparer : IComparer<Integer>;',
+  'begin',
+  '  aComparer:=TComparer<Integer>.Create;',
+  '']);
+  ConvertProgram;
+  CheckSource('TestGen_ClassInterface_InterfacedObject',
+    LinesToStr([ // statements
+    'rtl.createInterface($mod, "IComparer$G2", "{505778ED-F783-4456-9691-32F419CC5E18}", ["Compare"], pas.system.IUnknown);',
+    'rtl.createClass($mod, "TComparer$G1", pas.system.TInterfacedObject, function () {',
+    '  this.Compare = function (Left, Right) {',
+    '    var Result = 0;',
+    '    return Result;',
+    '  };',
+    '  rtl.addIntf(this, $mod.IComparer$G2);',
+    '  rtl.addIntf(this, pas.system.IUnknown);',
+    '});',
+    'this.aComparer = null;',
+    '']),
+    LinesToStr([ // $mod.$main
+    'rtl.setIntfP($mod, "aComparer", rtl.queryIntfT($mod.TComparer$G1.$create("Create"), $mod.IComparer$G2), true);',
     '']));
 end;
 

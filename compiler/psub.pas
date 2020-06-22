@@ -975,7 +975,7 @@ implementation
                InternalError(2013121301);
 
             { Generate special exception block only needed when
-              implicit finaly is used }
+              implicit finally is used }
             current_filepos:=exitpos;
             { Generate code that will be in the try...finally }
             finalcode:=internalstatements(codestatement);
@@ -2405,6 +2405,7 @@ implementation
 
          { the procedure is now defined }
          procdef.forwarddef:=false;
+         procdef.is_implemented:=true;
 
          if assigned(code) then
            begin

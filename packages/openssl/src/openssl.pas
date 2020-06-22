@@ -88,7 +88,9 @@ var
   {$IFDEF WINDOWS}
   DLLSSLName: string = 'ssleay32.dll';
   DLLSSLName2: string = 'libssl32.dll';
+  DLLSSLName3: string = {$IFDEF WIN64}'libssl-1_1-x64.dll'{$ELSE}'libssl-1_1.dll'{$ENDIF};
   DLLUtilName: string = 'libeay32.dll';
+  DLLUtilName2: string = {$IFDEF WIN64}'libcrypto-1_1-x64.dll'{$ELSE}'libcrypto-1_1.dll'{$ENDIF};
   {$ELSE}
    {$IFDEF OS2}
     {$IFDEF OS2GCC}
@@ -109,7 +111,7 @@ var
   { ADD NEW ONES WHEN THEY APPEAR!
     Always make .so/dylib first, then versions, in descending order!
     Add "." .before the version, first is always just "" }
-  DLLVersions: array[1..17] of string = ('', '.1.1', '.1.0.6', '.1.0.5', '.1.0.4', '.1.0.3',
+  DLLVersions: array[1..19] of string = ('', '.1.1', '.11', '.10', '.1.0.6', '.1.0.5', '.1.0.4', '.1.0.3',
                                         '.1.0.2', '.1.0.1','.1.0.0','.0.9.8',
                                         '.0.9.7', '.0.9.6', '.0.9.5', '.0.9.4',
                                         '.0.9.3', '.0.9.2', '.0.9.1');
@@ -5630,8 +5632,12 @@ begin
   SSLUtilHandle := LoadLib(DLLUtilName);
   SSLLibHandle := LoadLib(DLLSSLName);
   {$IFDEF MSWINDOWS}
+  if (SSLUtilHandle = 0) then
+    SSLUtilHandle := LoadLib(DLLUtilName2);
   if (SSLLibHandle = 0) then
     SSLLibHandle := LoadLib(DLLSSLName2);
+  if (SSLLibHandle = 0) then
+    SSLLibHandle := LoadLib(DLLSSLName3);
   {$ELSE MSWINDOWS}
    {$IFDEF OS2}
   if (SSLUtilHandle = 0) then

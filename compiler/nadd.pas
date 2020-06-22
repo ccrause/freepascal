@@ -493,7 +493,7 @@ implementation
         t       , vl, hp: tnode;
         lt,rt   : tnodetype;
         hdef,
-        rd,ld   : tdef;
+        rd,ld   , inttype: tdef;
         rv,lv,v : tconstexprint;
         rvd,lvd : bestreal;
         ws1,ws2 : pcompilerwidestring;
@@ -505,6 +505,7 @@ implementation
         res,
         b       : boolean;
         cr, cl  : Tconstexprint;
+        v2p, c2p, c1p, v1p: pnode;
       begin
         result:=nil;
         l1:=0;
@@ -949,6 +950,87 @@ implementation
                include(result.flags,nf_is_currency);
              exit;
           end;
+
+        { optimize operations with real constants, but only if fast math is switched on as
+          the operations could change e.g. the sign of 0 so they cannot be optimized always
+        }
+        if (cs_opt_fastmath in current_settings.optimizerswitches) and
+          is_real(resultdef) then
+          begin
+            if lt=realconstn then
+              begin
+                if (trealconstnode(left).value_real=0) and (nodetype in [addn,muln,subn,slashn]) then
+                  begin
+                    case nodetype of
+                      addn:
+                        begin
+                          result:=right.getcopy;
+                          exit;
+                        end;
+                      slashn,
+                      muln:
+                        if not(might_have_sideeffects(right,[mhs_exceptions])) then
+                          begin
+                            result:=left.getcopy;
+                            exit;
+                          end;
+                      subn:
+                        begin
+                          result:=cunaryminusnode.create(right.getcopy);
+                          exit;
+                        end;
+                      else
+                        Internalerror(2020060801);
+                    end;
+                  end
+                else if (trealconstnode(left).value_real=1) and (nodetype=muln) then
+                  begin
+                    result:=right.getcopy;
+                    exit;
+                  end;
+              end
+            else if rt=realconstn then
+              begin
+                if (trealconstnode(right).value_real=0) and (nodetype in [addn,muln,subn]) then
+                  begin
+                    case nodetype of
+                      subn,
+                      addn:
+                        begin
+                          result:=left.getcopy;
+                          exit;
+                        end;
+                      muln:
+                        if not(might_have_sideeffects(left,[mhs_exceptions])) then
+                          begin
+                            result:=right.getcopy;
+                            exit;
+                          end;
+                      else
+                        Internalerror(2020060802);
+                    end;
+                  end
+                else if (trealconstnode(right).value_real=1) and (nodetype in [muln,slashn]) then
+                  begin
+                    result:=left.getcopy;
+                    exit;
+                  end;
+              end
+            { optimize a/a and a-a }
+            else if (cs_opt_level2 in current_settings.optimizerswitches) and  (nodetype in [slashn,subn]) and
+              left.isequal(right) and not(might_have_sideeffects(left,[mhs_exceptions])) then
+              begin
+                case nodetype of
+                  subn:
+                    result:=crealconstnode.create(0,left.resultdef);
+                  slashn:
+                    result:=crealconstnode.create(1,left.resultdef);
+                  else
+                    Internalerror(2020060901);
+                end;
+              end;
+          end;
+
 {$if (FPC_FULLVERSION>20700) and not defined(FPC_SOFT_FPUX80)}
         { bestrealrec is 2.7.1+ only }
 
@@ -1255,6 +1337,78 @@ implementation
                     exit;
                   end;
 
+                {
+                  (v1=const1) and (v2=const2)
+                    can be converted into
+                  ((v1 xor const1) or (v2 xor const2))=0
+                }
+                if (nodetype=andn) and
+                   (left.nodetype=equaln) and
+                   (right.nodetype=equaln) and
+                   (not might_have_sideeffects(left)) and
+                   (not might_have_sideeffects(right)) and
+                   (is_constintnode(taddnode(left).left) or is_constintnode(taddnode(left).right) or
+                    is_constpointernode(taddnode(left).left) or is_constpointernode(taddnode(left).right) or
+                    is_constcharnode(taddnode(left).left) or is_constcharnode(taddnode(left).right)) and
+                   (is_constintnode(taddnode(right).left) or is_constintnode(taddnode(right).right) or
+                    is_constpointernode(taddnode(right).left) or is_constpointernode(taddnode(right).right) or
+                    is_constcharnode(taddnode(right).left) or is_constcharnode(taddnode(right).right)) then
+                   begin
+                     if is_constnode(taddnode(left).left) then
+                       begin
+                         v1p:=@taddnode(left).right;
+                         c1p:=@taddnode(left).left;
+                       end
+                     else
+                       begin
+                         v1p:=@taddnode(left).left;
+                         c1p:=@taddnode(left).right;
+                       end;
+                     if is_constnode(taddnode(right).left) then
+                       begin
+                         v2p:=@taddnode(right).right;
+                         c2p:=@taddnode(right).left;
+                       end
+                     else
+                       begin
+                         v2p:=@taddnode(right).left;
+                         c2p:=@taddnode(right).right;
+                       end;
+                     if v1p^.resultdef.size=v2p^.resultdef.size then
+                       begin
+                         if not(is_integer(v1p^.resultdef)) or not(is_integer(v2p^.resultdef)) then
+                           begin
+                             case v1p^.resultdef.size of
+                               1:
+                                 inttype:=u8inttype;
+                               2:
+                                 inttype:=u16inttype;
+                               4:
+                                 inttype:=u32inttype;
+                               8:
+                                 inttype:=u64inttype;
+                               else
+                                 Internalerror(2020060101);
+                             end;
+
+                             result:=caddnode.create_internal(equaln,
+                               caddnode.create_internal(orn,
+                                 caddnode.create_internal(xorn,ctypeconvnode.create_internal(v1p^.getcopy,inttype),
+                                   ctypeconvnode.create_internal(c1p^.getcopy,inttype)),
+                                 caddnode.create_internal(xorn,ctypeconvnode.create_internal(v2p^.getcopy,inttype),
+                                   ctypeconvnode.create_internal(c2p^.getcopy,inttype))
+                               ),
+                               cordconstnode.create(0,inttype,false));
+                           end
+                         else
+                           result:=caddnode.create_internal(equaln,
+                             caddnode.create_internal(orn,
+                               caddnode.create_internal(xorn,v1p^.getcopy,c1p^.getcopy),
+                               caddnode.create_internal(xorn,v2p^.getcopy,c2p^.getcopy)
+                             ),
+                             cordconstnode.create(0,v1p^.resultdef,false));
+                       end;
+                   end;
                 { even when short circuit boolean evaluation is active, this
                   optimization cannot be performed in case the node has
                   side effects, because this can change the result (e.g., in an

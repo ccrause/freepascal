@@ -229,7 +229,8 @@ const
   { 106 } 'FreeRTos-arm',
   { 107 } 'Win64-AArch64',
   { 108 } 'Embedded-Z80',
-  { 109 } 'ZXSpectrum-Z80'
+  { 109 } 'ZXSpectrum-Z80',
+  { 110 } 'MSX-DOS-Z80'
   );
 
 const
@@ -2431,7 +2432,8 @@ const
          'cs_opt_constant_propagate',
          'cs_opt_dead_store_eliminate',
          'cs_opt_forcenostackframe',
-         'cs_opt_use_load_modify_store'
+         'cs_opt_use_load_modify_store',
+         'cs_opt_unused_para'
        );
     var
          globalswitch  : tglobalswitch;

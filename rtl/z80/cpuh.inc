@@ -13,3 +13,10 @@
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
  **********************************************************************}
+
+const
+  {$I cpuinnr.inc}
+
+function fpc_z80_inport(port : byte) : byte;[internproc:fpc_in_z80_inport];
+procedure fpc_z80_outport(port : byte;data : byte);[internproc:fpc_in_z80_outport];
+

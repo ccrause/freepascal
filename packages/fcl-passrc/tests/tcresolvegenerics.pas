@@ -51,6 +51,7 @@ type
     procedure TestGen_RecordDelphi;
     procedure TestGen_RecordNestedSpecialized;
     procedure TestGen_Record_SpecializeSelfInsideFail;
+    procedure TestGen_Record_ReferGenericSelfFail;
     procedure TestGen_RecordAnoArray;
     // ToDo: unitname.specialize TBird<word>.specialize
     procedure TestGen_RecordNestedSpecialize;
@@ -95,6 +96,7 @@ type
 
     // generic external class
     procedure TestGen_ExtClass_Array;
+    procedure TestGen_ExtClass_VarargsOfType;
 
     // generic interface
     procedure TestGen_ClassInterface;
@@ -107,6 +109,7 @@ type
 
     // generic procedure type
     procedure TestGen_ProcType;
+    procedure TestGen_ProcType_AnonymousFunc_Delphi;
 
     // pointer of generic
     procedure TestGen_PointerDirectSpecializeFail;
@@ -688,6 +691,21 @@ begin
   'type',
   '  generic TBird<T> = record',
   '    v: specialize TBird<word>;',
+  '  end;',
+  'begin',
+  '']);
+  CheckResolverException('type "TBird<>" is not yet completely defined',
+    nTypeXIsNotYetCompletelyDefined);
+end;
+
+procedure TTestResolveGenerics.TestGen_Record_ReferGenericSelfFail;
+begin
+  StartProgram(false);
+  Add([
+  '{$mode delphi}',
+  'Type',
+  '  TBird<T> = record',
+  '    b: TBird<T>;',
   '  end;',
   'begin',
   '']);
@@ -1561,6 +1579,33 @@ begin
   ParseProgram;
 end;
 
+procedure TTestResolveGenerics.TestGen_ExtClass_VarargsOfType;
+begin
+  StartProgram(false);
+  Add([
+  '{$mode objfpc}',
+  '{$modeswitch externalclass}',
+  'type',
+  '  TJSObject = class external name ''Object''',
+  '  end;',
+  '  generic TGJSSet<T> = class external name ''Set''',
+  '    constructor new(aElement1: T); varargs of T; overload;',
+  '    function bind(thisArg: TJSObject): T; varargs of T;',
+  '  end;',
+  '  TJSWordSet = specialize TGJSSet<word>;',
+  'var',
+  '  s: TJSWordSet;',
+  '  w: word;',
+  'begin',
+  '  s:=TJSWordSet.new(3);',
+  '  s:=TJSWordSet.new(3,5);',
+  '  w:=s.bind(nil);',
+  '  w:=s.bind(nil,6);',
+  '  w:=s.bind(nil,7,8);',
+  '']);
+  ParseProgram;
+end;
+
 procedure TTestResolveGenerics.TestGen_ClassInterface;
 begin
   StartProgram(false);
@@ -1700,6 +1745,51 @@ begin
   '  b:=@GetIt;',
   '']);
   ParseProgram;
+end;
+
+procedure TTestResolveGenerics.TestGen_ProcType_AnonymousFunc_Delphi;
+begin
+  StartProgram(false);
+  Add([
+  '{$mode delphi}',
+  'type',
+  '  TObject = class',
+  '  end;',
+  '  IInterface = interface',
+  '  end;',
+  '  Integer = longint;',
+  '  IComparer<T> = interface',
+  '    function Compare(const Left, Right: T): Integer; overload;',
+  '  end;',
+  '  TOnComparison<T> = function(const Left, Right: T): Integer of object;',
+  '  TComparisonFunc<T> = reference to function(const Left, Right: T): Integer;',
+  '  TComparer<T> = class(TObject, IComparer<T>)',
+  '  public',
+  '    function Compare(const Left, Right: T): Integer; overload;',
+  '    class function Construct(const AComparison: TOnComparison<T>): IComparer<T>; overload;',
+  '    class function Construct(const AComparison: TComparisonFunc<T>): IComparer<T>; overload;',
+  '  end;',
+  'function TComparer<T>.Compare(const Left, Right: T): Integer; overload;',
+  'begin',
+  'end;',
+  'class function TComparer<T>.Construct(const AComparison: TOnComparison<T>): IComparer<T>;',
+  'begin',
+  'end;',
+  'class function TComparer<T>.Construct(const AComparison: TComparisonFunc<T>): IComparer<T>;',
+  'begin',
+  'end;',
+  'procedure Test;',
+  'var',
+  '  aComparer : IComparer<Integer>;',
+  'begin',
+  '  aComparer:=TComparer<Integer>.Construct(function (Const a,b : integer) : integer',
+  '    begin',
+  '      Result:=a-b;',
+  '    end);',
+  'end;',
+  'begin',
+  '  Test;']);
+  ParseModule;
 end;
 
 procedure TTestResolveGenerics.TestGen_PointerDirectSpecializeFail;

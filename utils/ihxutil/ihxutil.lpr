@@ -1,4 +1,4 @@
-{ IHX (Intel Hex format) to TZX (ZX Spectrum tape file format) convertor tool
+{ IHX (Intel Hex format) utility program
 
   This is the main program of the tool.
 
@@ -20,7 +20,7 @@
   Boston, MA 02110-1335, USA.
 }
 
-program ihx2tzx;
+program ihxutil;
 
 {$mode objfpc}{$H+}
 
@@ -29,16 +29,21 @@ uses
   { you can add units after this };
 
 const
-  ShortOptions = 'hb:c:';
+  ShortOptions = 'hb:c:t:';
   LongOptions: array [0..0] of string = (
     'help'
   );
 
 type
 
-  { TIHX2TZX }
+  TOutputType = (
+    otTZX,
+    otBin
+  );
 
-  TIHX2TZX = class(TCustomApplication)
+  { TIHXUtil }
+
+  TIHXUtil = class(TCustomApplication)
   private
     FInputFileName: string;
     FOutputFileName: string;
@@ -46,6 +51,7 @@ type
     FBinaryProgramName: string;
     FInputImage: TIHXReader;
     FOutputFile: TStream;
+    FOutputType: TOutputType;
     FTapeWriter: TTZXWriter;
   protected
     procedure DoRun; override;
@@ -57,9 +63,9 @@ type
 
 { TIHX2TZX }
 
-procedure TIHX2TZX.DoRun;
+procedure TIHXUtil.DoRun;
 var
-  ErrorMsg: String;
+  ErrorMsg, t: String;
   NonOptions: TStringArray;
   BasicProgram: AnsiString;
 begin
@@ -72,11 +78,8 @@ begin
 
   // quick check parameters
   ErrorMsg:=CheckOptions(ShortOptions, LongOptions);
-  if ErrorMsg<>'' then begin
-    ShowException(Exception.Create(ErrorMsg));
-    Terminate;
-    Exit;
-  end;
+  if ErrorMsg<>'' then
+    raise Exception.Create(ErrorMsg);
 
   // parse parameters
   if HasOption('h', 'help') then begin
@@ -90,19 +93,22 @@ begin
   if HasOption('c', '') then
     FBinaryProgramName := GetOptionValue('c', '');
 
+  if HasOption('t', '') then begin
+    t := GetOptionValue('t', '');
+    case t of
+      'tzx': FOutputType := otTZX;
+      'bin': FOutputType := otBin;
+      else
+        raise Exception.CreateFmt('Invalid option for output type parameter: %s', [t]);
+    end;
+  end else
+    FOutputType := otTZX;
+
   NonOptions := GetNonOptions(ShortOptions, LongOptions);
   if Length(NonOptions) = 0 then
-  begin
-    ShowException(Exception.Create('Missing input file'));
-    Terminate;
-    Exit;
-  end;
+    raise Exception.Create('Missing input file');
   if Length(NonOptions) > 2 then
-  begin
-    ShowException(Exception.Create('Too many files specified'));
-    Terminate;
-    Exit;
-  end;
+    raise Exception.Create('Too many files specified');
   FInputFileName := NonOptions[0];
   if Length(NonOptions) >= 2 then
     FOutputFileName := NonOptions[1]
@@ -113,19 +119,27 @@ begin
   FInputImage.ReadIHXFile(FInputFileName);
 
   FOutputFile := TFileStream.Create(FOutputFileName, fmCreate);
-  FTapeWriter := TTZXWriter.Create(FOutputFile);
 
-  BasicProgram := BAS_EncodeLine(10, ' '+BC_LOAD+'"" '+BC_CODE) +
-                  BAS_EncodeLine(20, ' '+BC_PRINT+BC_USR+BAS_EncodeNumber(FInputImage.Origin));
+  case FOutputType of
+    otTZX: begin
+      FTapeWriter := TTZXWriter.Create(FOutputFile);
 
-  FTapeWriter.AppendProgramFile(FBasicProgramName, 10, Length(BasicProgram), BasicProgram[1], Length(BasicProgram));
-  FTapeWriter.AppendCodeFile(FBinaryProgramName, FInputImage.Origin, FInputImage.Data[0], Length(FInputImage.Data));
+      BasicProgram := BAS_EncodeLine(10, ' '+BC_LOAD+'"" '+BC_CODE) +
+                      BAS_EncodeLine(20, ' '+BC_PRINT+BC_USR+BAS_EncodeNumber(FInputImage.Origin));
+
+      FTapeWriter.AppendProgramFile(FBasicProgramName, 10, Length(BasicProgram), BasicProgram[1], Length(BasicProgram));
+      FTapeWriter.AppendCodeFile(FBinaryProgramName, FInputImage.Origin, FInputImage.Data[0], Length(FInputImage.Data));
+    end;
+    otBin: begin
+      FOutputFile.Write(FInputImage.Data[0], Length(FInputImage.Data));
+    end;
+  end;
 
   // stop program loop
   Terminate;
 end;
 
-constructor TIHX2TZX.Create(TheOwner: TComponent);
+constructor TIHXUtil.Create(TheOwner: TComponent);
 begin
   inherited Create(TheOwner);
   StopOnException:=True;
@@ -134,7 +148,7 @@ begin
   FBinaryProgramName := 'test';
 end;
 
-destructor TIHX2TZX.Destroy;
+destructor TIHXUtil.Destroy;
 begin
   FreeAndNil(FInputImage);
   FreeAndNil(FTapeWriter);
@@ -142,21 +156,24 @@ begin
   inherited Destroy;
 end;
 
-procedure TIHX2TZX.WriteHelp;
+procedure TIHXUtil.WriteHelp;
 begin
   { add your help code here }
-  writeln('Usage: ', ExeName, ' [options] ihx_file [tzx_file]');
+  writeln('Usage: ', ExeName, ' [options] ihx_file [out_file]');
   Writeln('Options: -b <name>   specify the name of the BASIC loader program on the tape');
   Writeln('         -c <name>   specify the name of the machine code program on the tape');
+  Writeln('         -t <type>   specify the output type; valid types are:');
+  Writeln('                        tzx ZX Spectrum Tape file (default)');
+  Writeln('                        bin Flat binary file (e.g. MSX-DOS COM)');
   Writeln('         -h          display this help');
   Writeln('         --help      display this help');
 end;
 
 var
-  Application: TIHX2TZX;
+  Application: TIHXUtil;
 begin
-  Application:=TIHX2TZX.Create(nil);
-  Application.Title:='ihx2tzx';
+  Application:=TIHXUtil.Create(nil);
+  Application.Title:='ihxutil';
   Application.Run;
   Application.Free;
 end.
