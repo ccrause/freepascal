@@ -45,9 +45,6 @@ unit esp8266;
       operatingsystem_result: longint; external name 'operatingsystem_result';
 
     procedure PASCALMAIN; external name 'PASCALMAIN';
-
-    procedure vTaskDelete(xTaskToDelete: pointer); external;
-
     procedure putchar(c : char);external;
     function getchar : char;external;
     function __getreent : pointer;external;
@@ -58,27 +55,18 @@ unit esp8266;
         fflush(ppointer(__getreent+8)^);
       end;
 
-    procedure _FPC_haltproc; public name '_haltproc';noreturn;
+    procedure _FPC_haltproc; public name '_haltproc';
       begin
         writeln;
         if operatingsystem_result <> 0 then
           writeln('Runtime error ', operatingsystem_result);
 
         writeln('_haltproc called, deleting self');
-        // Flush output buffer before sleeping
         flushOutput(TextRec(Output));
-        // Delete this task as per user_init_entry in SDK. Other tasks keep on running.
-        // At this point finalization of the RTL has been done and use of
-        // RTL functionality in other tasks may not work correctly.
-        // Perhaps don't call finalization? This will keep RTL functionality
-        // available for other FPC created tasks.
-        // This means PASCALMAIN needs to be rewritten.
-        // Also need to think about re-entrancy of RTL code.
-        vTaskDelete(nil);
       end;
 
 
-    procedure app_main;public name 'app_main';noreturn;
+    procedure app_main;public name 'app_main';
       begin
         PASCALMAIN;
         _FPC_haltproc;
