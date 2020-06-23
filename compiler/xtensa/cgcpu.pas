@@ -766,7 +766,6 @@ implementation
                   stack_parameters:=current_procinfo.procdef.stack_tainting_parameter(calleeside);
                   registerarea:=0;
                   regs:=rg[R_INTREGISTER].used_in_proc-paramanager.get_volatile_registers_int(pocall_stdcall);
-                  //a_reg_alloc(list,NR_STACK_POINTER_REG);
                   if current_procinfo.framepointer<>NR_STACK_POINTER_REG then
                     Include(regs,RS_A15);
                   if pi_do_call in current_procinfo.flags then
@@ -778,7 +777,6 @@ implementation
                            inc(registerarea,4);
                      end;
                   inc(localsize,registerarea);
-                  // Done calculating affected registers & stackrequirements
 
                   if LocalSize<>0 then
                     begin
@@ -801,7 +799,7 @@ implementation
                             Internalerror(2020031101);
                         end;
 
-                      // restore a15 if required
+                      // restore a15 if used
                       if current_procinfo.framepointer<>NR_STACK_POINTER_REG then
                         begin
                           dec(ref.offset,4);
