@@ -789,8 +789,6 @@ implementation
                         begin
                           if ref.offset<=1024+32512 then
                             begin
-                              // allocation done in proc_entry
-                              //list.concat(taicpu.op_reg_reg_const(A_ADDMI,NR_A8,NR_STACK_POINTER_REG,ref.offset and $fffffc00));
                               ref.offset:=ref.offset and $3ff;
                               ref.base:=NR_A8;
                             end
@@ -807,7 +805,7 @@ implementation
                           a_reg_dealloc(list,NR_FRAME_POINTER_REG);
                         end;
 
-                      // restore rest of registers
+                      // restore other used registers
                       if regs<>[] then
                         begin
                           for r:=RS_A14 downto RS_A0 do
