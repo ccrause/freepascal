@@ -21,6 +21,7 @@ Unit System;
 {*****************************************************************************}
 
 {$define FPC_SYSTEM_HAS_STACKTOP}
+{$define FPC_USE_SMALL_DEFAULTSTACKSIZE}
 
 {$define FPC_IS_SYSTEM}
 {$define HAS_CMDLINE}
