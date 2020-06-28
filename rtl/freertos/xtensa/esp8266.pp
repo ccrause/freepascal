@@ -46,7 +46,8 @@ unit esp8266;
 
     procedure PASCALMAIN; external name 'PASCALMAIN';
     procedure putchar(c : char);external;
-    function getchar : char;external;
+    //function getchar: longint; external;
+    function uart_rx_one_char(pRxChar: PChar): longint; external;
     function __getreent : pointer;external;
     procedure fflush(f : pointer);external;
 
@@ -81,8 +82,10 @@ unit esp8266;
 
     function ReadChar(var ACh: char; AUserData: pointer): boolean;
       begin
-        ReadChar:=true;
-        ACh:=getchar;
+        ReadChar := true;
+        ACh := #0;
+        uart_rx_one_char(@ACh);  // check failure?
+        //ACh := char(getchar);
       end;
 
 
