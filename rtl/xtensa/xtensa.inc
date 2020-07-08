@@ -53,9 +53,13 @@ function get_caller_frame(framebp:pointer;addr:pointer=nil):pointer;assembler;no
 
 
 {$define FPC_SYSTEM_HAS_SPTR}
-Function Sptr : pointer;assembler;
+Function Sptr : pointer; assembler; nostackframe;
   asm
+  {$ifdef FPC_ABI_WINDOWED} // Should mean call8
+    mov a10, a1
+  {$else}                   // or call0
     mov a2,a1
+  {$endif}
   end;
 
 
