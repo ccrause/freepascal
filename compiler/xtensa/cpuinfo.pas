@@ -110,7 +110,7 @@ Const
    embedded_controllers : array [tcontrollertype] of tcontrollerdatatype =
    (
       (controllertypestr:'';		controllerunitstr:'';	cputype:cpu_none; fputype:fpu_soft; abi: abi_default; flashbase:0),
-      (controllertypestr:'ESP8266';	controllerunitstr:'ESP8266';	cputype:cpu_lx106; fputype:fpu_soft; abi: abi_xtensa_call0; { flashbase:$40000000; flashsize:448*1024; srambase:$40070000; sramsize: 520*1024 }),
+      (controllertypestr:'ESP8266';	controllerunitstr:'ESP8266';	cputype:cpu_lx106; fputype:fpu_soft; abi: abi_xtensa_call0; flashbase:$40000000; flashsize:1024*1024; srambase:$40070000; sramsize: 520*1024),
       (controllertypestr:'ESP32';	controllerunitstr:'ESP32';	cputype:cpu_lx6; fputype:fpu_hard; abi: abi_xtensa_windowed; flashbase:$40000000; flashsize:2*1024*1024),
       (controllertypestr:'ESP32_D0WD';	controllerunitstr:'ESP32_D0WD';	cputype:cpu_lx6; fputype:fpu_hard; abi: abi_xtensa_windowed; flashbase:$40000000; flashsize:448*1024; srambase:$40070000; sramsize: 520*1024),
       (controllertypestr:'ESP32_D2WD';	controllerunitstr:'ESP32_D2WD';	cputype:cpu_lx6; fputype:fpu_hard; abi: abi_xtensa_windowed; flashbase:$40000000; flashsize:448*1024; srambase:$40070000; sramsize: 520*1024),
@@ -136,7 +136,8 @@ Const
    tcpuflags =
       (
         CPUXTENSA_REGWINDOW,
-        CPUXTENSA_HAS_SEXT
+        CPUXTENSA_HAS_SEXT,
+        CPUXTENSA_HAS_BOOLEAN_OPTION
       );
 
    tfpuflags =
@@ -150,7 +151,7 @@ Const
      (
        { cpu_none     } [],
        { cpu_lx106    } [],
-       { cpu_lx6      } [CPUXTENSA_REGWINDOW, CPUXTENSA_HAS_SEXT]
+       { cpu_lx6      } [CPUXTENSA_REGWINDOW, CPUXTENSA_HAS_SEXT, CPUXTENSA_HAS_BOOLEAN_OPTION]
      );
 
    fpu_capabilities : array[tfputype] of set of tfpuflags =

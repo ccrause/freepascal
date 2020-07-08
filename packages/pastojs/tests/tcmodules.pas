@@ -319,6 +319,7 @@ type
     Procedure TestFunctionResultInForLoop;
     Procedure TestFunctionResultInTypeCast;
     Procedure TestExit;
+    Procedure TestExit_ResultInFinally;
     Procedure TestBreak;
     Procedure TestBreakAsVar;
     Procedure TestContinue;
@@ -609,6 +610,7 @@ type
     Procedure TestExternalClass_NewInstance_NonVirtualFail;
     Procedure TestExternalClass_NewInstance_FirstParamNotString_Fail;
     Procedure TestExternalClass_NewInstance_SecondParamTyped_Fail;
+    Procedure TestExternalClass_JSFunctionPasDescendant;
     Procedure TestExternalClass_PascalProperty;
     Procedure TestExternalClass_TypeCastToRootClass;
     Procedure TestExternalClass_TypeCastToJSObject;
@@ -3727,6 +3729,77 @@ begin
     LinesToStr([
     'return;',
     'return 1;',
+    '']));
+end;
+
+procedure TTestModule.TestExit_ResultInFinally;
+begin
+  StartProgram(false);
+  Add([
+  'function Run: word;',
+  'begin',
+  '  try',
+  '    exit(3);', // no Result in finally -> use return 3
+  '  finally',
+  '  end;',
+  'end;',
+  'function Fly: word;',
+  'begin',
+  '  try',
+  '    exit(3);',
+  '  finally',
+  '    if Result>0 then ;',
+  '  end;',
+  'end;',
+  'function Jump: word;',
+  'begin',
+  '  try',
+  '    try',
+  '      exit(4);',
+  '    finally',
+  '    end;',
+  '  finally',
+  '    if Result>0 then ;',
+  '  end;',
+  'end;',
+  'begin',
+  '']);
+  ConvertProgram;
+  CheckSource('TestExit_ResultInFinally',
+    LinesToStr([ // statements
+    'this.Run = function () {',
+    '  var Result = 0;',
+    '  try {',
+    '    return 3;',
+    '  } finally {',
+    '  };',
+    '  return Result;',
+    '};',
+    'this.Fly = function () {',
+    '  var Result = 0;',
+    '  try {',
+    '    Result = 3;',
+    '    return Result;',
+    '  } finally {',
+    '    if (Result > 0) ;',
+    '  };',
+    '  return Result;',
+    '};',
+    'this.Jump = function () {',
+    '  var Result = 0;',
+    '  try {',
+    '    try {',
+    '      Result = 4;',
+    '      return Result;',
+    '    } finally {',
+    '    };',
+    '  } finally {',
+    '    if (Result > 0) ;',
+    '  };',
+    '  return Result;',
+    '};',
+    '']),
+    LinesToStr([
     '']));
 end;
 
@@ -10639,9 +10712,9 @@ begin
     'rtl.recNewT($mod, "TBigRec", function () {',
     '  this.Int = 0;',
     '  this.D = 0.0;',
-    '  this.Arr = [];',
     '  this.$new = function () {',
     '    var r = Object.create(this);',
+    '    r.Arr = [];',
     '    r.Arr2 = rtl.arraySetLength(null, 0, 2);',
     '    r.Small = $mod.TSmallRec.$new();',
     '    r.Enums = {};',
@@ -10653,7 +10726,7 @@ begin
     '  this.$assign = function (s) {',
     '    this.Int = s.Int;',
     '    this.D = s.D;',
-    '    this.Arr = s.Arr;',
+    '    this.Arr = rtl.arrayRef(s.Arr);',
     '    this.Arr2 = s.Arr2.slice(0);',
     '    this.Small.$assign(s.Small);',
     '    this.Enums = rtl.refSet(s.Enums);',
@@ -11109,9 +11182,9 @@ begin
   CheckSource('TestRecord_FieldArray',
     LinesToStr([ // statements
     'rtl.recNewT($mod, "TRec", function () {',
-    '  this.a = [];',
     '  this.$new = function () {',
     '    var r = Object.create(this);',
+    '    r.a = [];',
     '    r.s = rtl.arraySetLength(null, 0, 2);',
     '    r.m = rtl.arraySetLength(null, 0, 2, 2);',
     '    r.o = rtl.arraySetLength(null, 0, 2);',
@@ -11121,7 +11194,7 @@ begin
     '    return (this.a === b.a) && rtl.arrayEq(this.s, b.s) && rtl.arrayEq(this.m, b.m) && rtl.arrayEq(this.o, b.o);',
     '  };',
     '  this.$assign = function (s) {',
-    '    this.a = s.a;',
+    '    this.a = rtl.arrayRef(s.a);',
     '    this.s = s.s.slice(0);',
     '    this.m = s.m.slice(0);',
     '    this.o = s.o.slice(0);',
@@ -11175,9 +11248,9 @@ begin
     '});',
     'rtl.recNewT($mod, "TRec", function () {',
     '  this.i = 0;',
-    '  this.a = [];',
     '  this.$new = function () {',
     '    var r = Object.create(this);',
+    '    r.a = [];',
     '    r.s = rtl.arraySetLength(null, 0, 2);',
     '    r.m = rtl.arraySetLength(null, 0, 2, 2);',
     '    r.p = $mod.TPoint.$new();',
@@ -11188,7 +11261,7 @@ begin
     '  };',
     '  this.$assign = function (s) {',
     '    this.i = s.i;',
-    '    this.a = s.a;',
+    '    this.a = rtl.arrayRef(s.a);',
     '    this.s = s.s.slice(0);',
     '    this.m = s.m.slice(0);',
     '    this.p.$assign(s.p);',
@@ -11584,9 +11657,9 @@ begin
     '}, true);',
     'rtl.recNewT($mod, "TRec", function () {',
     '  this.i = 0;',
-    '  this.a = [];',
     '  this.$new = function () {',
     '    var r = Object.create(this);',
+    '    r.a = [];',
     '    r.s = rtl.arraySetLength(null, 0, 2);',
     '    r.m = rtl.arraySetLength(null, 0, 2, 2);',
     '    r.p = $mod.TPoint.$new();',
@@ -11597,7 +11670,7 @@ begin
     '  };',
     '  this.$assign = function (s) {',
     '    this.i = s.i;',
-    '    this.a = s.a;',
+    '    this.a = rtl.arrayRef(s.a);',
     '    this.s = s.s.slice(0);',
     '    this.m = s.m.slice(0);',
     '    this.p.$assign(s.p);',
@@ -17479,6 +17552,81 @@ begin
   SetExpectedPasResolverError('Incompatible type arg no. 2: Got "type", expected "untyped"',
     nIncompatibleTypeArgNo);
   ConvertProgram;
+end;
+
+procedure TTestModule.TestExternalClass_JSFunctionPasDescendant;
+begin
+  StartProgram(false);
+  Add([
+  '{$modeswitch externalclass}',
+  'type',
+  '  TJSFunction = class external name ''Function''',
+  '  end;',
+  '  TExtA = class external name ''ExtA''(TJSFunction)',
+  '    constructor New(w: word);',
+  '  end;',
+  '  TBird = class (TExtA)',
+  '  public',
+  '    Size: word;',
+  '    class var Legs: word;',
+  '    constructor Create(a: word);',
+  '  end;',
+  '  TEagle = class (TBird)',
+  '  public',
+  '    constructor Create(b: word); reintroduce;',
+  '  end;',
+  'constructor TBird.Create(a: word);',
+  'begin',
+  '  inherited;',  // silently ignored
+  '  inherited New(a);', // this.$func(a)
+  'end;',
+  'constructor TEagle.Create(b: word);',
+  'begin',
+  '  inherited Create(b);',
+  'end;',
+  'var',
+  '  Bird: TBird;',
+  '  Eagle: TEagle;',
+  'begin',
+  '  Bird:=TBird.Create(3);',
+  '  Eagle:=TEagle.Create(4);',
+  '  Bird.Size:=Bird.Size+5;',
+  '  Bird.Legs:=Bird.Legs+6;',
+  '  Eagle.Size:=Eagle.Size+5;',
+  '  Eagle.Legs:=Eagle.Legs+6;',
+  '']);
+  ConvertProgram;
+  CheckSource('TestExternalClass_JSFunctionPasDescendant',
+    LinesToStr([ // statements
+    'rtl.createClassExt($mod, "TBird", ExtA, "", function () {',
+    '  this.Legs = 0;',
+    '  this.$init = function () {',
+    '    this.Size = 0;',
+    '  };',
+    '  this.$final = function () {',
+    '  };',
+    '  this.Create = function (a) {',
+    '    this.$ancestorfunc(a);',
+    '    return this;',
+    '  };',
+    '});',
+    'rtl.createClassExt($mod, "TEagle", $mod.TBird, "", function () {',
+    '  this.Create$1 = function (b) {',
+    '    $mod.TBird.Create.call(this, b);',
+    '    return this;',
+    '  };',
+    '});',
+    'this.Bird = null;',
+    'this.Eagle = null;',
+    '']),
+    LinesToStr([ // $mod.$main
+    '$mod.Bird = $mod.TBird.$create("Create", [3]);',
+    '$mod.Eagle = $mod.TEagle.$create("Create$1", [4]);',
+    '$mod.Bird.Size = $mod.Bird.Size + 5;',
+    '$mod.TBird.Legs = $mod.Bird.Legs + 6;',
+    '$mod.Eagle.Size = $mod.Eagle.Size + 5;',
+    '$mod.TBird.Legs = $mod.Eagle.Legs + 6;',
+    '']));
 end;
 
 procedure TTestModule.TestExternalClass_PascalProperty;
@@ -29803,14 +29951,18 @@ begin
   CheckSource('TestRTTI_Record',
     LinesToStr([ // statements
     'rtl.recNewT($mod, "TFloatRec", function () {',
-    '  this.c = [];',
-    '  this.d = [];',
+    '  this.$new = function () {',
+    '    var r = Object.create(this);',
+    '    r.c = [];',
+    '    r.d = [];',
+    '    return r;',
+    '  };',
     '  this.$eq = function (b) {',
     '    return (this.c === b.c) && (this.d === b.d);',
     '  };',
     '  this.$assign = function (s) {',
-    '    this.c = s.c;',
-    '    this.d = s.d;',
+    '    this.c = rtl.arrayRef(s.c);',
+    '    this.d = rtl.arrayRef(s.d);',
     '    return this;',
     '  };',
     '  $mod.$rtti.$DynArray("TFloatRec.d$a", {',
