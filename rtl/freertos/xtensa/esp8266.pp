@@ -35,6 +35,9 @@ unit esp8266;
 {$linklib lwip, static}
 {$linklib mbedtls, static}
 
+  // Expose IO asignment so that threads can call this to intialize IO
+  procedure AssignControllerIO;
+
   implementation
 
     uses
@@ -46,10 +49,10 @@ unit esp8266;
 
     procedure PASCALMAIN; external name 'PASCALMAIN';
     procedure putchar(c : char);external;
-    //function getchar: longint; external;
     function uart_rx_one_char(pRxChar: PChar): longint; external;
     function __getreent : pointer;external;
     procedure fflush(f : pointer);external;
+    procedure vTaskDelay(xTicksToDelay: uint32); external;
 
     procedure flushOutput(var t : TextRec);
       begin
@@ -62,8 +65,11 @@ unit esp8266;
         if operatingsystem_result <> 0 then
           writeln('Runtime error ', operatingsystem_result);
 
-        writeln('_haltproc called, deleting self');
+        writeln('_haltproc called...');
         flushOutput(TextRec(Output));
+        repeat
+          vTaskDelay(1000);  // This allows FreeRTOS to schedule other tasks
+        until false;
       end;
 
 
@@ -85,14 +91,17 @@ unit esp8266;
         ReadChar := true;
         ACh := #0;
         uart_rx_one_char(@ACh);  // check failure?
-        //ACh := char(getchar);
       end;
 
+    procedure AssignControllerIO;
+      begin
+        OpenIO(Input, @WriteChar, @ReadChar, fmInput, nil);
+        OpenIO(Output, @WriteChar, @ReadChar, fmOutput, nil);
+        OpenIO(ErrOutput, @WriteChar, @ReadChar, fmOutput, nil);
+        OpenIO(StdOut, @WriteChar, @ReadChar, fmOutput, nil);
+        OpenIO(StdErr, @WriteChar, @ReadChar, fmOutput, nil);
+      end;
 
 begin
-  OpenIO(Input, @WriteChar, @ReadChar, fmInput, nil);
-  OpenIO(Output, @WriteChar, @ReadChar, fmOutput, nil);
-  OpenIO(ErrOutput, @WriteChar, @ReadChar, fmOutput, nil);
-  OpenIO(StdOut, @WriteChar, @ReadChar, fmOutput, nil);
-  OpenIO(StdErr, @WriteChar, @ReadChar, fmOutput, nil);
+  AssignControllerIO;
 end.
