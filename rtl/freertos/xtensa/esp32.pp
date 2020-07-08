@@ -30,6 +30,9 @@ unit esp32;
 {$linklib c,static}
 {$linklib esp_event,static}
 
+  // Expose IO asignment so that threads can call this to intialize IO
+  procedure AssignControllerIO;
+
   implementation
 
     uses
@@ -102,10 +105,16 @@ unit esp32;
         ACh:=getchar;
       end;
 
+    // Expose IO asignment so that threads can call this to intialize IO
+    procedure AssignControllerIO;
+    begin
+      OpenIO(Input, @WriteChar, @ReadChar, fmInput, nil);
+      OpenIO(Output, @WriteChar, @ReadChar, fmOutput, nil);
+      OpenIO(ErrOutput, @WriteChar, @ReadChar, fmOutput, nil);
+      OpenIO(StdOut, @WriteChar, @ReadChar, fmOutput, nil);
+      OpenIO(StdErr, @WriteChar, @ReadChar, fmOutput, nil);
+    end;
+
 begin
-  OpenIO(Input, @WriteChar, @ReadChar, fmInput, nil);
-  OpenIO(Output, @WriteChar, @ReadChar, fmOutput, nil);
-  OpenIO(ErrOutput, @WriteChar, @ReadChar, fmOutput, nil);
-  OpenIO(StdOut, @WriteChar, @ReadChar, fmOutput, nil);
-  OpenIO(StdErr, @WriteChar, @ReadChar, fmOutput, nil);
+  AssignControllerIO;
 end.
