@@ -32,9 +32,6 @@ unit cpupara;
        paramgr,parabase,cgbase,cgutils;
 
     type
-
-       { tcpuparamanager }
-
        tcpuparamanager = class(tparamanager)
          function get_volatile_registers_int(calloption : tproccalloption):tcpuregisterset;override;
          function get_volatile_registers_fpu(calloption : tproccalloption):tcpuregisterset;override;
