@@ -32,6 +32,9 @@ unit cpupara;
        paramgr,parabase,cgbase,cgutils;
 
     type
+
+       { tcpuparamanager }
+
        tcpuparamanager = class(tparamanager)
          function get_volatile_registers_int(calloption : tproccalloption):tcpuregisterset;override;
          function get_volatile_registers_fpu(calloption : tproccalloption):tcpuregisterset;override;
@@ -65,7 +68,7 @@ unit cpupara;
         if target_info.abi=abi_xtensa_windowed then
           result:=[RS_A8..RS_A15]
         else
-          result:=[RS_A0..RS_A7];
+          result:=[RS_A0..RS_A11];
       end;
 
 
