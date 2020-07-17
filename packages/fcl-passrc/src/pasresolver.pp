@@ -1280,6 +1280,7 @@ type
   TPRResolveVarAccesses = set of TResolvedRefAccess;
 
 const
+  rraAllRead = [rraRead,rraReadAndAssign,rraVarParam];
   rraAllWrite = [rraAssign,rraReadAndAssign,rraVarParam,rraOutParam];
 
   ResolvedToPSRefAccess: array[TResolvedRefAccess] of TPSRefAccess = (
@@ -15919,7 +15920,7 @@ begin
 
   IsDelphi:=msDelphi in CurrentParser.CurrentModeswitches;
   try
-    SetLength(InferenceTypes,TemplTypes.Count);
+    SetLength(InferenceTypes{%H-},TemplTypes.Count);
     for i:=0 to TemplTypes.Count-1 do
       InferenceTypes[i]:=Default(TInferredType);
 
@@ -28034,7 +28035,7 @@ var
 begin
   Result:=false;
   if aClass=nil then exit;
-  while (aClass<>nil) and aClass.IsExternal do
+  while aClass<>nil do
     begin
     if aClass.ExternalName=ExtName then exit(true);
     AncestorScope:=(aClass.CustomData as TPasClassScope).AncestorScope;
@@ -28223,7 +28224,7 @@ begin
       ['type with '+IntToStr(Params.Count)+' generic template(s)',
        GenericEl.Name+GetGenericParamCommas(GenericTemplateList.Count)],El);
 
-  SetLength(ParamsResolved,Params.Count);
+  SetLength(ParamsResolved{%H-},Params.Count);
   IsSelf:=true;
   for i:=0 to Params.Count-1 do
     begin

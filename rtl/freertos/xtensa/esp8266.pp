@@ -35,9 +35,6 @@ unit esp8266;
 {$linklib lwip, static}
 {$linklib mbedtls, static}
 
-  // Expose IO asignment so that threads can call this to intialize IO
-  procedure AssignControllerIO;
-
   implementation
 
     uses
@@ -68,10 +65,11 @@ unit esp8266;
         writeln('_haltproc called...');
         flushOutput(TextRec(Output));
         repeat
-          vTaskDelay(1000);  // This allows FreeRTOS to schedule other tasks
+          // Allow other tasks to run
+          // Do not enter deep sleep, can lead to problems with flashing
+          vTaskDelay(1000);
         until false;
       end;
-
 
     procedure app_main;public name 'app_main';
       begin
@@ -85,7 +83,6 @@ unit esp8266;
         putchar(ACh);
       end;
 
-
     function ReadChar(var ACh: char; AUserData: pointer): boolean;
       begin
         ReadChar := true;
@@ -93,15 +90,10 @@ unit esp8266;
         uart_rx_one_char(@ACh);  // check failure?
       end;
 
-    procedure AssignControllerIO;
-      begin
-        OpenIO(Input, @WriteChar, @ReadChar, fmInput, nil);
-        OpenIO(Output, @WriteChar, @ReadChar, fmOutput, nil);
-        OpenIO(ErrOutput, @WriteChar, @ReadChar, fmOutput, nil);
-        OpenIO(StdOut, @WriteChar, @ReadChar, fmOutput, nil);
-        OpenIO(StdErr, @WriteChar, @ReadChar, fmOutput, nil);
-      end;
-
 begin
-  AssignControllerIO;
+  OpenIO(Input, @WriteChar, @ReadChar, fmInput, nil);
+  OpenIO(Output, @WriteChar, @ReadChar, fmOutput, nil);
+  OpenIO(ErrOutput, @WriteChar, @ReadChar, fmOutput, nil);
+  OpenIO(StdOut, @WriteChar, @ReadChar, fmOutput, nil);
+  OpenIO(StdErr, @WriteChar, @ReadChar, fmOutput, nil);
 end.

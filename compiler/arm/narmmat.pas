@@ -54,7 +54,7 @@ implementation
       globtype,compinnr,
       cutils,verbose,globals,constexp,
       aasmbase,aasmcpu,aasmtai,aasmdata,
-      defutil,
+      defutil,systems,
       symtype,symconst,symtable,
       cgbase,cgobj,hlcgobj,cgutils,
       pass_2,procinfo,
@@ -358,17 +358,9 @@ implementation
         procname: string[31];
         fdef : tdef;
       begin
-        if (current_settings.fputype=fpu_soft) and
-           (left.resultdef.typ=floatdef) then
-          begin
-            result:=nil;
-            firstpass(left);
-            expectloc:=LOC_REGISTER;
-            exit;
-          end;
-
         if (FPUARM_HAS_VFP_DOUBLE in fpu_capabilities[current_settings.fputype]) or
-          is_single(resultdef) then
+           (target_info.system = system_arm_wince) or
+           is_single(resultdef) then
           exit(inherited pass_1);
 
         result:=nil;
@@ -376,7 +368,10 @@ implementation
         if codegenerror then
           exit;
 
-        if (left.resultdef.typ=floatdef) then
+        { if we get here and VFP support is on, there is no 64 bit VFP operation support available,
+          so in this case the software version needs to be called }
+        if (left.resultdef.typ=floatdef) and ((current_settings.fputype=fpu_soft) or
+          (FPUARM_HAS_VFP_EXTENSION in fpu_capabilities[current_settings.fputype])) then
           begin
             case tfloatdef(resultdef).floattype of
               s64real:

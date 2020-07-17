@@ -452,23 +452,30 @@ implementation
           { can't hardcode the position of the '$', e.g. on darwin an underscore
             is added }
           hashedid.id:=copy(defaultname,2,255);
-          { the default sym is always part of the current procedure/function }
-          srsymtable:=current_procinfo.procdef.localst;
-          srsym:=tsym(srsymtable.findwithhash(hashedid));
-          if not assigned(srsym) then
+          { in case of a previous error, current_procinfo might not be set
+            so avoid a crash in this case }
+          if assigned(current_procinfo) then
             begin
-              { no valid default variable found, so create it }
-              srsym:=clocalvarsym.create(defaultname,vs_const,def,[]);
-              srsymtable.insert(srsym);
-              { mark the staticvarsym as typedconst }
-              include(tabstractvarsym(srsym).varoptions,vo_is_typed_const);
-              include(tabstractvarsym(srsym).varoptions,vo_is_default_var);
-              { The variable has a value assigned }
-              tabstractvarsym(srsym).varstate:=vs_initialised;
-              { the variable can't be placed in a register }
-              tabstractvarsym(srsym).varregable:=vr_none;
-            end;
-          result:=cloadnode.create(srsym,srsymtable);
+              { the default sym is always part of the current procedure/function }
+              srsymtable:=current_procinfo.procdef.localst;
+              srsym:=tsym(srsymtable.findwithhash(hashedid));
+              if not assigned(srsym) then
+                begin
+                  { no valid default variable found, so create it }
+                  srsym:=clocalvarsym.create(defaultname,vs_const,def,[]);
+                  srsymtable.insert(srsym);
+                  { mark the staticvarsym as typedconst }
+                  include(tabstractvarsym(srsym).varoptions,vo_is_typed_const);
+                  include(tabstractvarsym(srsym).varoptions,vo_is_default_var);
+                  { The variable has a value assigned }
+                  tabstractvarsym(srsym).varstate:=vs_initialised;
+                  { the variable can't be placed in a register }
+                  tabstractvarsym(srsym).varregable:=vr_none;
+                end;
+              result:=cloadnode.create(srsym,srsymtable);
+            end
+          else
+            result:=cerrornode.create;
         end;
 
       var
@@ -3169,6 +3176,12 @@ implementation
                   resultdef:=pasbool1type;
                 end;
 
+              in_isconstvalue_x:
+                begin
+                  set_varstate(left,vs_read,[vsf_must_be_valid]);
+                  resultdef:=pasbool1type;
+                end;
+
               in_assigned_x:
                 begin
                   { the parser has already made sure the expression is valid }
@@ -3858,6 +3871,14 @@ implementation
           in_ismanagedtype_x:
             begin
               if left.resultdef.needs_inittable then
+                result:=cordconstnode.create(1,resultdef,false)
+              else
+                result:=cordconstnode.create(0,resultdef,false);
+            end;
+
+          in_isconstvalue_x:
+            begin
+              if is_constnode(left) then
                 result:=cordconstnode.create(1,resultdef,false)
               else
                 result:=cordconstnode.create(0,resultdef,false);

@@ -156,10 +156,12 @@ implementation
 
       { Generic unaligned pseudo-instructions, seems ELF specific }
       use_ua_elf_systems = [system_mipsel_linux,system_mipseb_linux,system_mipsel_android,system_mipsel_embedded,system_mipseb_embedded];
-      ait_ua_elf_const2str : array[aitconst_16bit_unaligned..aitconst_64bit_unaligned]
-        of string[20]=(
-          #9'.2byte'#9,#9'.4byte'#9,#9'.8byte'#9
-        );
+      ait_ua_elf_const2str : array[aitconst_128bit..aitconst_64bit_unaligned] of string[20]=(
+        #9'.fixme128'#9,#9'.8byte'#9,#9'.4byte'#9,#9'.2byte'#9,#9'.byte'#9,
+        #9'.sleb128'#9,#9'.uleb128'#9,
+        #9'.rva'#9,#9'.secrel32'#9,#9'.8byte'#9,#9'.4byte'#9,#9'.2byte'#9,#9'.2byte'#9,
+        #9'.2byte'#9,#9'.4byte'#9,#9'.8byte'#9
+      );
 
 
 
@@ -538,7 +540,8 @@ implementation
          system_i386_iphonesim,
          system_powerpc64_darwin,
          system_x86_64_darwin,
-         system_arm_darwin,
+         system_arm_ios,
+         system_aarch64_ios,
          system_aarch64_darwin,
          system_x86_64_iphonesim,
          system_powerpc_aix,
@@ -607,7 +610,7 @@ implementation
                   system_i386_darwin,
                   system_i386_iphonesim:
                     writer.AsmWriteln('__IMPORT,__jump_table,symbol_stubs,self_modifying_code+pure_instructions,5');
-                  system_arm_darwin:
+                  system_arm_ios:
                     if (cs_create_pic in current_settings.moduleswitches) then
                       writer.AsmWriteln('__TEXT,__picsymbolstub4,symbol_stubs,none,16')
                     else
@@ -1170,8 +1173,7 @@ implementation
                          if (constdef in ait_unaligned_consts) and
                             (target_info.system in use_ua_sparc_systems) then
                            writer.AsmWrite(ait_ua_sparc_const2str[constdef])
-                         else if (constdef in ait_unaligned_consts) and
-                                 (target_info.system in use_ua_elf_systems) then
+                         else if (target_info.system in use_ua_elf_systems) then
                            writer.AsmWrite(ait_ua_elf_const2str[constdef])
                          { we can also have unaligned pointers in packed record
                            constants, which don't get translated into
@@ -1628,7 +1630,7 @@ implementation
         { on Windows/(PE)COFF, global symbols are hidden by default: global
           symbols that are not explicitly exported from an executable/library,
           become hidden }
-        if target_info.system in systems_windows then
+        if (target_info.system in (systems_windows+systems_wince)) then
           exit;
         if target_info.system in systems_darwin then
           writer.AsmWrite(#9'.private_extern ')

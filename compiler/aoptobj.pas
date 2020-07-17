@@ -1635,6 +1635,13 @@ Unit AoptObj;
         p.ops:=2;
 {$endif}
 {$endif not avr}
+{$ifdef mips}
+        { MIPS conditional instructions conntain the
+          computation of the condition itself, so
+          changing the instruction to unconditional
+          should never be done. }
+        internalerror(2020071301);
+{$endif}
       end;
 
 
@@ -1937,6 +1944,11 @@ Unit AoptObj;
         NCJLabel: TAsmLabel;
       begin
         Result := False;
+        { Do not try to optimize if the test generating the condition
+          is the same instruction, like 'bne	$v0,$zero,.Lj3' for MIPS }
+        if (taicpu(p).ops>1) or ((hp1.typ=ait_instruction) and
+            IsJumpToLabel(taicpu(hp1)) and (taicpu(hp1).ops>1)) then
+           exit;
         while (hp1 <> BlockEnd) do
           begin
             StripDeadLabels(hp1, hp1);

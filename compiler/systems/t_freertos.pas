@@ -46,6 +46,11 @@ implementation
           function postprocessexecutable(const fn : string;isdll:boolean):boolean;
        end;
 
+<<<<<<< HEAD
+=======
+       var
+         IDF_PATH: string;
+>>>>>>> master
 
 {*****************************************************************************
                                   TlinkerEmbedded
@@ -71,7 +76,25 @@ const
   platform_select='';
 {$endif}
 begin
+<<<<<<< HEAD
   Info.ExeCmd[1]:='ld -g '+platform_select+' $OPT $DYNLINK $STATIC $GCSECTIONS $STRIP $MAP -L. -o $EXE -T $RES';
+=======
+  with Info do
+   begin
+{$ifdef xtensa}
+     if target_info.system=system_xtensa_freertos then
+       ExeCmd[1]:='ld -g '+platform_select+' $OPT $DYNLINK $STATIC $GCSECTIONS $STRIP $MAP -L. -o $EXE -T $RES '+
+         '-u call_user_start_cpu0 -u ld_include_panic_highint_hdl -u esp_app_desc -u vfs_include_syscalls_impl -u pthread_include_pthread_impl -u pthread_include_pthread_cond_impl -u pthread_include_pthread_local_storage_impl -u newlib_include_locks_impl -u newlib_include_heap_impl -u newlib_include_syscalls_impl -u newlib_include_pthread_impl -u app_main -u uxTopUsedPriority '+
+         '-L $IDF_PATH/components/esp_rom/esp32/ld '+
+         '-T esp32.rom.ld -T esp32.rom.libgcc.ld -T esp32.rom.newlib-data.ld -T esp32.rom.syscalls.ld -T esp32.rom.newlib-funcs.ld '+
+         '-L . -T esp32_out.ld -T esp32.project.ld '+
+         '-L $IDF_PATH/components/esp32/ld -T esp32.peripherals.ld'
+     else
+{$else}
+       ExeCmd[1]:='ld -g '+platform_select+' $OPT $DYNLINK $STATIC $GCSECTIONS $STRIP $MAP -L. -o $EXE -T $RES';
+{$endif xtensa}
+   end;
+>>>>>>> master
 end;
 
 
@@ -948,12 +971,23 @@ var
   IdfPath: TCmdStr;
   {$endif XTENSA}
 begin
+<<<<<<< HEAD
 {$ifdef XTENSA}
   if (current_settings.controllertype = ct_esp32) then
     IdfPath := trim(GetEnvironmentVariable('IDF_PATH'))
   else
     IdfPath := trim(GetEnvironmentVariable('IDF_PATH8266'));
 {$endif XTENSA}
+=======
+  IDF_PATH:='';
+{$ifdef xtensa}
+  if (target_info.system=system_xtensa_freertos) then
+    if (current_settings.controllertype = ct_esp32) then
+      IDF_PATH := 'IDF_PATH'
+    else
+      IDF_PATH := 'IDF_PATH8266';
+{$endif xtensa}
+>>>>>>> master
 
   { for future use }
   StaticStr:='';
@@ -1145,6 +1179,7 @@ begin
       hp:=TCmdStrListItem(hp.Next);
     end;
 
+<<<<<<< HEAD
   Close(t);
   if ioresult<>0 then
     exit;
@@ -1211,6 +1246,10 @@ begin
   Replace(Info.ExeCmd[1],'$IDF_PATH',IdfPath);
   {$endif XTENSA}
 
+=======
+  if IDF_PATH <> '' then
+    Replace(Info.ExeCmd[1],'$'+IDF_PATH,maybequoted(GetEnvironmentVariable(IDF_PATH)));
+>>>>>>> master
   FixedExeFileName:=maybequoted(ScriptFixFileName(ChangeFileExt(current_module.exefilename,'.elf')));
 
   GCSectionsStr:='--gc-sections';
@@ -1226,9 +1265,14 @@ begin
 { Call linker }
   SplitBinCmd(Info.ExeCmd[1],binstr,cmdstr);
   Replace(cmdstr,'$OPT',Info.ExtraOptions);
+<<<<<<< HEAD
   {$ifdef XTENSA}
   Replace(cmdstr,'$'+IdfPath,IdfPath);
   {$endif}
+=======
+  if target_info.system=system_xtensa_freertos then
+    Replace(cmdstr,'$'+IDF_PATH,maybequoted(GetEnvironmentVariable(IDF_PATH)));
+>>>>>>> master
   if not(cs_link_on_target in current_settings.globalswitches) then
    begin
     Replace(cmdstr,'$EXE',FixedExeFileName);
@@ -1260,6 +1304,7 @@ begin
   if success and not(cs_link_nolink in current_settings.globalswitches) then
     success:=PostProcessExecutable(FixedExeFileName,false);
 
+<<<<<<< HEAD
 {$ifdef XTENSA}
   if success then
    begin
@@ -1285,6 +1330,34 @@ begin
    end
   else
 {$endif XTENSA}
+=======
+{$ifdef xtensa}
+  if success and (target_info.system=system_xtensa_freertos) then
+    if (current_settings.controllertype = ct_esp32) then
+      begin
+        binstr:='$'+IDF_PATH+'/components/esptool_py/esptool/esptool.py';
+        Replace(binstr,'$'+IDF_PATH,maybequoted(GetEnvironmentVariable(IDF_PATH)));
+        success:=DoExec(binstr,'--chip esp32 elf2image --flash_mode dio --flash_freq 40m '+
+          '--flash_size '+tostr(embedded_controllers[current_settings.controllertype].flashsize div (1024*1024))+'MB '+
+          '--elf-sha256-offset 0xb0 '+
+          '-o '+maybequoted(ScriptFixFileName(ChangeFileExt(current_module.exefilename,'.bin')))+' '+
+          FixedExeFileName,
+          true,false);
+      end
+    else if (current_settings.controllertype = ct_esp8266) then
+      begin
+        binstr:='$'+IDF_PATH+'/components/esptool_py/esptool/esptool.py';
+        Replace(binstr,'$'+IDF_PATH,maybequoted(GetEnvironmentVariable(IDF_PATH)));
+        success:=DoExec(binstr,'--chip esp8266 elf2image --flash_mode dout --flash_freq 40m '+
+          '--flash_size '+tostr(embedded_controllers[current_settings.controllertype].flashsize div (1024*1024))+'MB '+
+          '--version=3 '+
+          '-o '+maybequoted(ScriptFixFileName(ChangeFileExt(current_module.exefilename,'.bin')))+' '+
+          FixedExeFileName,
+          true,false);
+      end
+  else
+{$endif xtensa}
+>>>>>>> master
     if success then
       success:=DoExec(FindUtil(utilsprefix+'objcopy'),'-O binary '+
         FixedExeFileName+' '+
