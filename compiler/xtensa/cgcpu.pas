@@ -627,6 +627,8 @@ end;
                       a_label(list, continue);
                     end;
                 end;
+              else
+                ;
             end;
           end;
       end;
@@ -837,7 +839,9 @@ end;
               else
                 Internalerror(2020031401);
             end;
-          end;
+          end
+        else if target_info.abi=abi_xtensa_windowed then
+          list.concat(taicpu.op_reg_const(A_ENTRY,NR_STACK_POINTER_REG,0));
       end;
 
 
