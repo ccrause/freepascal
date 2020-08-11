@@ -29,10 +29,14 @@ interface
        node,ncgadd,cpubase;
 
     type
+
+       { TCPUAddNode }
+
        TCPUAddNode = class(tcgaddnode)
        private
          procedure pass_left_and_right;
        protected
+         function use_mul_helper: boolean; override;
          function pass_1 : tnode;override;
          function first_addfloat: tnode;override;
          procedure second_cmpordinal;override;
@@ -197,6 +201,14 @@ interface
 
         secondpass(left);
         secondpass(right);
+      end;
+
+    function TCPUAddNode.use_mul_helper: boolean;
+      begin
+        // Use native mul if available and no overflow checking required
+        result:=(nodetype=muln) and (not(CPUXTENSA_HAS_32BITMUL in cpu_capabilities[current_settings.cputype])
+          or (cs_check_overflow in current_settings.localswitches));
+        //result:=(nodetype=muln) and not (CPUXTENSA_HAS_32BITMUL in cpu_capabilities[current_settings.cputype]);
       end;
 
 

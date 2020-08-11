@@ -137,7 +137,8 @@ Const
       (
         CPUXTENSA_REGWINDOW,
         CPUXTENSA_HAS_SEXT,
-        CPUXTENSA_HAS_BOOLEAN_OPTION
+        CPUXTENSA_HAS_BOOLEAN_OPTION,
+        CPUXTENSA_HAS_32BITMUL
       );
 
    tfpuflags =
@@ -150,8 +151,8 @@ Const
    cpu_capabilities : array[tcputype] of set of tcpuflags =
      (
        { cpu_none     } [],
-       { cpu_lx106    } [],
-       { cpu_lx6      } [CPUXTENSA_REGWINDOW, CPUXTENSA_HAS_SEXT, CPUXTENSA_HAS_BOOLEAN_OPTION]
+       { cpu_lx106    } [CPUXTENSA_HAS_32BITMUL],
+       { cpu_lx6      } [CPUXTENSA_REGWINDOW, CPUXTENSA_HAS_SEXT, CPUXTENSA_HAS_BOOLEAN_OPTION, CPUXTENSA_HAS_32BITMUL]
      );
 
    fpu_capabilities : array[tfputype] of set of tfpuflags =
