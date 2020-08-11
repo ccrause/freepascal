@@ -35,6 +35,9 @@ interface
        cg64f32;
 
     type
+
+      { tcgcpu }
+
       tcgcpu=class(tcg)
       private
         procedure fixref(list : TAsmList; var ref : treference);
@@ -54,6 +57,9 @@ interface
         procedure a_op_const_reg(list: TAsmList; op: topcg; size: tcgsize; a: tcgint; reg: tregister);override;
         procedure a_op_reg_reg_reg(list: TAsmList; op: topcg; size: tcgsize; src1, src2, dst: tregister);override;
         procedure a_op_const_reg_reg(list : TAsmList; op : TOpCg; size : tcgsize; a : tcgint; src,dst : tregister);override;
+        // Overflow checks...
+        procedure a_op_const_reg_reg_checkoverflow(list: TAsmList; op: TOpCg; size: tcgsize; a: tcgint; src, dst: tregister;setflags : boolean;var ovloc : tlocation); override;
+        procedure a_op_reg_reg_reg_checkoverflow(list: TAsmList; op: TOpCg; size: tcgsize; src1, src2, dst: tregister;setflags : boolean;var ovloc : tlocation); override;
 
         procedure a_call_name(list:TAsmList;const s:string; weak: boolean);override;
         procedure a_call_reg(list:TAsmList;Reg:tregister);override;
@@ -534,6 +540,95 @@ implementation
             a_op_reg_reg_reg(list,op,size,tmpreg,src,dst);
           end;
         maybeadjustresult(list,op,size,dst);
+      end;
+
+    procedure tcgcpu.a_op_const_reg_reg_checkoverflow(list: TAsmList;
+      op: TOpCg; size: tcgsize; a: tcgint; src, dst: tregister;
+      setflags: boolean; var ovloc: tlocation);
+begin
+  inherited a_op_const_reg_reg_checkoverflow(list, op, size, a, src, dst,
+    setflags, ovloc);
+end;
+
+    procedure tcgcpu.a_op_reg_reg_reg_checkoverflow(list: TAsmList; op: TOpCg;
+      size: tcgsize; src1, src2, dst: tregister; setflags: boolean;
+      var ovloc: tlocation);
+      var
+        overflow, continue: TAsmLabel;
+        temp1, temp2: tregister;
+        instr: taicpu;
+      begin
+        if not setflags then
+          inherited a_op_reg_reg_reg_checkoverflow(list, op, size, src1, src2, dst,
+            setflags, ovloc)
+        else
+          begin
+            // Preserve dst for later checks
+            if (dst = src1) or (dst = src2) then
+            begin
+              // TODO: confirm if releasing old reference of dst is necessary?
+              ungetcpuregister(list,dst);
+              // Allocate new register for dst
+              dst:=getintregister(list,size);
+            end;
+
+            // Perform normal op
+            list.concat(taicpu.op_reg_reg_reg(TOpCG2AsmOp[op],dst,src2,src1));
+            maybeadjustresult(list,op,size,dst);
+
+            // Then check for overflow
+            case op of
+              OP_ADD:
+                begin
+                  // Signed operands?
+                  if size in [OS_S8, OS_S16, OS_S32] then
+                    begin
+                      { for signed r = a + b overflow only happens if
+                        signs of operands are the same and result has different sign:
+                        overflow if (r XOR a) AND (r XOR b) < 0
+                        xor temp1, dst, src1
+                        xor temp2, dst, src2
+                        and temp1, temp1, temp2
+                        bgez temp1, continue
+                        call fpc_overflow
+                        continue:
+                      }
+                      current_asmdata.getjumplabel(continue);
+                      temp1:=getintregister(list,size);
+                      temp2:=getintregister(list,size);
+                      a_op_reg_reg_reg(list, OP_XOR, size, dst, src1, temp1);
+                      a_op_reg_reg_reg(list, OP_XOR, size, dst, src2, temp2);
+                      a_op_reg_reg_reg(list, OP_AND, size, temp1, temp2, temp1);
+                      // Directly call bgez
+                      instr := taicpu.op_reg_sym(A_B, temp1, continue);
+                      instr.condition := C_GEZ;
+                      list.concat(instr);
+                      // Release temp1, temp2?
+                      a_call_name(list,'FPC_OVERFLOW',false);
+                      a_label(list, continue);
+                    end
+                  else
+                    begin
+                      { for unsigned r = a + b overflow if r < a or r < b
+                        bltu dst, src1, overflow
+                        bltu dst, scr2, overflow
+                        j continue
+                        overflow:
+                        call fpc_overflow
+                        continue:
+                      }
+                      current_asmdata.getjumplabel(overflow);
+                      current_asmdata.getjumplabel(continue);
+                      a_cmp_reg_reg_label(list,size, OC_B, src1, dst, overflow);
+                      a_cmp_reg_reg_label(list,size, OC_B, src2, dst, overflow);
+                      a_jmp_always(list, continue);
+                      a_label(list, overflow);
+                      a_call_name(list,'FPC_OVERFLOW',false);
+                      a_label(list, continue);
+                    end;
+                end;
+            end;
+          end;
       end;
 
 
