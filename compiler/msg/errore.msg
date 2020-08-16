@@ -3786,12 +3786,12 @@ This program comes under the GNU General Public Licence
 For more information read COPYING.v2
 
 Please report bugs in our bug tracker on:
-                 http://bugs.freepascal.org
+                 https://bugs.freepascal.org
 
 More information may be found on our WWW pages (including directions
 for mailing lists useful for asking questions or discussing potential
 new features, etc.):
-                 http://www.freepascal.org
+                 https://www.freepascal.org
 ]
 
 #
@@ -3960,8 +3960,9 @@ A*2CV<x>_Set section threadvar model to <x>
 **2Fd_Disable the compiler's internal directory cache
 **2FD<x>_Set the directory where to search for compiler utilities
 **2Fe<x>_Redirect error output to <x>
-**2Ff<x>_Add <x> to framework path (Darwin only)
 **2FE<x>_Set exe/unit output path to <x>
+**2Ff<x>_Add <x> to framework path (Darwin only)
+**2FF_Use fpcres as RC to RES compiler instead of windres or gorc
 **2Fi<x>_Add <x> to include path
 **2Fl<x>_Add <x> to library path
 **2FL<x>_Use <x> as dynamic linker

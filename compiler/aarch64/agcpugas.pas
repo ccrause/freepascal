@@ -47,16 +47,13 @@ unit agcpugas;
         constructor CreateWithWriter(info: pasminfo; wr: TExternalAssemblerOutputFile; freewriter, smart: boolean); override;
       end;
 
-      TAArch64ClangGASAssembler=class(TGNUassembler)
+      TAArch64ClangGASAssembler=class(TAArch64Assembler)
       private
-        function TargetStr:String;
         procedure TransformSEHDirectives(list:TAsmList);
       protected
         function sectionflags(secflags:TSectionFlags):string;override;
       public
-        function MakeCmdLine:TCmdStr; override;
         procedure WriteAsmList; override;
-        constructor CreateWithWriter(info: pasminfo; wr: TExternalAssemblerOutputFile; freewriter, smart: boolean); override;
       end;
 
     const
@@ -104,24 +101,6 @@ unit agcpugas;
 {****************************************************************************}
 {                      CLang AArch64 Assembler writer                        }
 {****************************************************************************}
-
-    constructor TAArch64CLangGASAssembler.CreateWithWriter(info: pasminfo; wr: TExternalAssemblerOutputFile; freewriter, smart: boolean);
-      begin
-        inherited;
-        InstrWriter := TAArch64InstrWriter.create(self);
-      end;
-
-
-    function TAArch64ClangGASAssembler.TargetStr:String;
-      begin
-        case target_info.system of
-          system_aarch64_win64:
-            result:='aarch64-windows';
-          else
-            internalerror(2020032201);
-        end;
-      end;
-
 
     procedure TAArch64ClangGASAssembler.TransformSEHDirectives(list:TAsmList);
 
@@ -574,13 +553,6 @@ unit agcpugas;
       end;
 
 
-    function TAArch64ClangGASAssembler.MakeCmdLine:TCmdStr;
-      begin
-        Result:=inherited MakeCmdLine;
-        Replace(Result,'$TARGET',TargetStr);
-      end;
-
-
     procedure TAArch64ClangGASAssembler.WriteAsmList;
       begin
         { clang does not support all the directives we need, so we need to
@@ -799,12 +771,12 @@ unit agcpugas;
 
        as_aarch64_clang_darwin_info : tasminfo =
           (
-            id     : as_clang;
+            id     : as_clang_asdarwin;
             idtxt  : 'CLANG';
             asmbin : 'clang';
-            asmcmd : '-c -o $OBJ $EXTRAOPT -arch arm64 $DARWINVERSION -x assembler $ASM';
+            asmcmd : '-x assembler -c -target $TRIPLET -o $OBJ $EXTRAOPT -x assembler $ASM';
             supported_targets : [system_aarch64_ios,system_aarch64_darwin];
-            flags : [af_needar,af_smartlink_sections,af_supports_dwarf];
+            flags : [af_needar,af_smartlink_sections,af_supports_dwarf,af_llvm];
             labelprefix : 'L';
             labelmaxlen : -1;
             comment : '# ';
@@ -816,9 +788,9 @@ unit agcpugas;
             id     : as_clang_gas;
             idtxt  : 'CLANG';
             asmbin : 'clang';
-            asmcmd : '-c -o $OBJ $EXTRAOPT -target $TARGET -x assembler $ASM';
+            asmcmd : '-x assembler -c -target $TRIPLET -o $OBJ $EXTRAOPT -x assembler $ASM';
             supported_targets : [system_aarch64_win64];
-            flags : [af_needar,af_smartlink_sections,af_supports_dwarf];
+            flags : [af_needar,af_smartlink_sections,af_supports_dwarf,af_llvm];
             labelprefix : '.L';
             labelmaxlen : -1;
             comment : '// ';

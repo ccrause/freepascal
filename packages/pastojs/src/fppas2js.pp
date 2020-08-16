@@ -616,6 +616,7 @@ type
     pbifnRecordAssign,
     pbifnRecordClone,
     pbifnRecordCreateType,
+    pbifnRecordCreateSpecializeType,
     pbifnRecordEqual,
     pbifnRecordNew,
     pbifnRTTIAddField, // typeinfos of tkclass and tkrecord have addField
@@ -795,7 +796,8 @@ const
     'rcSetCharAt',  // pbifnRangeCheckSetCharAt  rtl.rcSetCharAt
     '$assign', // pbifnRecordAssign
     '$clone', // pbifnRecordClone
-    'recNewT', // pbifnRecordNew
+    'recNewT', // pbifnRecordCreateType
+    'recNewS', // pbifnRecordCreateSpecializeType
     '$eq', // pbifnRecordEqual
     '$new', // pbifnRecordNew
     'addField', // pbifnRTTIAddField
@@ -1367,6 +1369,11 @@ type
     property TargetProcessor: TPasToJsProcessor read FTargetProcessor write FTargetProcessor;
   end;
 
+  { TPas2JSResolverHub }
+
+  TPas2JSResolverHub = class(TPasResolverHub)
+  end;
+
   { TPas2JSResolver }
 
   TPas2JSResolver = class(TPasResolver)
@@ -1471,6 +1478,7 @@ type
     // generic/specialize
     procedure SpecializeGenericImpl(SpecializedItem: TPRSpecializedItem);
       override;
+    function SpecializeNeedsDelay(SpecializedItem: TPRSpecializedItem): TPasElement;
   protected
     const
       cJSValueConversion = 2*cTypeConversion;
@@ -3274,6 +3282,7 @@ begin
     exit(false); // there is no overload
 
   if (El.ClassType=TPasClassFunction)
+      and (El.Parent.ClassType=TPasClassType)
       and (TPas2JSClassScope(TPasClassType(El.Parent).CustomData).NewInstanceFunction=El) then
     begin
     Duplicate:=GetDuplicate;
@@ -3542,6 +3551,8 @@ var
   Scope: TPasIdentifierScope;
 begin
   i:=FOverloadScopes.Count-1;
+  if i<0 then
+    RaiseInternalError(20200723125456);
   Scope:=TPasIdentifierScope(FOverloadScopes[i]);
   if Scope.ClassType=TPas2JSOverloadChgThisScope then
     Scope.Free;
@@ -4892,6 +4903,47 @@ begin
         ClearOverloadScopes;
       end;
       end;
+    end;
+end;
+
+function TPas2JSResolver.SpecializeNeedsDelay(
+  SpecializedItem: TPRSpecializedItem): TPasElement;
+// finds first specialize param defined later than the generic
+// For example: generic in the unit interface, param in implementation
+// or param in another unit, not used by the generic
+var
+  Gen: TPasElement;
+  GenMod, ParamMod: TPasModule;
+  Params: TPasTypeArray;
+  Param: TPasType;
+  i: Integer;
+  GenSection, ParamSection: TPasSection;
+begin
+  Result:=nil;
+  Gen:=SpecializedItem.GenericEl;
+  GenSection:=GetParentSection(Gen);
+  if not (GenSection is TInterfaceSection) then
+    exit; // generic in unit implementation/program/library -> params cannot be defined a later section
+  GenMod:=GenSection.GetModule;
+
+  Params:=SpecializedItem.Params;
+  for i:=0 to length(Params)-1 do
+    begin
+    Param:=ResolveAliasType(Params[i],false);
+    if Param.ClassType=TPasUnresolvedSymbolRef then
+      continue; // built-in type
+    ParamSection:=GetParentSection(Param);
+    if ParamSection=GenSection then continue;
+    // not in same section
+    ParamMod:=ParamSection.GetModule;
+    if ParamMod=GenMod then
+      exit(Param); // generic in unit interface, specialize in implementation
+    // param in another unit
+    if ParamSection is TImplementationSection then
+      exit(Param); // generic in unit interface, specialize in another(later) implementation
+    // param in another unit interface
+
+    //xxx
     end;
 end;
 
@@ -24348,25 +24400,45 @@ function TPasToJSConverter.ConvertExceptOn(El: TPasImplExceptOn;
   AContext: TConvertContext): TJSElement;
 // convert "on T do ;" to "if(T.isPrototypeOf(exceptObject)){}"
 // convert "on E:T do ;" to "if(T.isPrototypeOf(exceptObject)){ var E=exceptObject; }"
+// convert "on TExternal do ;" to "if(rtl.isExt(exceptObject,TExternal)){}"
+
 Var
   IfSt : TJSIfStatement;
   ListFirst , ListLast: TJSStatementList;
   DotExpr: TJSDotMemberExpression;
   Call: TJSCallExpression;
   V: TJSVariableStatement;
+  aResolver: TPas2JSResolver;
+  aType: TPasType;
+  IsExternal: Boolean;
 begin
   Result:=nil;
+  aResolver:=AContext.Resolver;
+  aType:=aResolver.ResolveAliasType(El.TypeEl);
+  IsExternal:=(aType is TPasClassType) and TPasClassType(aType).IsExternal;
+
   // create "if()"
   IfSt:=TJSIfStatement(CreateElement(TJSIfStatement,El));
   try
-    // create "T.isPrototypeOf"
-    DotExpr:=TJSDotMemberExpression(CreateElement(TJSDotMemberExpression,El));
-    DotExpr.MExpr:=CreateReferencePathExpr(El.TypeEl,AContext);
-    DotExpr.Name:='isPrototypeOf';
-    // create "T.isPrototypeOf(exceptObject)"
-    Call:=CreateCallExpression(El);
-    Call.Expr:=DotExpr;
-    Call.AddArg(CreatePrimitiveDotExpr(GetBIName(pbivnExceptObject),El));
+    if IsExternal then
+      begin
+      // create rtl.isExt(exceptObject,T)
+      Call:=CreateCallExpression(El);
+      Call.Expr:=CreateMemberExpression([GetBIName(pbivnRTL),GetBIName(pbifnIsExt)]);
+      Call.AddArg(CreatePrimitiveDotExpr(GetBIName(pbivnExceptObject),El));
+      Call.AddArg(CreateReferencePathExpr(El.TypeEl,AContext));
+      end
+    else
+      begin
+      // create "T.isPrototypeOf"
+      DotExpr:=TJSDotMemberExpression(CreateElement(TJSDotMemberExpression,El));
+      DotExpr.MExpr:=CreateReferencePathExpr(El.TypeEl,AContext);
+      DotExpr.Name:='isPrototypeOf';
+      // create "T.isPrototypeOf(exceptObject)"
+      Call:=CreateCallExpression(El);
+      Call.Expr:=DotExpr;
+      Call.AddArg(CreatePrimitiveDotExpr(GetBIName(pbivnExceptObject),El));
+      end;
     IfSt.Cond:=Call;
 
     if El.VarEl<>nil then
@@ -24566,6 +24638,7 @@ var
   NewFields, Vars, Methods: TFPList;
   ok, IsFull: Boolean;
   VarSt: TJSVariableStatement;
+  bifn: TPas2JSBuiltInName;
 begin
   Result:=nil;
   if El.Name='' then
@@ -24583,7 +24656,17 @@ begin
   try
     // rtl.recNewT()
     Call:=CreateCallExpression(El);
-    Call.Expr:=CreateMemberExpression([GetBIName(pbivnRTL),GetBIName(pbifnRecordCreateType)]);
+    bifn:=pbifnRecordCreateType;
+    {$IFDEF EnableDelaySpecialize}
+    RecScope:=TPas2JSRecordScope(El.CustomData);
+    if RecScope.SpecializedFromItem<>nil then
+      begin
+      if RecScope.SpecializedFromItem.FirstSpecialize.GetModule<>EL.GetModule then
+        bifn:=pbifnRecordCreateSpecializeType;
+      end;
+    {$ENDIF}
+
+    Call.Expr:=CreateMemberExpression([GetBIName(pbivnRTL),GetBIName(bifn)]);
 
     // types are stored in interface/implementation
     if El.Parent is TProcedureBody then

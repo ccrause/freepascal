@@ -1636,10 +1636,8 @@ Unit AoptObj;
 {$endif}
 {$endif not avr}
 {$ifdef mips}
-        { MIPS conditional instructions conntain the
-          computation of the condition itself, so
-          changing the instruction to unconditional
-          should never be done. }
+        { MIPS conditional jump instructions also conntain register
+          operands. A proper implementation is needed here. }
         internalerror(2020071301);
 {$endif}
       end;
@@ -1690,12 +1688,16 @@ Unit AoptObj;
                   if (hp1.typ=ait_instruction) and (taicpu(hp1).is_jmp) then
                     RemoveDelaySlot(hp1);
 {$endif cpudelayslot}
-                  if (hp1.typ = ait_align) then
+                  hp2 := hp1;
+                  while (hp2.typ = ait_align) do
                     begin
                       { Only remove the align if a label doesn't immediately follow }
-                      if GetNextInstruction(hp1, hp2) and (hp2.typ = ait_label) then
+                      if GetNextInstruction(hp2, hp2) and (hp2.typ = ait_label) then
                         { The label is unskippable }
                         Exit;
+
+                      { Check again in case there's more than one adjacent alignment entry
+                        (a frequent construct under x86, for example). [Kit] }
                     end;
                   asml.remove(hp1);
                   hp1.free;
@@ -1944,11 +1946,6 @@ Unit AoptObj;
         NCJLabel: TAsmLabel;
       begin
         Result := False;
-        { Do not try to optimize if the test generating the condition
-          is the same instruction, like 'bne	$v0,$zero,.Lj3' for MIPS }
-        if (taicpu(p).ops>1) or ((hp1.typ=ait_instruction) and
-            IsJumpToLabel(taicpu(hp1)) and (taicpu(hp1).ops>1)) then
-           exit;
         while (hp1 <> BlockEnd) do
           begin
             StripDeadLabels(hp1, hp1);
@@ -2066,6 +2063,11 @@ Unit AoptObj;
                   end
                 else
                   begin
+                    { Do not try to optimize if the test generating the condition
+                      is the same instruction, like 'bne	$v0,$zero,.Lj3' for MIPS }
+                    if (taicpu(p).ops>1) or (taicpu(hp1).ops>1) then
+                      exit;
+
                     { Check for:
                         jmp<cond1>    @Lbl1
                         jmp<cond2>    @Lbl2
@@ -2161,8 +2163,8 @@ Unit AoptObj;
         tmp, hp1: tai;
       begin
         Result := False;
-        hp1 := tai(p.Next);
-        tmp := hp1; { Might be an align before the label, so keep a note of it }
+        if not GetNextInstruction(p,hp1) then
+          exit;
         if (hp1 = BlockEnd) then
           Exit;
 
@@ -2176,6 +2178,7 @@ Unit AoptObj;
 {$ifdef cpudelayslot}
             RemoveDelaySlot(p);
 {$endif cpudelayslot}
+            tmp := tai(p.Next); { Might be an align before the label, so keep a note of it }
             asml.remove(p);
             p.free;
 

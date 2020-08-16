@@ -115,6 +115,8 @@ Type
     on Real <-> Double, so use type here, see also tw7425.pp (FK) }
 {$ifndef FPUNONE}
   Real = type Double;
+{ Include generic version of float64 record }
+{$I genmathh.inc}
 {$endif}
 
 {$ifdef CPUI386}
@@ -378,6 +380,12 @@ Type
 
   FarPointer = Pointer;
 {$endif CPUZ80}
+
+
+{ By default enable a simple implementation of Random for 8/16 bit CPUs }
+{$if (defined(CPU16) or defined(CPU8)) and not defined(FPC_NO_SIMPLE_RANDOM)}
+  {$define FPC_USE_SIMPLE_RANDOM}
+{$endif}
 
 
 {$if not declared(FarPointer)}
@@ -904,6 +912,9 @@ Function Align (Addr : PtrUInt; Alignment : PtrUInt) : PtrUInt;{$ifdef SYSTEMINL
 Function Align (Addr : Pointer; Alignment : PtrUInt) : Pointer;{$ifdef SYSTEMINLINE}inline;{$endif}
 
 {$ifdef FPC_HAS_FEATURE_RANDOM}
+{$ifdef FPC_USE_SIMPLE_RANDOM}
+Function  Random(l:word):word;
+{$endif FPC_USE_SIMPLE_RANDOM}
 Function  Random(l:longint):longint;
 Function  Random(l:int64):int64;
 {$ifndef FPUNONE}

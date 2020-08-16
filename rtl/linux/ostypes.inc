@@ -170,8 +170,9 @@ type
    FLock     = Record
                 l_type  : cshort;       { lock type: read/write, etc. }
                 l_whence: cshort;       { type of l_start }
-                l_start : off_t;        { starting offset }
-                l_len   : off_t;        { len = 0 means until end of file }
+                { this must be really kernel_off_t: it must be 32 bit on i386 }
+                l_start : kernel_off_t; { starting offset }
+                l_len   : kernel_off_t; { len = 0 means until end of file }
                 l_pid   : pid_t;        { lock owner }
 {$if defined(cpusparc) or defined(cpusparc64)}
                 __pad   : cshort;
@@ -381,11 +382,20 @@ CONST
   F_SetFd  = 2;
   F_GetFl  = 3;
   F_SetFl  = 4;
+
+{$if defined(cpusparc) or defined(cpusparc64)}
+  F_GetLk  = 7;
+  F_SetLk  = 8;
+  F_SetLkW = 9;
+  F_SetOwn = 5;
+  F_GetOwn = 6;
+{$else}
   F_GetLk  = 5;
   F_SetLk  = 6;
   F_SetLkW = 7;
   F_SetOwn = 8;
   F_GetOwn = 9;
+{$endif}
 
 { getrlimit/ugetrlimit resource parameter constants }
 const

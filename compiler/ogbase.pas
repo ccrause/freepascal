@@ -309,6 +309,8 @@ interface
        FSizeLimit : TObjSectionOfs;
        procedure SetSecOptions(Aoptions:TObjSectionOptions);
        procedure SectionTooLargeError;
+     protected
+       function GetAltName: string; virtual;
      public
        ObjData    : TObjData;
        index      : longword;  { index of section in section headers }
@@ -1013,6 +1015,12 @@ implementation
       end;
 
 
+    function TObjSection.GetAltName: string;
+      begin
+        result:='';
+      end;
+
+
     function TObjSection.write(const d;l:TObjSectionOfs):TObjSectionOfs;
       begin
         result:=size;
@@ -1152,13 +1160,20 @@ implementation
 
 
     function  TObjSection.FullName:string;
+      var
+        s: string;
       begin
         if not assigned(FCachedFullName) then
           begin
-            if assigned(ObjData) then
-              FCachedFullName:=stringdup(ObjData.Name+'('+Name+')')
+            s:=GetAltName;
+            if s<>'' then
+              s:=Name+s
             else
-              FCachedFullName:=stringdup(Name);
+              s:=Name;
+            if assigned(ObjData) then
+              FCachedFullName:=stringdup(ObjData.Name+'('+s+')')
+            else
+              FCachedFullName:=stringdup(s);
           end;
         result:=FCachedFullName^;
       end;
@@ -1300,12 +1315,15 @@ implementation
           {arm_attribute} [oso_data]
         );
       begin
-        if (aType in [sec_rodata,sec_rodata_norel]) then
+        if target_asm.id in asms_int_coff then
           begin
-            if (target_info.system in systems_all_windows) then
-              aType:=sec_rodata_norel
-            else
-              aType:=sec_data;
+            if (aType in [sec_rodata,sec_rodata_norel]) then
+              begin
+                if (target_info.system in systems_all_windows) then
+                  aType:=sec_rodata_norel
+                else
+                  aType:=sec_data;
+              end;
           end;
         result:=secoptions[atype];
 {$ifdef OMFOBJSUPPORT}

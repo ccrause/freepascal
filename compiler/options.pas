@@ -1025,35 +1025,35 @@ begin
     system_powerpc_darwin:
       begin
         set_system_compvar('MAC_OS_X_VERSION_MIN_REQUIRED','1030');
-        MacOSXVersionMin:='10.3';
+        MacOSXVersionMin:='10.3.0';
       end;
     system_powerpc64_darwin:
       begin
         set_system_compvar('MAC_OS_X_VERSION_MIN_REQUIRED','1040');
-        MacOSXVersionMin:='10.4';
+        MacOSXVersionMin:='10.4.0';
       end;
     system_i386_darwin,
     system_x86_64_darwin:
       begin
         set_system_compvar('MAC_OS_X_VERSION_MIN_REQUIRED','1080');
-        MacOSXVersionMin:='10.8';
+        MacOSXVersionMin:='10.8.0';
       end;
     system_arm_ios,
     system_i386_iphonesim:
       begin
         set_system_compvar('IPHONE_OS_VERSION_MIN_REQUIRED','90000');
-        iPhoneOSVersionMin:='9.0';
+        iPhoneOSVersionMin:='9.0.0';
       end;
     system_aarch64_ios,
     system_x86_64_iphonesim:
       begin
         set_system_compvar('IPHONE_OS_VERSION_MIN_REQUIRED','90000');
-        iPhoneOSVersionMin:='9.0';
+        iPhoneOSVersionMin:='9.0.0';
       end;
     system_aarch64_darwin:
       begin
-        set_system_compvar('MAC_OS_X_VERSION_MIN_REQUIRED','1100');
-        MacOSXVersionMin:='11.0';
+        set_system_compvar('MAC_OS_X_VERSION_MIN_REQUIRED','110000');
+        MacOSXVersionMin:='11.0.0';
       end
     else
       internalerror(2012031001);
@@ -1700,6 +1700,8 @@ begin
                          frameworksearchpath.AddPath(More,true)
                      else
                        IllegalPara(opt);
+                 'F' :
+                   RCForceFPCRes:=true;
                  'i' :
                    begin
                      if ispara then
@@ -4171,7 +4173,7 @@ begin
   { default to clang }
   if (option.paratargetasm=as_none) then
     begin
-      option.paratargetasm:=as_llvm_clang;
+      option.paratargetasm:=as_clang_llvm;
     end;
 {$endif llvm}
   { maybe override assembler }
@@ -4179,7 +4181,10 @@ begin
     begin
       if not set_target_asm(option.paratargetasm) then
         begin
-          Message2(option_incompatible_asm,asminfos[option.paratargetasm]^.idtxt,target_info.name);
+          if assigned(asminfos[option.paratargetasm]) then
+            Message2(option_incompatible_asm,asminfos[option.paratargetasm]^.idtxt,target_info.name)
+          else
+            Message2(option_incompatible_asm,'<invalid assembler>',target_info.name);
           set_target_asm(target_info.assemextern);
           Message1(option_asm_forced,target_asm.idtxt);
         end;
@@ -4216,7 +4221,7 @@ begin
    begin
      Message(option_switch_bin_to_src_assembler);
 {$ifdef llvm}
-     set_target_asm(as_llvm_clang);
+     set_target_asm(as_clang_llvm);
 {$else}
      set_target_asm(target_info.assemextern);
 {$endif}

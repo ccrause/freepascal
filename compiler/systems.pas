@@ -76,6 +76,7 @@ interface
          ,af_no_debug
          ,af_stabs_use_function_absolute_addresses
          ,af_no_stabs
+         { assembler is part of the LLVM toolchain }
          ,af_llvm
        );
 
@@ -99,8 +100,8 @@ interface
        tarinfo = record
           id          : tar;
           addfilecmd  : string[10];
-          arfirstcmd  : string[50];
-          arcmd       : string[50];
+          arfirstcmd  : string[60];
+          arcmd       : string[60];
           arfinishcmd : string[11];
        end;
 
@@ -285,11 +286,12 @@ interface
                              system_i8086_win16];
 
        { all darwin systems }
-       systems_darwin = [system_powerpc_darwin,system_i386_darwin,
+       systems_ios = [system_arm_ios,system_aarch64_ios];
+       systems_iphonesym = [system_i386_iphonesim,system_x86_64_iphonesim];
+       systems_macosx = [system_powerpc_darwin,system_i386_darwin,
                          system_powerpc64_darwin,system_x86_64_darwin,
-                         system_arm_ios,system_i386_iphonesim,
-                         system_aarch64_ios,system_x86_64_iphonesim,
                          system_aarch64_darwin];
+       systems_darwin = systems_ios + systems_iphonesym + systems_macosx;
 
        {all solaris systems }
        systems_solaris = [system_sparc_solaris, system_i386_solaris,
@@ -440,6 +442,10 @@ interface
                              + [system_i386_os2]
                              + [system_i386_beos,system_i386_haiku]
                              + [system_powerpc_morphos];
+
+       { all internal COFF writers }
+       asms_int_coff = [as_arm_pecoffwince,as_x86_64_pecoff,as_i386_pecoffwince,
+                        as_i386_pecoffwdosx,as_i386_pecoff,as_i386_coff];
 
        cpu2str : array[TSystemCpu] of string[10] =
             ('','i386','m68k','alpha','powerpc','sparc','vm','ia64','x86_64',

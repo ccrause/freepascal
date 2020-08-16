@@ -14,15 +14,13 @@
 
  **********************************************************************}
 
-{$mode objfpc}
-{$h+}
-
 unit PasTree;
+
+{$i fcl-passrc.inc}
 
 {$if defined(debugrefcount) or defined(VerbosePasTreeMem) or defined(VerbosePasResolver)}
   {$define EnablePasTreeGlobalRefCount}
 {$endif}
-{$inline on}
 
 interface
 
@@ -168,12 +166,15 @@ type
     {$ENDIF}
     constructor Create(const AName: string; AParent: TPasElement); virtual;
     destructor Destroy; override;
+    Class Function IsKeyWord(Const S : String) : Boolean;
+    Class Function EscapeKeyWord(Const S : String) : String;
     procedure AddRef{$IFDEF CheckPasTreeRefCount}(const aId: string){$ENDIF};
     procedure Release{$IFDEF CheckPasTreeRefCount}(const aId: string){$ENDIF};
     procedure ForEachCall(const aMethodCall: TOnForEachPasElement;
       const Arg: Pointer); virtual;
     procedure ForEachChildCall(const aMethodCall: TOnForEachPasElement;
       const Arg: Pointer; Child: TPasElement; CheckParent: boolean); virtual;
+    Function SafeName : String; virtual;                // Name but with & prepended if name is a keyword.
     function FullPath: string;                  // parent's names, until parent is not TPasDeclarations
     function ParentPath: string;                // parent's names
     function FullName: string; virtual;         // FullPath + Name
@@ -513,6 +514,7 @@ type
   Protected
     Function FixTypeDecl(aDecl: String) : String;
   public
+    Function SafeName : String; override;
     function ElementTypeName: string; override;
   end;
   TPasTypeArray = array of TPasType;
@@ -1748,7 +1750,7 @@ const
   cPasMemberHint : Array[TPasMemberHint] of string =
       ( 'deprecated', 'library', 'platform', 'experimental', 'unimplemented' );
   cCallingConventions : Array[TCallingConvention] of string =
-      ( '', 'Register','Pascal','CDecl','StdCall','OldFPCCall','SafeCall','SysCall','MWPascal',
+      ( '', 'Register','Pascal','cdecl','stdcall','OldFPCCall','safecall','SysCall','MWPascal',
                         'HardFloat','SysV_ABI_Default','SysV_ABI_CDecl',
                         'MS_ABI_Default','MS_ABI_CDecl',
                         'VectorCall');
@@ -2586,8 +2588,16 @@ function TPasType.FixTypeDecl(aDecl: String): String;
 begin
   Result:=aDecl;
   if (Name<>'') then
-    Result:=Name+' = '+Result;
+    Result:=SafeName+' = '+Result;
   ProcessHints(false,Result);
+end;
+
+function TPasType.SafeName: String;
+begin
+  if SameText(Name,'string') then
+    Result:=Name
+  else
+    Result:=inherited SafeName;
 end;
 
 function TPasType.ElementTypeName: string; begin Result := SPasTreeType; end;
@@ -2864,6 +2874,30 @@ begin
   inherited Destroy;
 end;
 
+class function TPasElement.IsKeyWord(const S: String): Boolean;
+
+Const
+   KW=';absolute;and;array;asm;begin;case;const;constructor;destructor;div;do;'+
+       'downto;else;end;file;for;function;goto;if;implementation;in;inherited;'+
+       'inline;interface;label;mod;nil;not;object;of;on;operator;or;packed;'+
+       'procedure;program;record;reintroduce;repeat;self;set;shl;shr;string;then;'+
+       'to;type;unit;until;uses;var;while;with;xor;dispose;exit;false;new;true;'+
+       'as;class;dispinterface;except;exports;finalization;finally;initialization;'+
+       'inline;is;library;on;out;packed;property;raise;resourcestring;threadvar;try;'+
+       'private;published;length;setlength;';
+
+begin
+  Result:=Pos(';'+lowercase(S)+';',KW)<>0;
+end;
+
+class function TPasElement.EscapeKeyWord(const S: String): String;
+begin
+  Result:=S;
+  If IsKeyWord(Result) then
+    Result:='&'+Result
+
+end;
+
 procedure TPasElement.AddRef{$IFDEF CheckPasTreeRefCount}(const aId: string){$ENDIF};
 begin
   {$ifdef EnablePasTreeGlobalRefCount}
@@ -2953,6 +2987,13 @@ begin
   Child.ForEachCall(aMethodCall,Arg);
 end;
 
+function TPasElement.SafeName: String;
+begin
+  Result:=Name;
+  if IsKeyWord(Result) then
+    Result:='&'+Result;
+end;
+
 function TPasElement.FullPath: string;
 
 var
@@ -3031,7 +3072,7 @@ function TPasElement.GetDeclaration(full: Boolean): string;
 
 begin
   if Full then
-    Result := Name
+    Result := SafeName
   else
     Result := '';
 end;
@@ -4076,7 +4117,7 @@ end;
 
 function TPasModule.GetDeclaration(full : boolean): string;
 begin
-  Result := 'Unit ' + Name;
+  Result := 'Unit ' + SafeName;
   if full then ;
 end;
 
@@ -4103,7 +4144,7 @@ begin
   Result:=Expr.GetDeclaration(true);
   If Full Then
     begin
-    Result:=Name+' = '+Result;
+    Result:=SafeName+' = '+Result;
     ProcessHints(False,Result);
     end;
 end;
@@ -4123,10 +4164,10 @@ end;
 
 function TPasPointerType.GetDeclaration(full: Boolean): string;
 begin
-  Result:='^'+DestType.Name;
+  Result:='^'+DestType.SafeName;
   If Full then
     begin
-    Result:=Name+' = '+Result;
+    Result:=SafeName+' = '+Result;
     ProcessHints(False,Result);
     end;
 end;
@@ -4146,7 +4187,7 @@ end;
 
 function TPasAliasType.GetDeclaration(full: Boolean): string;
 begin
-  Result:=DestType.Name;
+  Result:=DestType.SafeName;
   If Full then
     Result:=FixTypeDecl(Result);
 end;
@@ -4167,7 +4208,7 @@ end;
 
 function TPasClassOfType.GetDeclaration (full : boolean) : string;
 begin
-  Result:='Class of '+DestType.Name;
+  Result:='class of '+DestType.SafeName;
   If Full then
     Result:=FixTypeDecl(Result);
 end;
@@ -4208,9 +4249,9 @@ begin
   if Full then
     begin
     if GenericTemplateTypes<>nil then
-      Result:=Result+GenericTemplateTypesAsString(GenericTemplateTypes)+' = '+Result
+      Result:=SafeName+GenericTemplateTypesAsString(GenericTemplateTypes)+' = '+Result
     else
-      Result:=Result+' = '+Result;
+      Result:=SafeName+' = '+Result;
     end;
   If (IndexRange<>'') then
     Result:=Result+'['+IndexRange+']';
@@ -4218,7 +4259,7 @@ begin
   If IsPacked then
     Result := 'packed '+Result;      // 12/04/04 Dave - Added
   If Assigned(Eltype) then
-    Result:=Result+ElType.Name
+    Result:=Result+ElType.SafeName
   else
     Result:=Result+'const';
 end;
@@ -4246,7 +4287,7 @@ function TPasFileType.GetDeclaration (full : boolean) : string;
 begin
   Result:='File';
   If Assigned(Eltype) then
-    Result:=Result+' of '+ElType.Name;
+    Result:=Result+' of '+ElType.SafeName;
   If Full Then
     Result:=FixTypeDecl(Result);
 end;
@@ -4267,13 +4308,13 @@ begin
   S:=TStringList.Create;
   Try
     If Full and (Name<>'') then
-      S.Add(Name+' = (')
+      S.Add(SafeName+' = (')
     else
       S.Add('(');
     GetEnumNames(S);
     S[S.Count-1]:=S[S.Count-1]+')';
     If Full then
-      Result:=IndentStrings(S,Length(Name)+4)
+      Result:=IndentStrings(S,Length(SafeName)+4)
     else
       Result:=IndentStrings(S,1);
     if Full then
@@ -4301,7 +4342,7 @@ begin
     S:=TStringList.Create;
     Try
       If Full and (Name<>'') then
-        S.Add(Name+'= Set of (')
+        S.Add(SafeName+'= Set of (')
       else
         S.Add('Set of (');
       TPasEnumType(EnumType).GetEnumNames(S);
@@ -4314,9 +4355,9 @@ begin
     end
   else
     begin
-    Result:='Set of '+EnumType.Name;
+    Result:='Set of '+EnumType.SafeName;
     If Full then
-      Result:=Name+' = '+Result;
+      Result:=SafeName+' = '+Result;
     end;
   If Full then
     ProcessHints(False,Result);
@@ -4453,9 +4494,9 @@ begin
     If Full and (Name<>'') then
       begin
       if GenericTemplateTypes.Count>0 then
-        Temp:=Name+GenericTemplateTypesAsString(GenericTemplateTypes)+' = '+Temp
+        Temp:=SafeName+GenericTemplateTypesAsString(GenericTemplateTypes)+' = '+Temp
       else
-        Temp:=Name+' = '+Temp;
+        Temp:=SafeName+' = '+Temp;
       end;
     S.Add(Temp);
     GetMembers(S);
@@ -4527,7 +4568,7 @@ begin
   S:=TStringList.Create;
   Try
     If Full then
-      S.Add(Format('%s = ',[Name]));
+      S.Add(Format('%s = ',[SafeName]));
     S.Add(TypeName);
     GetArguments(S);
     If IsOfObject then
@@ -4553,14 +4594,14 @@ begin
   S:=TStringList.Create;
   Try
     If Full then
-      S.Add(Format('%s = ',[Name]));
+      S.Add(Format('%s = ',[SafeName]));
     S.Add(TypeName);
     GetArguments(S);
     If Assigned(ResultEl) then
       begin
       T:=' : ';
       If (ResultEl.ResultType.Name<>'') then
-        T:=T+ResultEl.ResultType.Name
+        T:=T+ResultEl.ResultType.SafeName
       else
         T:=T+ResultEl.ResultType.GetDeclaration(False);
       S.Add(T);
@@ -4594,7 +4635,7 @@ begin
     If VarType.Name='' then
       Result:=VarType.GetDeclaration(False)
     else
-      Result:=VarType.Name;
+      Result:=VarType.SafeName;
     Result:=Result+Modifiers;
     if (Value<>'') then
       Result:=Result+' = '+Value;
@@ -4603,7 +4644,7 @@ begin
     Result:=Value;
   If Full then
     begin
-    Result:=Name+' '+Seps[Assigned(VarType)]+' '+Result;
+    Result:=SafeName+' '+Seps[Assigned(VarType)]+' '+Result;
     Result:=Result+HintsString;
     end;
 end;
@@ -4647,7 +4688,7 @@ begin
     If VarType.Name='' then
       Result:=VarType.GetDeclaration(False)
     else
-      Result:=VarType.Name;
+      Result:=VarType.SafeName;
     end
   else if Assigned(Expr) then
     Result:=Expr.GetDeclaration(True);
@@ -4667,9 +4708,9 @@ begin
     S:=' ';
   If Full then
     begin
-    Result:=Name+S+': '+Result;
+    Result:=SafeName+S+': '+Result;
     If (ImplementsName<>'') then
-       Result:=Result+' implements '+ImplementsName;
+       Result:=Result+' implements '+EscapeKeyWord(ImplementsName);
     end;   
   If IsDefault then
     Result:=Result+'; default';
@@ -4909,7 +4950,7 @@ begin
           end;
         end
       else if Name<>'' then
-        T:=T+' '+Name;
+        T:=T+' '+SafeName;
       S.Add(T);
       end;
     ProcType.GetArguments(S);
@@ -4919,7 +4960,7 @@ begin
         begin
         T:=' : ';
         If (Name<>'') then
-          T:=T+Name
+          T:=T+SafeName
         else
           T:=T+GetDeclaration(False);
         S.Add(T);
@@ -4975,7 +5016,7 @@ begin
         begin
         T:=' : ';
         If (Name<>'') then
-          T:=T+Name
+          T:=T+SafeName
         else
           T:=T+GetDeclaration(False);
         S.Add(T);
@@ -5043,14 +5084,14 @@ begin
   If Assigned(ArgType) then
     begin
     If ArgType.Name<>'' then
-      Result:=ArgType.Name
+      Result:=ArgType.SafeName
     else
       Result:=ArgType.GetDeclaration(False);
     If Full and (Name<>'') then
-      Result:=Name+': '+Result;
+      Result:=SafeName+': '+Result;
     end
   else If Full then
-    Result:=Name
+    Result:=SafeName
   else
     Result:='';
 end;
@@ -5712,7 +5753,7 @@ begin
     begin
     If Result<>'' then
       Result:=Result+'; ';
-    Result:=Result+Fields[I].Name+': '+Fields[i].ValueExp.getDeclaration(Full);
+    Result:=Result+EscapeKeyWord(Fields[I].Name)+': '+Fields[i].ValueExp.getDeclaration(Full);
     end;
   Result:='('+Result+')';
 end;

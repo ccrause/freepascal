@@ -122,7 +122,7 @@ Type
     palmos,macosclassic,darwin,emx,watcom,morphos,netwlibc,
     win64,wince,gba,nds,embedded,symbian,haiku,iphonesim,
     aix,java,android,nativent,msdos,wii,aros,dragonfly,
-    win16,wasm,freertos,zxspectrum,msxdos,ios
+    win16,wasm,freertos,zxspectrum,msxdos,ios,amstradcpc
   );
   TOSes = Set of TOS;
 
@@ -230,7 +230,8 @@ Const
     { freertos }( false, false, false, false, false, false, false, false, false, false, false, false, false, false,   false, false, false, false, false,  false,  false,   true , false),
     {zxspectrum}( false, false, false, false, false, false, false, false, false, false, false, false, false, false,   false, false, false, false, false,  false,  false,   false, true ),
     { msxdos }  ( false, false, false, false, false, false, false, false, false, false, false, false, false, false,   false, false, false, false, false,  false,  false,   false, true ),
-    { ios }     ( false, false, false, false, false, false,  true, false, false, false, false, false, false, false,   false, false, true , false, false,  false,  false,   false, false)
+    { ios }     ( false, false, false, false, false, false,  true, false, false, false, false, false, false, false,   false, false, true , false, false,  false,  false,   false, false),
+    {amstradcpc}( false, false, false, false, false, false, false, false, false, false, false, false, false, false,   false, false, false, false, false,  false,  false,   false, true )
   );
 
   // Useful
@@ -1257,7 +1258,7 @@ Type
     Procedure Clean(APackage : TPackage; ACPU:TCPU; AOS : TOS);
     Procedure CompileDependencies(APackage : TPackage);
     function CheckDependencies(APackage : TPackage; ErrorOnFailure: boolean): TCheckDependencyResult;
-    Function  CheckExternalPackage(Const APackageName : String; ErrorOnFailure: boolean):TPackage;
+    Function  CheckExternalPackage(Const APackageName, ForPackageName : String; ErrorOnFailure: boolean):TPackage;
     procedure CreateOutputDir(APackage: TPackage);
     // Packages commands
     Procedure Compile(Packages : TPackages);
@@ -1666,7 +1667,7 @@ ResourceString
   SErrNoDictionaryValue = 'The item "%s" in the dictionary is not a value';
   SErrNoDictionaryFunc  = 'The item "%s" in the dictionary is not a function';
   SErrInvalidFPCInfo    = 'Compiler returns invalid information, check if fpc -iV works';
-  SErrDependencyNotFound = 'Could not find unit directory for dependency package "%s"';
+  SErrDependencyNotFound = 'Could not find unit directory for dependency package "%s" required for package "%s"';
   SErrAlreadyInitialized = 'Installer can only be initialized once';
   SErrInvalidState      = 'Invalid state for target %s';
   SErrCouldNotCompile   = 'Could not compile target %s from package %s';
@@ -2718,13 +2719,19 @@ end;
 
 
 {$ifdef HAS_UNIT_PROCESS}
-function GetCompilerInfo(const ACompiler,AOptions:string; ReadStdErr: boolean):string;
+{ function GetCompilerInfo
+  used both for gcc and Free Pascal compiler
+  returns stdout output of Acompiler with AOptions parameters
+  If ReadStdErr is True, return stderr output if stdout is empty
+  If EmptyIfStdErr, return empty string if stderr output is not empty }
+function GetCompilerInfo(const ACompiler,AOptions:string; ReadStdErr: boolean;EmptyIfStdErr : boolean):string;
 const
   BufSize = 1024;
 var
   S: TProcess;
   Buf: array [0..BufSize - 1] of char;
-  Count: longint;
+  ErrorBuf: array [0..BufSize - 1] of char;
+  Count, ErrorCount: longint;
 begin
   S:=TProcess.Create(Nil);
   S.Commandline:=ACompiler+' '+AOptions;
@@ -2732,7 +2739,17 @@ begin
   S.execute;
   Count:=s.output.read(buf,BufSize);
   if (count=0) and ReadStdErr then
-    Count:=s.Stderr.read(buf,BufSize);
+    Count:=s.Stderr.read(buf,BufSize)
+  else if EmptyIfStdErr then
+    begin
+      ErrorCount:=s.StdErr.read(ErrorBuf,BufSize);
+      if (ErrorCount>0) then
+        begin
+          Result:='';
+          S.Free;
+          exit;
+        end;
+    end;
   S.Free;
   SetLength(Result,Count);
   Move(Buf,Result[1],Count);
@@ -2781,7 +2798,7 @@ function GetDefaultLibGCCDir(CPU : TCPU;OS: TOS; var ErrorMessage: string): stri
     if FileExists(GccExecutable) then
       begin
 {$ifdef HAS_UNIT_PROCESS}
-      ExecResult:=GetCompilerInfo(GccExecutable,'-v '+GCCParams, True);
+      ExecResult:=GetCompilerInfo(GccExecutable,'-v '+GCCParams, True, True);
       libgccFilename:=Get4thWord(ExecResult);
       // Use IsRelativePath to check if the 4th word is an (absolute) path.
       // This depends on the language settings. In English the 4th word is
@@ -2791,7 +2808,7 @@ function GetDefaultLibGCCDir(CPU : TCPU;OS: TOS; var ErrorMessage: string): stri
       if IsRelativePath(libgccFilename) then
         libgccFilename:='';
       if libgccFilename='' then
-        libgccFilename:=GetCompilerInfo(GccExecutable,'--print-libgcc-file-name '+GCCParams, False);
+        libgccFilename:=GetCompilerInfo(GccExecutable,'--print-libgcc-file-name '+GCCParams, False, True);
       result := ExtractFileDir(libgccFilename);
 {$else HAS_UNIT_PROCESS}
       ErrorMessage := SWarnNoFCLProcessSupport;
@@ -2814,9 +2831,16 @@ begin
       x86_64:   result := GetGccDirArch('cpux86_64','-m64');
       powerpc:  result := GetGccDirArch('cpupowerpc','-m32');
       powerpc64:result := GetGccDirArch('cpupowerpc64','-m64');
-      aarch64:  result := GetGccDirArch('cpuaarch64','');
+      arm:      result := GetGccDirArch('cpuarm','-marm -march=armv2');
+      aarch64:  result := GetGccDirArch('cpuaarch64','-march=aarch64 -mcmodel=large');
+      m68k:     result := GetGccDirArch('cpum68k','');
+      mips:     result := GetGccDirArch('cpumips','-mips32 -EB -mabi=32');
+      mipsel:   result := GetGccDirArch('cpumipsel','-mips32 -EL -mabi=32');
       riscv32:  result := GetGccDirArch('cpuriscv32','-march=rv32imafdc');
       riscv64:  result := GetGccDirArch('cpuriscv64','-march=rv64imafdc');
+      sparc:    result := GetGccDirArch('cpusparc','-m32');
+      sparc64:  result := GetGccDirArch('cpusparc64','-m64');
+      xtensa:   result := GetGccDirArch('cpuxtensa','');
     end {case}
   else if OS = darwin then
     case CPU of
@@ -3157,10 +3181,11 @@ end;
 
 constructor TCompileWorkerThread.Create(ABuildEngine: TBuildEngine; NotifyMainThreadEvent: PRTLEvent);
 begin
-  inherited Create(false);
+  inherited Create(true);
   FNotifyStartTask := RTLEventCreate;
   FBuildEngine := ABuildEngine;
   FNotifyMainThreadEvent:=NotifyMainThreadEvent;
+  Start;
 end;
 
 destructor TCompileWorkerThread.Destroy;
@@ -4728,7 +4753,7 @@ begin
       // Detect compiler version/target from -i option
       infosl:=TStringList.Create;
       infosl.Delimiter:=' ';
-      infosl.DelimitedText:=GetCompilerInfo(GetCompiler,'-iVTPTO', False);
+      infosl.DelimitedText:=GetCompilerInfo(GetCompiler,'-iVTPTO', False, True);
       if infosl.Count<>3 then
         Raise EInstallerError.Create(SErrInvalidFPCInfo);
       if FCompilerVersion='' then
@@ -7236,7 +7261,7 @@ begin
 end;
 
 
-function TBuildEngine.CheckExternalPackage(Const APackageName : String; ErrorOnFailure: boolean):TPackage;
+function TBuildEngine.CheckExternalPackage(Const APackageName, ForPackageName : String; ErrorOnFailure: boolean):TPackage;
 var
   S : String;
   F : String;
@@ -7270,7 +7295,7 @@ begin
       CompileDependencies(Result);
     end
   else if ErrorOnFailure then
-    Error(SErrDependencyNotFound,[APackageName]);
+    Error(SErrDependencyNotFound,[APackageName,ForPackageName]);
 end;
 
 
@@ -7303,7 +7328,7 @@ begin
             end
           else
             begin
-              D.Target:=CheckExternalPackage(D.Value, true);
+              D.Target:=CheckExternalPackage(D.Value, APackage.Name, true);
               P:=TPackage(D.Target);
             end;
           if (D.RequireChecksum<>$ffffffff) and (D.RequireChecksum<>0) and
@@ -7345,7 +7370,7 @@ begin
             end
           else
             begin
-              D.Target:=CheckExternalPackage(D.Value, ErrorOnFailure);
+              D.Target:=CheckExternalPackage(D.Value, APackage.Name, ErrorOnFailure);
               P:=TPackage(D.Target);
             end;
           if (D.RequireChecksum<>$ffffffff) and

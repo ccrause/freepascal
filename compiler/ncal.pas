@@ -577,7 +577,9 @@ implementation
 
         if variantdispatch then
           begin
-            tcb.emit_pchar_const(pchar(methodname),length(methodname),true);
+            { length-1, because the following names variable *always* starts
+              with #0 which will be the terminator for methodname }
+            tcb.emit_pchar_const(pchar(methodname),length(methodname)-1,true);
             { length-1 because we added a null terminator to the string itself
               already }
             tcb.emit_pchar_const(pchar(names),length(names)-1,true);
@@ -731,7 +733,6 @@ implementation
     procedure tcallparanode.copy_value_by_ref_para;
       var
         initstat,
-        copybackstat,
         finistat: tstatementnode;
         finiblock: tblocknode;
         paratemp: ttempcreatenode;
@@ -754,7 +755,6 @@ implementation
         if not is_array_constructor(left.resultdef) then
           begin
             fparainit:=internalstatements(initstat);
-            fparacopyback:=internalstatements(copybackstat);
             finiblock:=internalstatements(finistat);
             paratemp:=nil;
 
@@ -931,10 +931,8 @@ implementation
                 left:=ctemprefnode.create(paratemp);
               end;
             addstatement(finistat,ctempdeletenode.create(paratemp));
-            addstatement(copybackstat,finiblock);
             firstpass(fparainit);
             firstpass(left);
-            firstpass(fparacopyback);
           end;
       end;
 

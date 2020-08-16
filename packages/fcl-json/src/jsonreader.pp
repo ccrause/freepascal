@@ -12,9 +12,9 @@
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
  **********************************************************************}
-{$mode objfpc}
-{$h+}
 unit jsonreader;
+
+{$I fcl-json.inc}
 
 interface
 
@@ -246,6 +246,8 @@ begin
         DoError(SErrUnexpectedToken);
     tkIdentifier :
         DoError(SErrUnexpectedToken);
+  else
+    // Do nothing
   end;
 end;
 

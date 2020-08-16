@@ -70,6 +70,7 @@ interface
       procedure reference_reset_base(var ref: treference; regsize: tdef; reg: tregister; offset: longint; temppos: treftemppos; alignment: longint; volatility: tvolatilityset); override;
 
       function a_call_name(list : TAsmList;pd : tprocdef;const s : TSymStr; const paras: array of pcgpara; forceresdef: tdef; weak: boolean): tcgpara;override;
+      function a_call_name_static(list: TAsmList; pd: tprocdef; const s: TSymStr; const paras: array of pcgpara; forceresdef: tdef): tcgpara; override;
 
       procedure a_load_loc_ref(list : TAsmList;fromsize, tosize: tdef; const loc: tlocation; const ref : treference);override;
       procedure a_loadaddr_ref_reg(list : TAsmList;fromsize, tosize : tdef;const ref : treference;r : tregister);override;
@@ -292,8 +293,14 @@ implementation
             ref.segment:=NR_GS;
           x86pt_far,
           x86pt_huge:
-            if reg<>NR_NO then
-              ref.segment:=cg.GetNextReg(reg);
+            if getsupreg(reg)>=first_int_imreg then
+              ref.segment:=cg.GetNextReg(reg)
+            else
+              if reg<>NR_NO then
+                if (reg=current_procinfo.framepointer) or (reg=NR_SP) then
+                  ref.segment:=NR_SS
+                else
+                  internalerror(2020072401);
         end;
     end;
 
@@ -316,6 +323,12 @@ implementation
       else
         tcg8086(cg).a_call_name_near(list,s,weak);
       result:=get_call_result_cgpara(pd,forceresdef);
+    end;
+
+
+  function thlcgcpu.a_call_name_static(list: TAsmList; pd: tprocdef; const s: TSymStr; const paras: array of pcgpara; forceresdef: tdef): tcgpara;
+    begin
+      Result:=a_call_name(list,pd,s,paras,forceresdef,false);
     end;
 
 

@@ -200,7 +200,8 @@
              system_z80_embedded,       { 108 }
              system_z80_zxspectrum,     { 109 }
              system_z80_msxdos,         { 110 }
-             system_aarch64_darwin      { 111 }
+             system_aarch64_darwin,     { 111 }
+             system_z80_amstradcpc      { 112 }
        );
 
      type
@@ -248,15 +249,14 @@
              ,as_gas_powerpc_xcoff
              ,as_arm_elf32
              ,as_i8086_omf
-             ,as_llvm_llc
-             ,as_clang
+             ,as_clang_asdarwin        { machine code assembler in Darwin as style assembled by clang }
              ,as_solaris_as
              ,as_m68k_vasm
              ,as_m68k_as_aout
              ,as_wasm_binaryen
              ,as_powerpc_gas_legacy    { for systems with very old GAS versions only, which don't support eg. named sections }
-             ,as_llvm_clang
-             ,as_clang_gas
+             ,as_clang_llvm
+             ,as_clang_gas             { machine code assembler in gas style assembled by clang }
              ,as_z80asm
              ,as_sdcc_sdasz80
              ,as_z80_vasm
@@ -304,7 +304,8 @@
              ld_int_msxdos,
              ld_freertos,
              ld_zxspectrum,
-             ld_msxdos
+             ld_msxdos,
+             ld_amstradcpc
        );
 
        tar = (ar_none

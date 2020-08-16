@@ -94,8 +94,6 @@ unit cgcpu;
         procedure g_adjust_self_value(list:TAsmList;procdef: tprocdef;ioffset: tcgint);override;
 
         procedure get_32bit_ops(op: TOpCG; out op1,op2: TAsmOp);
-
-        procedure add_move_instruction(instr:Taicpu);override;
      protected
         procedure a_load_ref_reg_internal(list : TAsmList;fromsize,tosize: tcgsize;const ref : treference;reg : tregister;isdirect:boolean);override;
      end;
@@ -1732,12 +1730,30 @@ unit cgcpu;
                 end;
               OS_16:
                 begin
+                  { Preload the ref base to reduce spilling }
+                  if (tmpref.base<>NR_NO) and
+                     (tmpref.index<>NR_NO) and
+                     (getsupreg(tmpref.base)>=first_int_imreg) then
+                    begin
+                      tmpreg:=getaddressregister(list);
+                      a_load_reg_reg(list,OS_ADDR,OS_ADDR,tmpref.base,tmpreg);
+                      tmpref.base:=tmpreg;
+                    end;
                   list.concat(taicpu.op_reg_ref(A_MOV, S_W, reg, tmpref));
                   inc(tmpref.offset, 2);
                   list.concat(taicpu.op_const_ref(A_MOV, S_W, 0, tmpref));
                 end;
               OS_32,OS_S32:
                 begin
+                  { Preload the ref base to reduce spilling }
+                  if (tmpref.base<>NR_NO) and
+                     (tmpref.index<>NR_NO) and
+                     (getsupreg(tmpref.base)>=first_int_imreg) then
+                    begin
+                      tmpreg:=getaddressregister(list);
+                      a_load_reg_reg(list,OS_ADDR,OS_ADDR,tmpref.base,tmpreg);
+                      tmpref.base:=tmpreg;
+                    end;
                   list.concat(taicpu.op_reg_ref(A_MOV, S_W, reg, tmpref));
                   inc(tmpref.offset, 2);
                   list.concat(taicpu.op_reg_ref(A_MOV, S_W, GetNextReg(reg), tmpref));
@@ -1764,6 +1780,7 @@ unit cgcpu;
 
       var
         tmpref  : treference;
+        tmpreg  : tregister;
       begin
         tmpref:=ref;
         make_simple_ref(list,tmpref,isdirect);
@@ -1859,6 +1876,15 @@ unit cgcpu;
                 end;
               OS_32,OS_S32:
                 begin
+                  { Preload the ref base to reduce spilling }
+                  if (tmpref.base<>NR_NO) and
+                     (tmpref.index<>NR_NO) and
+                     (getsupreg(tmpref.base)>=first_int_imreg) then
+                    begin
+                      tmpreg:=getaddressregister(list);
+                      a_load_reg_reg(list,OS_ADDR,OS_ADDR,tmpref.base,tmpreg);
+                      tmpref.base:=tmpreg;
+                    end;
                   list.concat(taicpu.op_ref_reg(A_MOV, S_W, tmpref, reg));
                   inc(tmpref.offset, 2);
                   list.concat(taicpu.op_ref_reg(A_MOV, S_W, tmpref, GetNextReg(reg)));
@@ -2649,72 +2675,6 @@ unit cgcpu;
           else
             internalerror(200203241);
         end;
-      end;
-
-
-    procedure tcg8086.add_move_instruction(instr: Taicpu);
-      begin
-        { HACK: when regvars are on, don't notify the register allocator of any
-          direct moves to BX, so it doesn't try to coalesce them. Currently,
-          direct moves to BX are only used when returning an int64 value in
-          AX:BX:CX:DX. This hack fixes a common issue with functions, returning
-          int64, for example:
-
-        function RandomFrom(const AValues: array of Int64): Int64;
-          begin
-            result:=AValues[random(High(AValues)+1)];
-          end;
-
-    	push	bp
-    	mov	bp,sp
-; Var AValues located in register ireg20w
-; Var $highAVALUES located in register ireg21w
-; Var $result located in register ireg33w:ireg32w:ireg31w:ireg30w
-    	mov	ireg20w,word [bp+6]
-    	mov	ireg21w,word [bp+4]
-; [3] result:=AValues[random(High(AValues)+1)];
-    	mov	ireg22w,ireg21w
-    	inc	ireg22w
-    	mov	ax,ireg22w
-    	cwd
-    	mov	ireg23w,ax
-    	mov	ireg24w,dx
-    	push	ireg24w
-    	push	ireg23w
-    	call	SYSTEM_$$_RANDOM$LONGINT$$LONGINT
-    	mov	ireg25w,ax
-    	mov	ireg26w,dx
-    	mov	ireg27w,ireg25w
-    	mov	ireg28w,ireg27w
-    	mov	ireg29w,ireg28w
-    	mov	cl,3
-    	shl	ireg29w,cl
-; Var $result located in register ireg32w:ireg30w
-    	mov	ireg30w,word [ireg20w+ireg29w]
-    	mov	ireg31w,word [ireg20w+ireg29w+2]
-    	mov	ireg32w,word [ireg20w+ireg29w+4]  ; problematic section start
-    	mov	ireg33w,word [ireg20w+ireg29w+6]
-; [4] end;
-    	mov	bx,ireg32w  ; problematic section end
-    	mov	ax,ireg33w
-    	mov	dx,ireg30w
-    	mov	cx,ireg31w
-    	mov	sp,bp
-    	pop	bp
-    	ret	4
-
-        the problem arises, because the register allocator tries to coalesce
-          mov bx,ireg32w
-        however, in the references [ireg20w+ireg29w+const], due to the
-        constraints of i8086, ireg20w can only be BX (or BP, which isn't available
-        to the register allocator, because it's used as a base pointer) }
-
-        if (cs_opt_regvar in current_settings.optimizerswitches) and
-           (instr.opcode=A_MOV) and (instr.ops=2) and
-           (instr.oper[1]^.typ=top_reg) and (getsupreg(instr.oper[1]^.reg)=RS_BX) then
-          exit
-        else
-          inherited add_move_instruction(instr);
       end;
 
 

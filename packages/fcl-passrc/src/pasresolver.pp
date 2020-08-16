@@ -306,13 +306,7 @@ Notes:
 }
 unit PasResolver;
 
-{$mode objfpc}{$H+}
-{$inline on}
-
-{$ifdef fpc}
-  {$define UsePChar}
-  {$define HasInt64}
-{$endif}
+{$i fcl-passrc.inc}
 
 {$IFOPT Q+}{$DEFINE OverflowCheckOn}{$ENDIF}
 {$IFOPT R+}{$DEFINE RangeCheckOn}{$ENDIF}
@@ -1429,9 +1423,20 @@ type
     //ToDo: proStaticArrayConcat, // concat works with static arrays, returning a dynamic array
     proProcTypeWithoutIsNested, // proc types can use nested procs without 'is nested'
     proMethodAddrAsPointer,  // can assign @method to a pointer
-    proSafecallAllowsDefault // allow assigning a default calling convetnion to a SafeCall proc
+    proSafecallAllowsDefault // allow assigning a default calling convention to a SafeCall proc
     );
   TPasResolverOptions = set of TPasResolverOption;
+
+  { TPasResolverHub }
+
+  TPasResolverHub = class
+  private
+    FOwner: TObject;
+  public
+    constructor Create(TheOwner: TObject);
+    property Owner: TObject read FOwner;
+  end;
+  TPasResolverHubClass = class of TPasResolverHub;
 
   TPasResolverStep = (
     prsInit,
@@ -1486,6 +1491,7 @@ type
     FDefaultScope: TPasDefaultScope;
     FDynArrayMaxIndex: TMaxPrecInt;
     FDynArrayMinIndex: TMaxPrecInt;
+    FHub: TPasResolverHub;
     FLastCreatedData: array[TResolveDataListKind] of TResolveData;
     FLastElement: TPasElement;
     FLastMsg: string;
@@ -2369,10 +2375,12 @@ type
     function FindLocalBuiltInSymbol(El: TPasElement): TPasElement; virtual;
     function GetFirstSection(WithUnitImpl: boolean): TPasSection;
     function GetLastSection: TPasSection;
+    function GetParentSection(El: TPasElement): TPasSection;
     function FindUsedUnitInSection(aMod: TPasModule; Section: TPasSection): TPasUsesUnit;
     function GetShiftAndMaskForLoHiFunc(BaseType: TResolverBaseType;
       isLoFunc: Boolean; out Mask: LongWord): Integer;
   public
+    property Hub: TPasResolverHub read FHub write FHub;
     // options
     property Options: TPasResolverOptions read FOptions write FOptions;
     property AnonymousElTypePostfix: String read FAnonymousElTypePostfix
@@ -2387,15 +2395,15 @@ type
     property ExprEvaluator: TResExprEvaluator read fExprEvaluator;
     property DynArrayMinIndex: TMaxPrecInt read FDynArrayMinIndex write FDynArrayMinIndex;
     property DynArrayMaxIndex: TMaxPrecInt read FDynArrayMaxIndex write FDynArrayMaxIndex;
+    property StoreSrcColumns: boolean read FStoreSrcColumns write FStoreSrcColumns; {
+       If true Line and Column is mangled together in TPasElement.SourceLineNumber.
+       Use method UnmangleSourceLineNumber to extract. }
     // parsed values
     property DefaultNameSpace: String read FDefaultNameSpace;
     property RootElement: TPasModule read FRootElement write SetRootElement;
     property Step: TPasResolverStep read FStep;
     property ActiveHelpers: TPRHelperEntryArray read FActiveHelpers;
     // scopes
-    property StoreSrcColumns: boolean read FStoreSrcColumns write FStoreSrcColumns; {
-       If true Line and Column is mangled together in TPasElement.SourceLineNumber.
-       Use method UnmangleSourceLineNumber to extract. }
     property Scopes[Index: integer]: TPasScope read GetScopes;
     property ScopeCount: integer read FScopeCount;
     property TopScope: TPasScope read FTopScope;
@@ -3067,6 +3075,13 @@ end;
 function dbgs(const a: TPSRefAccess): string;
 begin
   str(a,Result);
+end;
+
+{ TPasResolverHub }
+
+constructor TPasResolverHub.Create(TheOwner: TObject);
+begin
+  FOwner:=TheOwner;
 end;
 
 { TPRSpecializedItem }
@@ -11031,14 +11046,15 @@ begin
       ResolveBinaryExpr(TBinaryExpr(Params.Value),Access);
       if not (Value.CustomData is TResolvedReference) then
         RaiseNotYetImplemented(20190115144534,Params);
-      // already resolved
+      // already resolved via ResolveNameExpr, which calls ResolveArrayParamsExprName
       exit;
       end
     else
       begin
-      // ToDo: (a+b)[]
-      //ResolveBinaryExpr(TBinaryExpr(Params.Value),rraRead);
-      RaiseNotYetImplemented(20190115144539,Params);
+      // For example (a+b)[]  or (a as b)[]
+      Value:=Params.Value;
+      ResolveBinaryExpr(TBinaryExpr(Value),rraRead);
+      ComputeElement(Value,ResolvedEl,[rcSetReferenceFlags]);
       end;
     end
   else
@@ -11785,6 +11801,8 @@ var
   C: TClass;
   ModScope: TPasModuleScope;
 begin
+  if Hub=nil then
+    RaiseNotYetImplemented(20200815182122,El);
   if TopScope<>DefaultScope then
     RaiseInvalidScopeForElement(20160922163504,El);
   ModScope:=TPasModuleScope(PushScope(El,FScopeClass_Module));
@@ -16398,8 +16416,19 @@ var
   procedure InsertBehind(List: TFPList);
   var
     Last: TPasElement;
-    i: Integer;
+    i, LastIndex: Integer;
+    GenScope: TPasGenericScope;
+    ProcScope: TPasProcedureScope;
   begin
+    // insert in front of currently parsed elements
+    // beware: specializing an element can create other specialized elements
+    // add behind last specialized element of this GenericEl
+    // for example: A = class(B<C<D>>)
+    // =>
+    //  D
+    //  C<D>
+    //  B<C<D>>
+    //  A
     Last:=GenericEl;
     if SpecializedItems<>nil then
       begin
@@ -16407,15 +16436,46 @@ var
       if i>=0 then
         Last:=TPRSpecializedItem(SpecializedItems[i]).SpecializedEl;
       end;
-    i:=List.IndexOf(Last);
-    if i<0 then
+    LastIndex:=List.IndexOf(Last);
+    if (LastIndex<0) then
+      if GenericEl is TPasProcedure then
+      else
+        RaiseNotYetImplemented(20200725093218,El);
+    i:=List.Count-1;
+    while i>LastIndex do
       begin
-      {$IF defined(VerbosePasResolver) or defined(VerbosePas2JS)}
-      writeln('InsertBehind Generic=',GetObjName(GenericEl),' Last=',GetObjName(Last));
-      //for i:=0 to List.Count-1 do writeln('  ',GetObjName(TObject(List[i])));
-      {$ENDIF}
-      i:=List.Count-1;
+      Last:=TPasElement(List[i]);
+      if Last is TPasGenericType then
+        begin
+        if (Last.CustomData<>nil) then
+          begin
+          GenScope:=Last.CustomData as TPasGenericScope;
+          if GenScope.GenericStep>=psgsInterfaceParsed then
+            break; // finished generic type
+          end;
+        // type is still parsed => insert in front
+        dec(i);
+        end
+      else if Last is TPasProcedure then
+        begin
+        ProcScope:=Last.CustomData as TPasProcedureScope;
+        if ProcScope.GenericStep>=psgsInterfaceParsed then
+          break; // finished generic proc
+        // proc is still parsed => insert in front
+        dec(i);
+        end
+      else
+        break;
       end;
+
+    //if i<0 then
+    //  begin
+    //  {$IF defined(VerbosePasResolver) or defined(VerbosePas2JS)}
+    //  writeln('InsertBehind Generic=',GetObjName(GenericEl),' Last=',GetObjName(Last));
+    //  //for i:=0 to List.Count-1 do writeln('  ',GetObjName(TObject(List[i])));
+    //  {$ENDIF}
+    //  i:=List.Count-1;
+    //  end;
     List.Insert(i+1,NewEl);
   end;
 
@@ -29190,6 +29250,16 @@ begin
     Result:=Module.ImplementationSection
   else
     Result:=Module.InterfaceSection;
+end;
+
+function TPasResolver.GetParentSection(El: TPasElement): TPasSection;
+begin
+  while El<>nil do
+    begin
+    if El is TPasSection then exit(TPasSection(El));
+    El:=El.Parent;
+    end;
+  Result:=nil;
 end;
 
 function TPasResolver.FindUsedUnitInSection(aMod: TPasModule;
