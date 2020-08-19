@@ -944,15 +944,11 @@ var
   t: Text;
   hp: TCmdStrListItem;
   filepath: TCmdStr;
-  {$ifdef XTENSA}
-  IdfPath: TCmdStr;
-  {$endif XTENSA}
 begin
 {$ifdef XTENSA}
-  if (current_settings.controllertype = ct_esp32) then
-    IdfPath := trim(GetEnvironmentVariable('IDF_PATH'))
-  else
-    IdfPath := trim(GetEnvironmentVariable('IDF_PATH8266'));
+  { idfpath can be set by -Ff, else default to environment value of IDF_PATH }
+  if idfpath='' then
+    idfpath := trim(GetEnvironmentVariable('IDF_PATH'));
 {$endif XTENSA}
 
   { for future use }
@@ -964,45 +960,42 @@ begin
   success:=true;
   Result:=false;
 
-  {$ifdef XTENSA}
+{$ifdef XTENSA}
   { generate a sdkconfig.h if none is provided,
     only a few fields are provided to far }
-  //if not(Sysutils.FileExists('sdkconfig.h')) then
+  Assign(t,'sdkconfig.h');
+  {$push}{$I-}
+  Rewrite(t);
+  if ioresult<>0 then
+    exit;
+
+  if (current_settings.controllertype = ct_esp32) then
     begin
-      Assign(t,'sdkconfig.h');
-      {$push}{$I-}
-      Rewrite(t);
-      if ioresult<>0 then
-        exit;
-
-      if (current_settings.controllertype = ct_esp32) then
-        begin
-          writeln(t,'#pragma once');
-          writeln(t,'#define CONFIG_APP_BUILD_USE_FLASH_SECTIONS 1');
-          writeln(t,'#define CONFIG_BT_RESERVE_DRAM 0x0');
-          writeln(t,'#define CONFIG_ESP32_ULP_COPROC_RESERVE_MEM 0');
-          writeln(t,'#define CONFIG_ESP32_TRACEMEM_RESERVE_DRAM 0x0');
-        end
+      writeln(t,'#pragma once');
+      writeln(t,'#define CONFIG_APP_BUILD_USE_FLASH_SECTIONS 1');
+      writeln(t,'#define CONFIG_BT_RESERVE_DRAM 0x0');
+      writeln(t,'#define CONFIG_ESP32_ULP_COPROC_RESERVE_MEM 0');
+      writeln(t,'#define CONFIG_ESP32_TRACEMEM_RESERVE_DRAM 0x0');
+    end
+  else
+    begin
+      { TODO: APP_OFFSET & APP_SIZE depends on partition table
+        Default for partition table: Single factory app, no OTA }
+      writeln(t,'#define APP_OFFSET 0x10000');
+      writeln(t,'#define APP_SIZE 0xf0000');
+      { Include build version of sdkconfig.h for custom configuration, if available }
+      S:=IdfPath+'/libs/sdkconfig.h';
+      if SysUtils.FileExists(S) then
+        writeln(t,'#include "'+S+'"')
       else
-        begin
-          // TODO: APP_OFFSET & APP_SIZE depends on partition table
-          // Default for partition table: Single factory app, no OTA
-          writeln(t,'#define APP_OFFSET 0x10000');
-          writeln(t,'#define APP_SIZE 0xf0000');
-          // Include build version of sdkconfig.h for custom configuration, if available
-          S:=IdfPath+'/libs/sdkconfig.h';
-          if SysUtils.FileExists(S) then
-            writeln(t,'#include "'+S+'"')
-          else
-            // Assume SOC_FULL_ICACHE option not selected (default)
-            writeln(t,'#define CONFIG_SOC_IRAM_SIZE 0xC000');
-        end;
-
-      Close(t);
-      if ioresult<>0 then
-        exit;
-      {$pop}
+        { Assume SOC_FULL_ICACHE option not selected (default) }
+        writeln(t,'#define CONFIG_SOC_IRAM_SIZE 0xC000');
     end;
+
+  Close(t);
+  if ioresult<>0 then
+    exit;
+  {$pop}
 
   { generate an sdkconfig if none is provided,
     this is a dummy so far }
@@ -1097,38 +1090,35 @@ begin
   { generate a config.env if none is provided,
     COMPONENT_KCONFIGS and COMPONENT_KCONFIGS_PROJBUILD are dummy fields and might
     be needed to be filed properly }
-  //if not(Sysutils.FileExists('config.env')) then
+  Assign(t,'config.env');
+  {$push}{$I-}
+  Rewrite(t);
+  if ioresult<>0 then
+    exit;
+
+  writeln(t,'{');
+  if (current_settings.controllertype = ct_esp32) then
     begin
-      Assign(t,'config.env');
-      {$push}{$I-}
-      Rewrite(t);
-      if ioresult<>0 then
-        exit;
-
-      writeln(t,'{');
-      if (current_settings.controllertype = ct_esp32) then
-        begin
-          writeln(t,'    "COMPONENT_KCONFIGS": "Kconfig",');
-          writeln(t,'    "COMPONENT_KCONFIGS_PROJBUILD": "Kconfig.projbuild",');
-          writeln(t,'    "IDF_CMAKE": "y",');
-          writeln(t,'    "IDF_TARGET": "esp32",');
-          writeln(t,'    "IDF_PATH": "'+IdfPath+'",');
-          writeln(t,'    "COMPONENT_KCONFIGS_SOURCE_FILE": "kconfigs.in",');
-          writeln(t,'    "COMPONENT_KCONFIGS_PROJBUILD_SOURCE_FILE": "kconfigs_projbuild.in"');
-        end
-      else
-        begin
-          writeln(t,'    "IDF_PATH": "'+IdfPath+'",');
-          writeln(t,'    "IDF_TARGET": "esp8266",');
-          writeln(t,'    "IDF_CMAKE": "n"');
-        end;
-      writeln(t,'}');
-
-      Close(t);
-      if ioresult<>0 then
-        exit;
-      {$pop}
+      writeln(t,'    "COMPONENT_KCONFIGS": "Kconfig",');
+      writeln(t,'    "COMPONENT_KCONFIGS_PROJBUILD": "Kconfig.projbuild",');
+      writeln(t,'    "IDF_CMAKE": "y",');
+      writeln(t,'    "IDF_TARGET": "esp32",');
+      writeln(t,'    "IDF_PATH": "'+IdfPath+'",');
+      writeln(t,'    "COMPONENT_KCONFIGS_SOURCE_FILE": "kconfigs.in",');
+      writeln(t,'    "COMPONENT_KCONFIGS_PROJBUILD_SOURCE_FILE": "kconfigs_projbuild.in"');
+    end
+  else
+    begin
+      writeln(t,'    "IDF_PATH": "'+IdfPath+'",');
+      writeln(t,'    "IDF_TARGET": "esp8266",');
+      writeln(t,'    "IDF_CMAKE": "n"');
     end;
+  writeln(t,'}');
+
+  Close(t);
+  if ioresult<>0 then
+    exit;
+  {$pop}
 
   { generate ldgen_libraries }
   Assign(t,'ldgen_libraries');
@@ -1209,7 +1199,7 @@ begin
       '-L . -T esp8266_out.ld -T esp8266.project.ld'; // Project scripts
 
   Replace(Info.ExeCmd[1],'$IDF_PATH',IdfPath);
-  {$endif XTENSA}
+{$endif XTENSA}
 
   FixedExeFileName:=maybequoted(ScriptFixFileName(ChangeFileExt(current_module.exefilename,'.elf')));
 
@@ -1226,9 +1216,9 @@ begin
 { Call linker }
   SplitBinCmd(Info.ExeCmd[1],binstr,cmdstr);
   Replace(cmdstr,'$OPT',Info.ExtraOptions);
-  {$ifdef XTENSA}
+{$ifdef XTENSA}
   Replace(cmdstr,'$'+IdfPath,IdfPath);
-  {$endif}
+{$endif}
   if not(cs_link_on_target in current_settings.globalswitches) then
    begin
     Replace(cmdstr,'$EXE',FixedExeFileName);
