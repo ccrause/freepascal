@@ -984,7 +984,7 @@ begin
       writeln(t,'#define APP_OFFSET 0x10000');
       writeln(t,'#define APP_SIZE 0xf0000');
       { Include build version of sdkconfig.h for custom configuration, if available }
-      S:=IdfPath+'/libs/sdkconfig.h';
+      S:=idfpath+'/libs/sdkconfig.h';
       if SysUtils.FileExists(S) then
         writeln(t,'#include "'+S+'"')
       else
@@ -1103,13 +1103,13 @@ begin
       writeln(t,'    "COMPONENT_KCONFIGS_PROJBUILD": "Kconfig.projbuild",');
       writeln(t,'    "IDF_CMAKE": "y",');
       writeln(t,'    "IDF_TARGET": "esp32",');
-      writeln(t,'    "IDF_PATH": "'+IdfPath+'",');
+      writeln(t,'    "IDF_PATH": "'+idfpath+'",');
       writeln(t,'    "COMPONENT_KCONFIGS_SOURCE_FILE": "kconfigs.in",');
       writeln(t,'    "COMPONENT_KCONFIGS_PROJBUILD_SOURCE_FILE": "kconfigs_projbuild.in"');
     end
   else
     begin
-      writeln(t,'    "IDF_PATH": "'+IdfPath+'",');
+      writeln(t,'    "IDF_PATH": "'+idfpath+'",');
       writeln(t,'    "IDF_TARGET": "esp8266",');
       writeln(t,'    "IDF_CMAKE": "n"');
     end;
@@ -1145,7 +1145,7 @@ begin
     cmdstr:='-C -P -x c -E -o esp32_out.ld -I . $IDF_PATH/components/esp32/ld/esp32.ld'
   else
     cmdstr:='-C -P -x c -E -o esp8266_out.ld -I . $IDF_PATH/components/esp8266/ld/esp8266.ld';
-  Replace(cmdstr,'$IDF_PATH',IdfPath);
+  Replace(cmdstr,'$IDF_PATH',idfpath);
   success:=DoExec(FindUtil(utilsprefix+binstr),cmdstr,true,true);
 
   { generate linker maps }
@@ -1181,8 +1181,8 @@ begin
             '--libraries-file ldgen_libraries '+
             '--objdump xtensa-lx106-elf-objdump';
 
-  Replace(binstr,'$IDF_PATH',IdfPath);
-  Replace(cmdstr,'$IDF_PATH',IdfPath);
+  Replace(binstr,'$IDF_PATH',idfpath);
+  Replace(cmdstr,'$IDF_PATH',idfpath);
   if success and not(cs_link_nolink in current_settings.globalswitches) then
     success:=DoExec(binstr,cmdstr,true,false);
 
@@ -1195,10 +1195,10 @@ begin
        '-L $IDF_PATH/components/esp32/ld -T esp32.peripherals.ld'
   else
     Info.ExeCmd[1] := Info.ExeCmd[1]+' -u call_user_start -u g_esp_sys_info -u _printf_float -u _scanf_float '+
-      '-L $IDF_PATH/components/esp8266/ld -T esp8266.peripherals.ld -T esp8266.rom.ld '+ // SDK scripts
-      '-L . -T esp8266_out.ld -T esp8266.project.ld'; // Project scripts
+      '-L $IDF_PATH/components/esp8266/ld -T esp8266.peripherals.ld -T esp8266.rom.ld '+ { SDK scripts }
+      '-L . -T esp8266_out.ld -T esp8266.project.ld'; { Project scripts }
 
-  Replace(Info.ExeCmd[1],'$IDF_PATH',IdfPath);
+  Replace(Info.ExeCmd[1],'$IDF_PATH',idfpath);
 {$endif XTENSA}
 
   FixedExeFileName:=maybequoted(ScriptFixFileName(ChangeFileExt(current_module.exefilename,'.elf')));
@@ -1216,9 +1216,6 @@ begin
 { Call linker }
   SplitBinCmd(Info.ExeCmd[1],binstr,cmdstr);
   Replace(cmdstr,'$OPT',Info.ExtraOptions);
-{$ifdef XTENSA}
-  Replace(cmdstr,'$'+IdfPath,IdfPath);
-{$endif}
   if not(cs_link_on_target in current_settings.globalswitches) then
    begin
     Replace(cmdstr,'$EXE',FixedExeFileName);
@@ -1253,7 +1250,7 @@ begin
 {$ifdef XTENSA}
   if success then
    begin
-      binstr:=IdfPath+'/components/esptool_py/esptool/esptool.py';
+      binstr:=idfpath+'/components/esptool_py/esptool/esptool.py';
       if (current_settings.controllertype = ct_esp32) then
         begin
           success:=DoExec(binstr,'--chip esp32 elf2image --flash_mode dio --flash_freq 40m '+
