@@ -746,57 +746,72 @@ end;
             case target_info.abi of
               abi_xtensa_call0:
                 begin
-                  if current_procinfo.framepointer<>NR_STACK_POINTER_REG then
-                    Include(regs,RS_A15);
-                  if pi_do_call in current_procinfo.flags then
-                    Include(regs,RS_A0);
+                { Configure stack as follows:
+
+                  -------- Top of frame ---------
+                  temps/params/return
+                  .
+                  .                         <- FP
+                  -------- Reg save area --------
+                  a15 (caller FP)
+                  a0  (return address)
+                  other regs
+                  .
+                  .                         <- SP
+                  --------- Below frame --------- }
+
+                  if (localsize<>0) then
+                    localsize:=align(localsize,current_settings.alignment.localalignmax);
+                  // Store caller FP (a15) at FP-4, return addresss (a0) at FP-8, followed by rest of regs
+                  Include(regs,RS_A15);
+                  Include(regs,RS_A0);
+                  registerarea:=2*4;
+                  // SP is always live, no need to save/restore
                   if regs<>[] then
                      begin
-                       for r:=RS_A0 to RS_A15 do
+                       for r:=RS_A2 to RS_A14 do
                          if r in regs then
                            inc(registerarea,4);
+                       registerarea:=align(registerarea,current_settings.alignment.localalignmax);
                      end;
 
-                  inc(localsize,registerarea);
-                  if LocalSize<>0 then
+                  if (LocalSize<>0) or (registerarea <> 0) then
                     begin
-                      localsize:=align(localsize,current_settings.alignment.localalignmax);
-                      a_reg_alloc(list,NR_STACK_POINTER_REG);
-                      list.concat(taicpu.op_reg_reg_const(A_ADDI,NR_STACK_POINTER_REG,NR_STACK_POINTER_REG,-localsize));
+                      list.concat(taicpu.op_reg_reg_const(A_ADDI,NR_STACK_POINTER_REG,NR_STACK_POINTER_REG,-(localsize+registerarea)));
+                      // Store previous FP at SP+registerarea
+                      list.concat(taicpu.op_reg_reg_const(A_S32i,NR_FRAME_POINTER_REG,NR_STACK_POINTER_REG,registerarea-4));
+                      // Store previous PC at SP+registerarea-4
+                      list.concat(taicpu.op_reg_reg_const(A_S32i,NR_A0,NR_STACK_POINTER_REG,registerarea-8));
+                      // Update FP to new frame
+                      list.concat(taicpu.op_reg_reg_const(A_ADDI,NR_FRAME_POINTER_REG,NR_STACK_POINTER_REG,registerarea));
+                      // Subtract 2 saved registers
+                      dec(registerarea, 2*4);
+                    end;
+                  if regs<>[] then
+                    begin
+                      // a0 & a15 already accounted for above
+                      for r:=RS_A14 downto RS_A2 do
+                        if r in regs then
+                          begin
+                            dec(registerarea,4);
+                            list.concat(taicpu.op_reg_reg_const(A_S32I,newreg(R_INTREGISTER,r,R_SUBWHOLE),NR_STACK_POINTER_REG,registerarea));
+                          end;
                     end;
 
                   reference_reset(ref,4,[]);
-                  ref.base:=NR_STACK_POINTER_REG;
+                  ref.base:=NR_FRAME_POINTER_REG;
                   ref.offset:=localsize;
                   if ref.offset>1024 then
                     begin
                       if ref.offset<=1024+32512 then
                         begin
-                          list.concat(taicpu.op_reg_reg_const(A_ADDMI,NR_A8,NR_STACK_POINTER_REG,ref.offset and $fffffc00));
+                          list.concat(taicpu.op_reg_reg_const(A_ADDMI,NR_A8,NR_FRAME_POINTER_REG,ref.offset and $fffffc00));
                           ref.offset:=ref.offset and $3ff;
                           ref.base:=NR_A8;
                         end
                       else
                         { fix me! }
                         Internalerror(2020031101);
-                    end;
-
-                  if current_procinfo.framepointer<>NR_STACK_POINTER_REG then
-                    begin
-                      dec(ref.offset,4);
-                      list.concat(taicpu.op_reg_ref(A_S32I,NR_A15,ref));
-                      a_reg_alloc(list,NR_FRAME_POINTER_REG);
-                      list.concat(taicpu.op_reg_reg(A_MOV,NR_A15,NR_STACK_POINTER_REG));
-                    end;
-
-                  if regs<>[] then
-                    begin
-                      for r:=RS_A14 downto RS_A0 do
-                        if r in regs then
-                          begin
-                            dec(ref.offset,4);
-                            list.concat(taicpu.op_reg_ref(A_S32I,newreg(R_INTREGISTER,r,R_SUBWHOLE),ref));
-                          end;
                     end;
                 end;
               abi_xtensa_windowed:
@@ -841,7 +856,7 @@ end;
             end;
           end
         else if target_info.abi=abi_xtensa_windowed then
-          list.concat(taicpu.op_reg_const(A_ENTRY,NR_STACK_POINTER_REG,0));
+          list.concat(taicpu.op_reg_const(A_ENTRY,NR_STACK_POINTER_REG,16));
       end;
 
 
@@ -854,7 +869,7 @@ end;
          stackmisalignment : pint;
          regoffset : LongInt;
          stack_parameters : Boolean;
-         registerarea : PtrInt;
+         registersize, registeroffset : PtrInt;
          l : TAsmLabel;
          LocalSize: longint;
       begin
@@ -867,66 +882,42 @@ end;
                 begin
                   LocalSize:=current_procinfo.calc_stackframe_size;
                   LocalSize:=align(LocalSize,4);
-                  stack_parameters:=current_procinfo.procdef.stack_tainting_parameter(calleeside);
-                  registerarea:=0;
+                  if LocalSize<>0 then
+                    localsize:=align(localsize,current_settings.alignment.localalignmax);
+
+                  registersize:=0;
                   regs:=rg[R_INTREGISTER].used_in_proc-paramanager.get_volatile_registers_int(pocall_stdcall);
-                  if current_procinfo.framepointer<>NR_STACK_POINTER_REG then
-                    Include(regs,RS_A15);
-                  if pi_do_call in current_procinfo.flags then
-                    Include(regs,RS_A0);
+                  Include(regs,RS_A15);
+                  Include(regs,RS_A0);
                   if regs<>[] then
                      begin
                        for r:=RS_A0 to RS_A15 do
                          if r in regs then
-                           inc(registerarea,4);
+                           inc(registersize,4);
+                       registersize:=align(registersize,current_settings.alignment.localalignmax);
                      end;
-                  inc(localsize,registerarea);
 
-                  if LocalSize<>0 then
+                  // Restore FP, PC
+                  registeroffset:=registersize;
+                  dec(registeroffset,4);
+                  list.concat(taicpu.op_reg_reg_const(A_L32I,NR_A15,NR_STACK_POINTER_REG, registeroffset));
+                  dec(registeroffset,4);
+                  list.concat(taicpu.op_reg_reg_const(A_L32I,NR_A0,NR_STACK_POINTER_REG, registeroffset));
+
+                  // restore rest of registers
+                  if regs<>[] then
                     begin
-                      localsize:=align(localsize,current_settings.alignment.localalignmax);
-                      // Determine reference mode required to access stack
-                      reference_reset(ref,4,[]);
-                      ref.base:=NR_STACK_POINTER_REG;
-                      ref.offset:=localsize;
-                      if ref.offset>1024 then
-                        begin
-                          if ref.offset<=1024+32512 then
-                            begin
-                              // allocation done in proc_entry
-                              //list.concat(taicpu.op_reg_reg_const(A_ADDMI,NR_A8,NR_STACK_POINTER_REG,ref.offset and $fffffc00));
-                              ref.offset:=ref.offset and $3ff;
-                              ref.base:=NR_A8;
-                            end
-                          else
-                            { fix me! }
-                            Internalerror(2020031101);
-                        end;
-
-                      // restore a15 if used
-                      if current_procinfo.framepointer<>NR_STACK_POINTER_REG then
-                        begin
-                          dec(ref.offset,4);
-                          list.concat(taicpu.op_reg_ref(A_L32I,NR_A15,ref));
-                          a_reg_dealloc(list,NR_FRAME_POINTER_REG);
-                        end;
-
-                      // restore rest of registers
-                      if regs<>[] then
-                        begin
-                          for r:=RS_A14 downto RS_A0 do
-                            if r in regs then
-                              begin
-                                dec(ref.offset,4);
-                                list.concat(taicpu.op_reg_ref(A_L32I,newreg(R_INTREGISTER,r,R_SUBWHOLE),ref));
-                              end;
-                        end;
-
-                      // restore stack pointer
-                      list.concat(taicpu.op_reg_reg_const(A_ADDI,NR_STACK_POINTER_REG,NR_STACK_POINTER_REG,localsize));
-                      a_reg_dealloc(list,NR_STACK_POINTER_REG);
+                      for r:=RS_A14 downto RS_A2 do
+                        if r in regs then
+                          begin
+                            dec(registeroffset,4);
+                            list.concat(taicpu.op_reg_reg_const(A_L32I,newreg(R_INTREGISTER,r,R_SUBWHOLE),NR_STACK_POINTER_REG, registeroffset));
+                          end;
                     end;
-                  end;
+
+                  // restore stack pointer
+                  list.concat(taicpu.op_reg_reg_const(A_ADDI,NR_STACK_POINTER_REG,NR_STACK_POINTER_REG,localsize+registersize));
+                end;
               list.Concat(taicpu.op_none(A_RET));
             end
           else

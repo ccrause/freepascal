@@ -31,11 +31,20 @@ begin
     SysInitFPU;
 end;
 
-{$ifdef fpc_abi_windowed}
 const
-  // Minimum call8 calls to force register spilling to stack for caller of forceSpilledRegs
-  spillcount = 6;
+  {$ifdef fpc_abi_windowed}
+    { Minimum call8 calls to force register spilling to stack for caller of forceSpilledRegs }
+    spillcount = 6;
+    { Offsets relative to SP (a1) }
+    calleraddroffset = -16;
+    callerframeoffset = -12;
+  {$else fpc_abi_windowed}
+    { Offset relative to FP (a15) }
+    calleraddroffset = -8;
+    callerframeoffset = -4;
+  {$endif fpc_abi_windowed}
 
+{$ifdef fpc_abi_windowed}
 procedure forceSpilledRegs(n: uint32); assembler; public name 'forcespilledregs';
   label
     done, fin;
@@ -48,39 +57,36 @@ procedure forceSpilledRegs(n: uint32); assembler; public name 'forcespilledregs'
     movi a15, 0
     fin:
   end;
+{$endif fpc_abi_windowed}
 
 procedure fixCodeAddress(var addr: pointer);
   begin
-    // Check if valid code address
+    { Check if valid code address }
     if ptruint(addr) and $C0000000 >= $40000000 then
       begin
-        // Replace windowed call prefix
-        addr:=codepointer((ptruint(addr)and$00FFFFFF) or $40000000);
-        // Rewind to call instruction address
+        {$ifdef fpc_abi_windowed}
+          { Replace windowed call prefix }
+          addr:=codepointer((ptruint(addr)and$00FFFFFF) or $40000000);
+        {$endif fpc_abi_windowed}
+        { Rewind to call instruction address }
         dec(addr,3);
       end
     else
       addr:=nil;
   end;
-{$endif fpc_abi_windowed}
 
 {$IFNDEF INTERNAL_BACKTRACE}
   {$define FPC_SYSTEM_HAS_GET_FRAME}
   function get_frame:pointer;assembler;
-    label
-      done;
     asm
       {$ifdef fpc_abi_windowed}
-        // Force registers to spill onto stack
+        { Force registers to spill onto stack }
         movi a10, spillcount
         call8 forcespilledregs
-        // now get frame pointer of caller
-        addi a2, a1, -12
-        l32i a2, a2, 0
-        done:
-      {$else}
-        mov a2, a1
       {$endif}
+      { get frame pointer of caller }
+      addi a2, {$ifdef fpc_abi_windowed}a1{$else}a15{$endif}, callerframeoffset
+      l32i a2, a2, 0
     end;
 {$ENDIF not INTERNAL_BACKTRACE}
 
@@ -90,53 +96,49 @@ function get_caller_addr(framebp:pointer;addr:pointer=nil):pointer;
   begin
     {$ifdef fpc_abi_windowed}
       forceSpilledRegs(spillcount);
-      if (ptruint(framebp)>$3ff00000)and(ptruint(framebp)<$40000000) then
-        begin
-          get_caller_addr:=pointer((framebp-16)^);
-          fixCodeAddress(get_caller_addr);
-        end
-      else
-        get_caller_addr:=nil;
-    {$else}
+    {$endif fpc_abi_windowed}
+    if (ptruint(framebp)>$3ff00000)and(ptruint(framebp)<$40000000) then
+      begin
+        get_caller_addr:=pointer((framebp+calleraddroffset)^);
+        fixCodeAddress(get_caller_addr);
+      end
+    else
       get_caller_addr:=nil;
-    {$endif}
   end;
 
 {$define FPC_SYSTEM_HAS_GET_CALLER_FRAME}
 function get_caller_frame(framebp:pointer;addr:pointer=nil):pointer;
   begin
-    {$ifdef fpc_abi_windowed}
-      if (ptruint(framebp)>$3ff00000)and(ptruint(framebp)<$40000000) then
-        begin
+    if (ptruint(framebp)>$3ff00000)and(ptruint(framebp)<$40000000) then
+      begin
+        {$ifdef fpc_abi_windowed}
           forceSpilledRegs(spillcount);
-          get_caller_frame:=pointer((framebp-12)^);
-        end
-      else
-        get_caller_frame:=nil;
-    {$else}
+        {$endif fpc_abi_windowed}
+        get_caller_frame:=pointer((framebp+callerframeoffset)^);
+      end
+    else
       get_caller_frame:=nil;
-    {$endif}
   end;
 
 
-{$ifdef fpc_abi_windowed}
-  {$define FPC_SYSTEM_HAS_GET_CALLER_STACKINFO}
-  procedure get_caller_stackinfo(var framebp : pointer; var addr : codepointer);
-    begin
-      if (ptruint(framebp)>$3ff00000)and(ptruint(framebp)<$40000000) then
-        begin
+{$define FPC_SYSTEM_HAS_GET_CALLER_STACKINFO}
+procedure get_caller_stackinfo(var framebp : pointer; var addr : codepointer);
+  begin
+    if (ptruint(framebp)>$3ff00000)and(ptruint(framebp)<$40000000) then
+      begin
+        {$ifdef fpc_abi_windowed}
           forceSpilledRegs(spillcount);
-          addr:=codepointer((framebp-16)^);
-          framebp := pointer((framebp-12)^);
-          fixCodeAddress(addr);
-        end
-      else
-        begin
-          addr:=nil;
-          framebp:=nil;
-        end;
-    end;
-{$endif fpc_abi_windowed}
+        {$endif fpc_abi_windowed}
+        addr:=codepointer((framebp+calleraddroffset)^);
+        framebp := pointer((framebp+callerframeoffset)^);
+        fixCodeAddress(addr);
+      end
+    else
+      begin
+        addr:=nil;
+        framebp:=nil;
+      end;
+  end;
 
 {$define FPC_SYSTEM_HAS_SPTR}
 Function Sptr : pointer; assembler;
