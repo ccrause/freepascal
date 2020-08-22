@@ -84,7 +84,7 @@ interface
   implementation
 
     uses
-      cutils,globals,systems,
+      cutils,globals,systems,fpccrc,
       fmodule,finput,verbose,cpuinfo,cgbase,omfbase
       ;
 
@@ -306,7 +306,7 @@ interface
         if current_settings.x86memorymodel in x86_far_code_models then
           begin
             if cs_huge_code in current_settings.moduleswitches then
-              result:=aname + '_TEXT'
+              result:=TrimStrCRC32(aname,30) + '_TEXT'
             else
               result:=current_module.modulename^ + '_TEXT';
           end
@@ -572,14 +572,14 @@ interface
         if (atype in [sec_rodata,sec_rodata_norel]) and
           (target_info.system=system_i386_go32v2) then
           writer.AsmWrite('.data')
-        else if (atype=sec_user) then
-          writer.AsmWrite(aname)
         else if (atype=sec_threadvar) and
           (target_info.system in (systems_windows+systems_wince)) then
           writer.AsmWrite('.tls'#9'bss')
         else if target_info.system in [system_i8086_msdos,system_i8086_win16,system_i8086_embedded] then
           begin
-            if secnames[atype]='.text' then
+            if (atype=sec_user) then
+              secname:=aname
+            else if secnames[atype]='.text' then
               secname:=CodeSectionName(aname)
             else if omf_segclass(atype)='FAR_DATA' then
               secname:=current_module.modulename^ + '_DATA'
@@ -604,6 +604,8 @@ interface
                   AddSegmentToGroup(secgroup,secname);
               end;
           end
+        else if (atype=sec_user) then
+          writer.AsmWrite(aname)
         else if secnames[atype]='.text' then
           writer.AsmWrite(CodeSectionName(aname))
         else
@@ -1316,15 +1318,6 @@ interface
              end;
            ait_seh_directive :
              { Ignore for now };
-           ait_varloc:
-             begin
-               if tai_varloc(hp).newlocationhi<>NR_NO then
-                 writer.AsmWriteLn(asminfo^.comment+'Var '+tai_varloc(hp).varsym.realname+' located in register '+
-                   std_regname(tai_varloc(hp).newlocationhi)+':'+std_regname(tai_varloc(hp).newlocation))
-               else
-                 writer.AsmWriteLn(asminfo^.comment+'Var '+tai_varloc(hp).varsym.realname+' located in register '+
-                   std_regname(tai_varloc(hp).newlocation));
-             end;
            else
              internalerror(10000);
          end;
