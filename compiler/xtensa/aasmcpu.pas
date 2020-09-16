@@ -106,6 +106,8 @@ uses
     function spilling_create_load(const ref:treference;r:tregister):Taicpu;
     function spilling_create_store(r:tregister; const ref:treference):Taicpu;
 
+    function setoppostfix(i : taicpu;pf : toppostfix) : taicpu;
+
 implementation
 
 uses cutils, cclasses;
@@ -441,10 +443,20 @@ uses cutils, cclasses;
         else
           result := operand_read;
         case opcode of
+          A_CALL0,
+          A_CALL4,
+          A_CALL8,
+          A_CALL12,
+          A_CALLX0,
+          A_CALLX4,
+          A_CALLX8,
+          A_CALLX12,
           A_S8I,
           A_S16I,
           A_S32I,
           A_SSI,
+          A_J,
+          A_JX,
           A_B:
             result := operand_read;
           else
@@ -482,6 +494,13 @@ uses cutils, cclasses;
           else
             internalerror(2020030701);
         end;
+      end;
+
+
+    function setoppostfix(i : taicpu;pf : toppostfix) : taicpu;
+      begin
+        i.oppostfix:=pf;
+        result:=i;
       end;
 
 

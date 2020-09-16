@@ -46,40 +46,26 @@ unit esp32;
     function getchar : char;external;
     function __getreent : pointer;external;
     procedure fflush(f : pointer);external;
+    procedure vTaskDelay(xTicksToDelay: uint32); external;
 
-    procedure printpchar(p : pchar);
+    procedure flushOutput(var t : TextRec);
       begin
-        while p^<>#0 do
-           begin
-             putchar(p^);
-             inc(p);
-           end;
-        fflush(ppointer(__getreent+8)^);
-      end;
-
-
-    procedure printdword(d : dword);
-      const
-        s = '0123456789ABCDEF';
-      var
-        i : longint;
-      begin
-        for i:=1 to 8 do
-           begin
-             putchar(s[(d and $f)+1]);
-             d:=d shr 4;
-           end;
         fflush(ppointer(__getreent+8)^);
       end;
 
 
     procedure _FPC_haltproc; public name '_haltproc';noreturn;
       begin
-        printpchar('_haltproc called, going to deep sleep, exit code: $');
-        printdword(operatingsystem_result);
-        printpchar(#10);
-        while true do
-           esp_deep_sleep_start;
+        if operatingsystem_result <> 0 then
+          writeln('Runtime error ', operatingsystem_result);
+
+        writeln('_haltproc called, exit code: ',operatingsystem_result);
+        flushOutput(TextRec(Output));
+        repeat
+          // Allow other tasks to run
+          // Do not enter deep sleep, can lead to problems with flashing
+          vTaskDelay(1000);
+        until false;
       end;
 
 
@@ -88,6 +74,7 @@ unit esp32;
         PASCALMAIN;
         _FPC_haltproc;
       end;
+
 
     function WriteChar(ACh: char; AUserData: pointer): boolean;
       begin

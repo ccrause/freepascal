@@ -17,9 +17,11 @@ type
     // generic record
     Procedure TestGen_RecordEmpty;
     Procedure TestGen_Record_ClassProc;
-    Procedure TestGen_Record_AsClassVar_Program;
-    Procedure TestGen_Record_AsClassVar_UnitImpl; // ToDo
-    // ToDo: delay using recNewS
+    Procedure TestGen_Record_ClassVarRecord_Program;
+    Procedure TestGen_Record_ClassVarRecord_UnitImpl;
+    Procedure TestGen_Record_RTTI_UnitImpl;
+    // ToDo: delay RTTI with anonymous array  a:array of T, array[1..2] of T
+    // ToDo: type alias type as parameter, TBird = type word;
 
     // generic class
     Procedure TestGen_ClassEmpty;
@@ -38,12 +40,14 @@ type
     procedure TestGen_Class_VarArgsOfType;
     procedure TestGen_Class_OverloadsInUnit;
     procedure TestGen_ClassForward_CircleRTTI;
+    Procedure TestGen_Class_ClassVarRecord_UnitImpl;
 
     // generic external class
     procedure TestGen_ExtClass_Array;
     procedure TestGen_ExtClass_GenJSValueAssign;
     procedure TestGen_ExtClass_AliasMemberType;
     Procedure TestGen_ExtClass_RTTI;
+    procedure TestGen_ExtClass_UnitImplRec;
 
     // class interfaces
     procedure TestGen_ClassInterface_Corba;
@@ -67,11 +71,18 @@ type
     procedure TestGenProc_TypeInfo;
     procedure TestGenProc_Infer_Widen;
     procedure TestGenProc_Infer_PassAsArg;
-    // ToDo: delay create: type TRec=record end; ... r:=GenProc<TRec>();
     // ToDo: FuncName:= instead of Result:=
 
     // generic methods
     procedure TestGenMethod_ObjFPC;
+
+    // generic array
+    procedure TestGen_ArrayOfUnitImplRec;
+
+    // generic procedure type
+    procedure TestGen_ProcType_ProcLocal;
+    procedure TestGen_ProcType_Local_RTTI_Fail;
+    procedure TestGen_ProcType_ParamUnitImpl;
   end;
 
 implementation
@@ -157,7 +168,7 @@ begin
     '']));
 end;
 
-procedure TTestGenerics.TestGen_Record_AsClassVar_Program;
+procedure TTestGenerics.TestGen_Record_ClassVarRecord_Program;
 begin
   StartProgram(false);
   Add([
@@ -174,7 +185,7 @@ begin
   '  f.x.b:=f.x.b+10;',
   '']);
   ConvertProgram;
-  CheckSource('TestGen_Record_AsClassVar_Program',
+  CheckSource('TestGen_Record_ClassVarRecord_Program',
     LinesToStr([ // statements
     'rtl.recNewT($mod, "TBird", function () {',
     '  this.b = 0;',
@@ -202,17 +213,19 @@ begin
     '']));
 end;
 
-procedure TTestGenerics.TestGen_Record_AsClassVar_UnitImpl;
+procedure TTestGenerics.TestGen_Record_ClassVarRecord_UnitImpl;
 begin
-  StartUnit(true);
-  Add([
-  'interface',
+  StartProgram(true,[supTObject]);
+  AddModuleWithIntfImplSrc('UnitA.pas',
+  LinesToStr([
   '{$modeswitch AdvancedRecords}',
   'type',
   '  generic TAnt<T> = record',
   '    class var x: T;',
+  '    class var a: array[1..2] of T;',
   '  end;',
-  'implementation',
+  '']),
+  LinesToStr([
   'type',
   '  TBird = record',
   '    b: word;',
@@ -220,13 +233,86 @@ begin
   'var f: specialize TAnt<TBird>;',
   'begin',
   '  f.x.b:=f.x.b+10;',
+  '']));
+  Add([
+  'uses UnitA;',
+  'begin',
+  'end.']);
+  ConvertProgram;
+  CheckUnit('UnitA.pas',
+    LinesToStr([ // statements
+    'rtl.module("UnitA", ["system"], function () {',
+    '  var $mod = this;',
+    '  var $impl = $mod.$impl;',
+    '  rtl.recNewT($mod, "TAnt$G1", function () {',
+    '    this.$initSpec = function () {',
+    '      this.x = $impl.TBird.$new();',
+    '      this.a = rtl.arraySetLength(null, $impl.TBird, 2);',
+    '    };',
+    '    this.$eq = function (b) {',
+    '      return true;',
+    '    };',
+    '    this.$assign = function (s) {',
+    '    return this;',
+    '    };',
+    '  }, true);',
+    '  $mod.$implcode = function () {',
+    '    rtl.recNewT($impl, "TBird", function () {',
+    '      this.b = 0;',
+    '      this.$eq = function (b) {',
+    '        return this.b === b.b;',
+    '      };',
+    '      this.$assign = function (s) {',
+    '        this.b = s.b;',
+    '        return this;',
+    '      };',
+    '    });',
+    '    $impl.f = $mod.TAnt$G1.$new();',
+    '  };',
+    '  $mod.$init = function () {',
+    '    $impl.f.x.b = $impl.f.x.b + 10;',
+    '  };',
+    '}, []);']));
+  CheckSource('TestGen_Record_ClassVarRecord_UnitImpl',
+    LinesToStr([ // statements
+    'pas.UnitA.TAnt$G1.$initSpec();',
+    '']),
+    LinesToStr([ // $mod.$main
+    '']));
+end;
+
+procedure TTestGenerics.TestGen_Record_RTTI_UnitImpl;
+begin
+  WithTypeInfo:=true;
+  StartUnit(true);
+  Add([
+  'interface',
+  '{$modeswitch AdvancedRecords}',
+  'type',
+  '  generic TAnt<T> = record',
+  '    class var x: T;',
+  //'    class var a,b: array of T;',
+  '  end;',
+  'implementation',
+  'type',
+  '  TBird = record',
+  '    b: word;',
+  '  end;',
+  'var f: specialize TAnt<TBird>;',
+  '  p: pointer;',
+  'begin',
+  '  p:=typeinfo(f);',
   '']);
   ConvertUnit;
-  CheckSource('TestGen_Record_AsClassVar_UnitImpl',
+  CheckSource('TestGen_Record_RTTI_UnitImpl',
     LinesToStr([ // statements
     'var $impl = $mod.$impl;',
     'rtl.recNewT($mod, "TAnt$G1", function () {',
-    '  this.x = $impl.TBird.$new();',
+    '  var $r = $mod.$rtti.$Record("TAnt<Test1.TBird>", {});',
+    '  this.$initSpec = function () {',
+    '    this.x = $impl.TBird.$new();',
+    '    $r.addField("x", $mod.$rtti["TBird"]);',
+    '  };',
     '  this.$eq = function (b) {',
     '    return true;',
     '  };',
@@ -236,7 +322,7 @@ begin
     '}, true);',
     '']),
     LinesToStr([ // $mod.$init
-    '  $impl.f.x.b = $impl.f.x.b + 10;',
+    '$impl.p = $mod.$rtti["TAnt<Test1.TBird>"];',
     '']),
     LinesToStr([ // statements
     'rtl.recNewT($impl, "TBird", function () {',
@@ -248,9 +334,11 @@ begin
     '    this.b = s.b;',
     '    return this;',
     '  };',
+    '  var $r = $mod.$rtti.$Record("TBird", {});',
+    '  $r.addField("b", rtl.word);',
     '});',
-    //'$mod.TAnt$G1();',
     '$impl.f = $mod.TAnt$G1.$new();',
+    '$impl.p = null;',
     '']));
 end;
 
@@ -489,7 +577,7 @@ end;
 
 procedure TTestGenerics.TestGen_Class_TypeInfo;
 begin
-  Converter.Options:=Converter.Options-[coNoTypeInfo];
+  WithTypeInfo:=true;
   StartProgram(false);
   Add([
   'type',
@@ -509,7 +597,7 @@ begin
   ConvertProgram;
   CheckSource('TestGen_Class_TypeInfo',
     LinesToStr([ // statements
-    '$mod.$rtti.$Class("TBird$G1");',
+    '$mod.$rtti.$Class("TBird<System.Word>");',
     'rtl.createClass($mod, "TObject", null, function () {',
     '  this.$init = function () {',
     '  };',
@@ -523,12 +611,12 @@ begin
     '  };',
     '  var $r = this.$rtti;',
     '  $r.addField("m", rtl.word);',
-    '});',
+    '}, "TBird<System.Word>");',
     'this.b = null;',
     'this.p = null;',
     '']),
     LinesToStr([ // $mod.$main
-    '$mod.p = $mod.$rtti["TBird$G1"];',
+    '$mod.p = $mod.$rtti["TBird<System.Word>"];',
     '$mod.p = $mod.b.$rtti;',
     '']));
 end;
@@ -781,7 +869,7 @@ begin
     LinesToStr([ // $mod.$main
     '$mod.w = $mod.c;',
     '']));
-  CheckHint(mtWarning,nClassTypesAreNotRelatedXY,'Class types "TBird$G2<Char>" and "TBird$G1<Word>" are not related');
+  CheckHint(mtWarning,nClassTypesAreNotRelatedXY,'Class types "TBird<System.Char>" and "TBird<System.Word>" are not related');
   CheckResolverUnexpectedHints();
 end;
 
@@ -952,7 +1040,7 @@ end;
 
 procedure TTestGenerics.TestGen_ClassForward_CircleRTTI;
 begin
-  Converter.Options:=Converter.Options-[coNoTypeInfo];
+  WithTypeInfo:=true;
   StartProgram(false);
   Add([
   '{$mode objfpc}',
@@ -982,8 +1070,8 @@ begin
   ConvertProgram;
   CheckSource('TestGen_ClassForward_CircleRTTI',
     LinesToStr([ // statements
-    '$mod.$rtti.$Class("TAnt$G2");',
-    '$mod.$rtti.$Class("TFish$G2");',
+    '$mod.$rtti.$Class("TAnt<System.Word>");',
+    '$mod.$rtti.$Class("TFish<System.Word>");',
     'rtl.createClass($mod, "TObject", null, function () {',
     '  this.$init = function () {',
     '  };',
@@ -1002,8 +1090,8 @@ begin
     '    $mod.TPersistent.$final.call(this);',
     '  };',
     '  var $r = this.$rtti;',
-    '  $r.addField("f", $mod.$rtti["TFish$G2"]);',
-    '});',
+    '  $r.addField("f", $mod.$rtti["TFish<System.Word>"]);',
+    '}, "TAnt<System.Word>");',
     'rtl.createClass($mod, "TFish$G2", $mod.TPersistent, function () {',
     '  this.$init = function () {',
     '    $mod.TPersistent.$init.call(this);',
@@ -1014,14 +1102,76 @@ begin
     '    $mod.TPersistent.$final.call(this);',
     '  };',
     '  var $r = this.$rtti;',
-    '  $r.addField("a", $mod.$rtti["TAnt$G2"]);',
-    '});',
+    '  $r.addField("a", $mod.$rtti["TAnt<System.Word>"]);',
+    '}, "TFish<System.Word>");',
     'this.WordFish = null;',
     'this.p = null;',
     '']),
     LinesToStr([ // $mod.$main
-    '$mod.p = $mod.$rtti["TAnt$G2"];',
-    '$mod.p = $mod.$rtti["TFish$G2"];',
+    '$mod.p = $mod.$rtti["TAnt<System.Word>"];',
+    '$mod.p = $mod.$rtti["TFish<System.Word>"];',
+    '']));
+end;
+
+procedure TTestGenerics.TestGen_Class_ClassVarRecord_UnitImpl;
+begin
+  StartProgram(true,[supTObject]);
+  AddModuleWithIntfImplSrc('UnitA.pas',
+  LinesToStr([
+  'type',
+  '  generic TAnt<T> = class',
+  '  public',
+  '    class var x: T;',
+  '    class var a: array[1..2] of T;',
+  '  end;',
+  '']),
+  LinesToStr([
+  'type',
+  '  TBird = record',
+  '    b: word;',
+  '  end;',
+  'var f: specialize TAnt<TBird>;',
+  'begin',
+  '  f.x.b:=f.x.b+10;',
+  '']));
+  Add([
+  'uses UnitA;',
+  'begin',
+  'end.']);
+  ConvertProgram;
+  CheckUnit('UnitA.pas',
+    LinesToStr([ // statements
+    'rtl.module("UnitA", ["system"], function () {',
+    '  var $mod = this;',
+    '  var $impl = $mod.$impl;',
+    '  rtl.createClass($mod, "TAnt$G1", pas.system.TObject, function () {',
+    '    this.$initSpec = function () {',
+    '      this.x = $impl.TBird.$new();',
+    '      this.a = rtl.arraySetLength(null, $impl.TBird, 2);',
+    '    };',
+    '  });',
+    '  $mod.$implcode = function () {',
+    '    rtl.recNewT($impl, "TBird", function () {',
+    '      this.b = 0;',
+    '      this.$eq = function (b) {',
+    '        return this.b === b.b;',
+    '      };',
+    '      this.$assign = function (s) {',
+    '        this.b = s.b;',
+    '        return this;',
+    '      };',
+    '    });',
+    '    $impl.f = null;',
+    '  };',
+    '  $mod.$init = function () {',
+    '    $impl.f.x.b = $impl.f.x.b + 10;',
+    '  };',
+    '}, []);']));
+  CheckSource('TestGen_Class_ClassVarRecord_UnitImpl',
+    LinesToStr([ // statements
+    'pas.UnitA.TAnt$G1.$initSpec();',
+    '']),
+    LinesToStr([ // $mod.$main
     '']));
 end;
 
@@ -1144,7 +1294,7 @@ end;
 
 procedure TTestGenerics.TestGen_ExtClass_RTTI;
 begin
-  Converter.Options:=Converter.Options-[coNoTypeInfo];
+  WithTypeInfo:=true;
   StartProgram(false);
   Add([
   '{$mode objfpc}',
@@ -1162,16 +1312,79 @@ begin
   ConvertProgram;
   CheckSource('TestGen_ExtClass_RTTI',
     LinesToStr([ // statements
-    '$mod.$rtti.$ExtClass("TGJSSET$G1", {',
+    '$mod.$rtti.$ExtClass("TGJSSET<System.JSValue>", {',
     '  jsclass: "SET"',
     '});',
     '$mod.$rtti.$RefToProcVar("TJSSetEventProc", {',
-    '  procsig: rtl.newTIProcSig([["value", rtl.jsvalue], ["key", rtl.nativeint], ["set_", $mod.$rtti["TGJSSET$G1"]]])',
+    '  procsig: rtl.newTIProcSig([["value", rtl.jsvalue], ["key", rtl.nativeint], ["set_", $mod.$rtti["TGJSSET<System.JSValue>"]]])',
     '});',
     'this.p = null;',
     '']),
     LinesToStr([ // $mod.$main
     '$mod.p = $mod.$rtti["TJSSetEventProc"];',
+    '']));
+end;
+
+procedure TTestGenerics.TestGen_ExtClass_UnitImplRec;
+begin
+  WithTypeInfo:=true;
+  StartProgram(true,[supTObject]);
+  AddModuleWithIntfImplSrc('UnitA.pas',
+  LinesToStr([
+  '{$mode objfpc}',
+  '{$modeswitch externalclass}',
+  'type',
+  '  generic TAnt<T> = class external name ''SET''',
+  '    x: T;',
+  '  end;',
+  '']),
+  LinesToStr([
+  'type',
+  '  TBird = record',
+  '    b: word;',
+  '  end;',
+  'var',
+  '  f: specialize TAnt<TBird>;',
+  'begin',
+  '  f.x.b:=f.x.b+10;',
+  '']));
+  Add([
+  'uses UnitA;',
+  'begin',
+  'end.']);
+  ConvertProgram;
+  CheckUnit('UnitA.pas',
+    LinesToStr([ // statements
+    'rtl.module("UnitA", ["system"], function () {',
+    '  var $mod = this;',
+    '  var $impl = $mod.$impl;',
+    '  $mod.$rtti.$ExtClass("TAnt<UnitA.TBird>", {',
+    '    jsclass: "SET"',
+    '  });',
+    '  $mod.$implcode = function () {',
+    '    rtl.recNewT($impl, "TBird", function () {',
+    '      this.b = 0;',
+    '      this.$eq = function (b) {',
+    '        return this.b === b.b;',
+    '      };',
+    '      this.$assign = function (s) {',
+    '        this.b = s.b;',
+    '        return this;',
+    '      };',
+    '      var $r = $mod.$rtti.$Record("TBird", {});',
+    '      $r.addField("b", rtl.word);',
+    '    });',
+    '    $impl.f = null;',
+    '  };',
+    '  $mod.$init = function () {',
+    '    $impl.f.x.b = $impl.f.x.b + 10;',
+    '  };',
+    '}, []);']));
+  CheckSource('TestGen_Class_ClassVarRecord_UnitImpl',
+    LinesToStr([ // statements
+    //'pas.UnitA.TAnt$G1.$initSpec();',
+    '']),
+    LinesToStr([ // $mod.$main
     '']));
 end;
 
@@ -1216,7 +1429,7 @@ begin
     '  this.$final = function () {',
     '  };',
     '});',
-    'rtl.createInterface($mod, "IBird$G2", "{7D9907A1-5178-37B5-9D32-7BC020005905}", ["GetSize", "SetSize", "DoIt"], $mod.IUnknown);',
+    'rtl.createInterface($mod, "IBird$G2", "{33AB51C6-6240-3BDF-B4B0-D48A593EAB0A}", ["GetSize", "SetSize", "DoIt"], $mod.IUnknown);',
     'rtl.createClass($mod, "TBird$G1", $mod.TObject, function () {',
     '  rtl.addIntf(this, $mod.IBird$G2);',
     '});',
@@ -1344,15 +1557,14 @@ begin
     '      $impl.DoIt();',
     '    };',
     '  });',
-    '}, null, function () {',
-    '  var $mod = this;',
-    '  var $impl = $mod.$impl;',
-    '  $impl.DoIt = function () {',
-    '    var b = null;',
-    '    b = $mod.TBird$G2.$create("Create");',
-    '    b.Fly();',
+    '  $mod.$implcode = function () {',
+    '    $impl.DoIt = function () {',
+    '      var b = null;',
+    '      b = $mod.TBird$G2.$create("Create");',
+    '      b.Fly();',
+    '    };',
     '  };',
-    '});',
+    '}, []);',
     '']));
 end;
 
@@ -1663,7 +1875,7 @@ end;
 
 procedure TTestGenerics.TestGenProc_TypeInfo;
 begin
-  Converter.Options:=Converter.Options-[coNoTypeInfo];
+  WithTypeInfo:=true;
   StartProgram(true,[supTypeInfo]);
   Add([
   '{$modeswitch implicitfunctionspecialization}',
@@ -1822,6 +2034,199 @@ begin
     '$mod.o.Run$s0(1, true);',
     '$mod.o.Run$1s0(2, 3);',
     '$mod.o.Run$2s0("foo", "bar");',
+    '']));
+end;
+
+procedure TTestGenerics.TestGen_ArrayOfUnitImplRec;
+begin
+  WithTypeInfo:=true;
+  StartProgram(true,[supTObject]);
+  AddModuleWithIntfImplSrc('UnitA.pas',
+  LinesToStr([
+  'type',
+  '  generic TDyn<T> = array of T;',
+  '  generic TStatic<T> = array[1..2] of T;',
+  '']),
+  LinesToStr([
+  'type',
+  '  TBird = record',
+  '    b: word;',
+  '  end;',
+  'var',
+  '  d: specialize TDyn<TBird>;',
+  '  s: specialize TStatic<TBird>;',
+  'begin',
+  '  d[0].b:=s[1].b;',
+  '  s:=s;',
+  '']));
+  Add([
+  'uses UnitA;',
+  'begin',
+  '']);
+  ConvertProgram;
+  CheckUnit('UnitA.pas',
+    LinesToStr([ // statements
+    'rtl.module("UnitA", ["system"], function () {',
+    '  var $mod = this;',
+    '  var $impl = $mod.$impl;',
+    '  $mod.$rtti.$DynArray("TDyn<UnitA.TBird>", {});',
+    '  this.TStatic$G1$clone = function (a) {',
+    '    var r = [];',
+    '    for (var i = 0; i < 2; i++) r.push($impl.TBird.$clone(a[i]));',
+    '    return r;',
+    '  };',
+    '  $mod.$rtti.$StaticArray("TStatic<UnitA.TBird>", {',
+    '    dims: [2]',
+    '  });',
+    '  $mod.$implcode = function () {',
+    '    rtl.recNewT($impl, "TBird", function () {',
+    '      this.b = 0;',
+    '      this.$eq = function (b) {',
+    '        return this.b === b.b;',
+    '      };',
+    '      this.$assign = function (s) {',
+    '        this.b = s.b;',
+    '        return this;',
+    '      };',
+    '      var $r = $mod.$rtti.$Record("TBird", {});',
+    '      $r.addField("b", rtl.word);',
+    '    });',
+    '    $impl.d = [];',
+    '    $impl.s = rtl.arraySetLength(null, $impl.TBird, 2);',
+    '  };',
+    '  $mod.$init = function () {',
+    '    $impl.d[0].b = $impl.s[0].b;',
+    '    $impl.s = $mod.TStatic$G1$clone($impl.s);',
+    '  };',
+    '}, []);']));
+  CheckSource('TestGen_Class_ClassVarRecord_UnitImpl',
+    LinesToStr([ // statements
+    'pas.UnitA.$rtti["TDyn<UnitA.TBird>"].eltype = pas.UnitA.$rtti["TBird"];',
+    'pas.UnitA.$rtti["TStatic<UnitA.TBird>"].eltype = pas.UnitA.$rtti["TBird"];',
+    '']),
+    LinesToStr([ // $mod.$main
+    '']));
+end;
+
+procedure TTestGenerics.TestGen_ProcType_ProcLocal;
+begin
+  StartProgram(false);
+  Add([
+  'procedure Fly(w: word);',
+  'begin',
+  'end;',
+  'procedure Run(w: word);',
+  'type generic TProc<T> = procedure(a: T);',
+  'var p: specialize TProc<word>;',
+  'begin',
+  '  p:=@Fly;',
+  '  p(w);',
+  'end;',
+  'begin',
+  'end.']);
+  ConvertProgram;
+  CheckSource('TestGen_ProcType_ProcLocal',
+    LinesToStr([ // statements
+    'this.Fly = function (w) {',
+    '};',
+    'this.Run = function (w) {',
+    '  var p = null;',
+    '  p = $mod.Fly;',
+    '  p(w);',
+    '};',
+    '']),
+    LinesToStr([ // $mod.$main
+    '']));
+end;
+
+procedure TTestGenerics.TestGen_ProcType_Local_RTTI_Fail;
+begin
+  WithTypeInfo:=true;
+  StartProgram(false);
+  Add([
+  'procedure Fly(w: word);',
+  'begin',
+  'end;',
+  'procedure Run(w: word);',
+  'type generic TProc<T> = procedure(a: T);',
+  'var',
+  '  p: specialize TProc<word>;',
+  '  t: Pointer;',
+  'begin',
+  '  p:=@Fly;',
+  '  p(w);',
+  '  t:=typeinfo(p);',
+  'end;',
+  'begin',
+  'end.']);
+  SetExpectedPasResolverError(sSymbolCannotBePublished,nSymbolCannotBePublished);
+  ConvertProgram;
+end;
+
+procedure TTestGenerics.TestGen_ProcType_ParamUnitImpl;
+begin
+  WithTypeInfo:=true;
+  StartProgram(true,[supTObject]);
+  AddModuleWithIntfImplSrc('UnitA.pas',
+  LinesToStr([
+  'type',
+  '  generic TAnt<T> = function(const a: T): T;',
+  '']),
+  LinesToStr([
+  'type',
+  '  TBird = record',
+  '    b: word;',
+  '  end;',
+  'var',
+  '  f: specialize TAnt<TBird>;',
+  '  b: TBird;',
+  '  p: pointer;',
+  'begin',
+  '  b:=f(b);',
+  '  p:=typeinfo(f);',
+  '']));
+  Add([
+  'uses UnitA;',
+  'begin',
+  'end.']);
+  ConvertProgram;
+  CheckUnit('UnitA.pas',
+    LinesToStr([ // statements
+    'rtl.module("UnitA", ["system"], function () {',
+    '  var $mod = this;',
+    '  var $impl = $mod.$impl;',
+    '  $mod.$rtti.$ProcVar("TAnt<UnitA.TBird>", {',
+    '    init: function () {',
+    '      this.procsig = rtl.newTIProcSig([["a", $mod.$rtti["TBird"], 2]], $mod.$rtti["TBird"]);',
+    '    }',
+    '  });',
+    '  $mod.$implcode = function () {',
+    '    rtl.recNewT($impl, "TBird", function () {',
+    '      this.b = 0;',
+    '      this.$eq = function (b) {',
+    '        return this.b === b.b;',
+    '      };',
+    '      this.$assign = function (s) {',
+    '        this.b = s.b;',
+    '        return this;',
+    '      };',
+    '      var $r = $mod.$rtti.$Record("TBird", {});',
+    '      $r.addField("b", rtl.word);',
+    '    });',
+    '    $impl.f = null;',
+    '    $impl.b = $impl.TBird.$new();',
+    '    $impl.p = null;',
+    '  };',
+    '  $mod.$init = function () {',
+    '    $impl.b.$assign($impl.f($impl.b));',
+    '    $impl.p = $mod.$rtti["TAnt<UnitA.TBird>"];',
+    '  };',
+    '}, []);']));
+  CheckSource('TestGen_Class_ClassVarRecord_UnitImpl',
+    LinesToStr([ // statements
+    'pas.UnitA.$rtti["TAnt<UnitA.TBird>"].init();',
+    '']),
+    LinesToStr([ // $mod.$main
     '']));
 end;
 

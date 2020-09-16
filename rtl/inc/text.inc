@@ -472,6 +472,8 @@ Begin
           (reads = 1) then
          begin
            oldfilepos := Do_FilePos(TextRec(t).handle) - TextRec(t).BufEnd;
+           if InOutRes <> 0 then
+             isdevice := true;
            InOutRes:=0;
          end;
        FileFunc(TextRec(t).InOutFunc)(TextRec(t));
@@ -515,10 +517,15 @@ Begin
     { otherwise return to the old filepos and reset the buffer }
     else
       begin
+        InOutRes := 0;
         do_seek(TextRec(t).handle,oldfilepos);
-        InOutRes:=0;
-        FileFunc(TextRec(t).InOutFunc)(TextRec(t));
-        TextRec(t).BufPos:=oldbufpos;
+        if InOutRes = 0 then
+          begin
+            FileFunc(TextRec(t).InOutFunc)(TextRec(t));
+            TextRec(t).BufPos:=oldbufpos;
+          end
+        else
+          InOutRes:=0;
       end;
 End;
 

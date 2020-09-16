@@ -67,7 +67,7 @@ interface
        private
           { number of parameters passed from the source, this does not include the hidden parameters }
           paralength   : smallint;
-          function getforcedprocname: TSymStr;
+          function getoverrideprocnamedef: tprocdef; inline;
           function  is_simple_para_load(p:tnode; may_be_in_reg: boolean):boolean;
           procedure maybe_load_in_temp(var p:tnode);
           function  gen_high_tree(var p:tnode;paradef:tdef):tnode;
@@ -90,8 +90,10 @@ interface
           function  pass1_normal:tnode;
           procedure register_created_object_types;
           function get_expect_loc: tcgloc;
+
        protected
           function safe_call_self_node: tnode;
+          procedure load_in_temp(var p:tnode);
           procedure gen_vmt_entry_load; virtual;
           procedure gen_syscall_para(para: tcallparanode); virtual;
           procedure objc_convert_to_message_send;virtual;
@@ -123,12 +125,8 @@ interface
             to ppu, is set while processing the node). Also used on the JVM
             target for calling virtual methods, as this is name-based and not
             based on VMT entry locations }
-{$ifdef symansistr}
-          fforcedprocname: TSymStr;
-{$else symansistr}
-          fforcedprocname: pshortstring;
-{$endif symansistr}
-          property forcedprocname: TSymStr read getforcedprocname;
+          foverrideprocnamedef: tprocdef;
+          property overrideprocnamedef: tprocdef read getoverrideprocnamedef;
        public
           { the symbol containing the definition of the procedure }
           { to call                                               }
@@ -1655,9 +1653,6 @@ implementation
          call_vmt_node.free;
          vmt_entry.free;
          spezcontext.free;
-{$ifndef symansistr}
-         stringdispose(fforcedprocname);
-{$endif symansistr}
          inherited destroy;
       end;
 
@@ -1843,14 +1838,7 @@ implementation
          end
         else
          n.varargsparas:=nil;
-{$ifdef symansistr}
-        n.fforcedprocname:=fforcedprocname;
-{$else symansistr}
-        if assigned(fforcedprocname) then
-          n.fforcedprocname:=stringdup(fforcedprocname^)
-        else
-          n.fforcedprocname:=nil;
-{$endif symansistr}
+        n.foverrideprocnamedef:=foverrideprocnamedef;
         result:=n;
       end;
 
@@ -2083,16 +2071,9 @@ implementation
       end;
 
 
-    function tcallnode.getforcedprocname: TSymStr;
+    function tcallnode.getoverrideprocnamedef: tprocdef; inline;
       begin
-{$ifdef symansistr}
-        result:=fforcedprocname;
-{$else}
-        if assigned(fforcedprocname) then
-          result:=fforcedprocname^
-        else
-          result:='';
-{$endif}
+        result:=foverrideprocnamedef;
       end;
 
 
@@ -2109,6 +2090,16 @@ implementation
       end;
 
     procedure tcallnode.maybe_load_in_temp(var p:tnode);
+      begin
+        { Load all complex loads into a temp to prevent
+          double calls to a function. We can't simply check for a hp.nodetype=calln }
+        if assigned(p) and
+           foreachnodestatic(p,@look_for_call,nil) then
+          load_in_temp(p);
+      end;
+
+
+    procedure tcallnode.load_in_temp(var p:tnode);
       var
         loadp,
         refp  : tnode;
@@ -2116,10 +2107,7 @@ implementation
         ptemp : ttempcreatenode;
         usederef : boolean;
       begin
-        { Load all complex loads into a temp to prevent
-          double calls to a function. We can't simply check for a hp.nodetype=calln }
-        if assigned(p) and
-           foreachnodestatic(p,@look_for_call,nil) then
+        if assigned(p) then
           begin
             { temp create }
             usederef:=(p.resultdef.typ in [arraydef,recorddef]) or
@@ -2662,7 +2650,7 @@ implementation
         vmt_def: trecorddef;
       begin
         if not assigned(right) and
-           (forcedprocname='') and
+           not assigned(overrideprocnamedef) and
            (po_virtualmethod in procdefinition.procoptions) and
            not is_objectpascal_helper(tprocdef(procdefinition).struct) and
            assigned(methodpointer) and
@@ -2772,11 +2760,7 @@ implementation
            (srsym.typ<>procsym) or
            (tprocsym(srsym).ProcdefList.count<>1) then
           Message1(cg_f_unknown_compilerproc,'objc.'+msgsendname);
-{$ifdef symansistr}
-        fforcedprocname:=tprocdef(tprocsym(srsym).ProcdefList[0]).mangledname;
-{$else symansistr}
-        fforcedprocname:=stringdup(tprocdef(tprocsym(srsym).ProcdefList[0]).mangledname);
-{$endif symansistr}
+        foverrideprocnamedef:=tprocdef(tprocsym(srsym).ProcdefList[0]);
 
         { B) Handle self }
         { 1) in case of sending a message to a superclass, self is a pointer to
@@ -4462,6 +4446,10 @@ implementation
               not tabstractprocdef(right.resultdef).is_addressonly then
              maybe_load_in_temp(right);
 
+           { the return value might be stored on the current stack by allocating a temp. }
+           if not(paramanager.ret_in_param(procdefinition.returndef,procdefinition)) then
+             inc(current_procinfo.estimatedtempsize,procdefinition.returndef.size);
+
            { Create destination (temp or assignment-variable reuse) for function result if it not yet set }
            maybe_create_funcret_node;
 
@@ -4734,6 +4722,11 @@ implementation
 
     function tcallnode.paraneedsinlinetemp(para: tcallparanode; const pushconstaddr, complexpara: boolean): boolean;
       begin
+        { if it's an assignable call-by-reference parameter, we cannot pass a
+          temp since then the modified valua will be lost }
+        if para.parasym.varspez in [vs_var,vs_out] then
+          exit(false);
+
         { We don't need temps for parameters that are already temps, except if
           the passed temp could be put in a regvar while the parameter inside
           the routine cannot be (e.g., because its address is taken in the

@@ -488,7 +488,7 @@ Type
     Function GetValue(AName : String) : String;
     Function GetValue(const AName,Args : String) : String; virtual;
     Function ReplaceStrings(Const ASource : String; Const MaxDepth: Integer = 10) : String; virtual;
-    Function Substitute(Const Source : String; Macros : Array of string) : String; virtual;
+    Function Substitute(Const Source : String; const Macros : Array of string) : String; virtual;
   end;
 
   { TPackageDictionary }
@@ -855,6 +855,9 @@ Type
     // Is set when all sourcefiles are found
     FAllFilesResolved: boolean;
     FPackageVariants: TFPList;
+{$ifndef NO_THREADING}
+    FResolveDirsCS: TRTLCriticalSection;
+{$endif}
     Function GetDescription : string;
     function GetDictionary: TDictionary;
     Function GetFileName : string;
@@ -894,6 +897,8 @@ Type
     procedure SetDefaultPackageVariant;
     procedure LoadUnitConfigFromFile(Const AFileName: String);
     procedure SaveUnitConfigToFile(Const AFileName: String;ACPU:TCPU;AOS:TOS);
+    procedure EnterResolveDirsCS;
+    procedure LeaveResolveDirsCS;
     Property Version : String Read GetVersion Write SetVersion;
     Property FileName : String Read GetFileName Write FFileName;
     Property ShortName : String Read GetShortName Write FShortName;
@@ -1304,9 +1309,9 @@ Type
     Procedure CheckPackages; virtual;
     Procedure CreateBuildEngine; virtual;
     Procedure Error(const Msg : String);
-    Procedure Error(const Fmt : String; Args : Array of const);
+    Procedure Error(const Fmt : String; const Args : Array of const);
     Procedure AnalyzeOptions;
-    Procedure Usage(const FMT : String; Args : Array of const);
+    Procedure Usage(const FMT : String; const Args : Array of const);
     Procedure Compile(Force : Boolean); virtual;
     Procedure Clean(AllTargets: boolean); virtual;
     Procedure Install(ForceBuild : Boolean); virtual;
@@ -1691,8 +1696,6 @@ ResourceString
   SWarnStartCompilingPackage = 'Start compiling package %s for target %s.';
   SWarnCompilingPackagecompleteProgress = '[%3.0f%%] Compiled package %s';
   SWarnCompilingPackagecomplete = 'Compiled package %s';
-  SWarnSkipPackageTargetProgress = '[%3.0f%%] Skipped package %s which has been disabled for target %s';
-  SWarnSkipPackageTarget = 'Skipped package %s which has been disabled for target %s';
   SWarnInstallationPackagecomplete = 'Installation package %s for target %s succeeded';
   SWarnCanNotGetAccessRights = 'Warning: Failed to copy access-rights from file %s';
   SWarnCanNotSetAccessRights = 'Warning: Failed to copy access-rights to file %s';
@@ -1708,6 +1711,8 @@ ResourceString
   SWarnRemovedNonEmptyDirectory = 'Warning: Removed non empty directory "%s"';
 
   SInfoPackageAlreadyProcessed = 'Package %s is already processed';
+  SInfoSkipPackageTargetProgress = '[%3.0f%%] Skipped package %s which has been disabled for target %s';
+  SInfoSkipPackageTarget = 'Skipped package %s which has been disabled for target %s';
   SInfoCompilingTarget    = 'Compiling target %s';
   SInfoExecutingCommand   = 'Executing command "%s %s"';
   SInfoCreatingOutputDir  = 'Creating output dir "%s"';
@@ -3683,6 +3688,9 @@ begin
   // Implicit dependency on RTL
   FDependencies.Add('rtl');
   FSupportBuildModes:=[bmBuildUnit, bmOneByOne];
+{$ifndef NO_THREADING}
+  InitCriticalSection(FResolveDirsCS);
+{$endif}
 end;
 
 
@@ -3690,6 +3698,9 @@ destructor TPackage.destroy;
 var
   i: integer;
 begin
+{$ifndef NO_THREADING}
+  DoneCriticalSection(FResolveDirsCS);
+{$endif}
   FreeAndNil(FDictionary);
   FreeAndNil(FDependencies);
   FreeAndNil(FInstallFiles);
@@ -4314,6 +4325,20 @@ begin
     L.Free;
     F.Free;
   end;
+end;
+
+procedure TPackage.EnterResolveDirsCS;
+begin
+{$ifndef NO_THREADING}
+   EnterCriticalSection(FResolveDirsCS);
+{$endif}
+end;
+
+procedure TPackage.LeaveResolveDirsCS;
+begin
+{$ifndef NO_THREADING}
+   LeaveCriticalSection(FResolveDirsCS);
+{$endif}
 end;
 
 
@@ -5040,7 +5065,7 @@ begin
 end;
 
 
-procedure TCustomInstaller.Error(const Fmt: String; Args: array of const);
+procedure TCustomInstaller.Error(const Fmt: String; const Args: array of const);
 begin
   Raise EInstallerError.CreateFmt(Fmt,Args);
 end;
@@ -5377,7 +5402,7 @@ begin
 end;
 
 
-procedure TCustomInstaller.Usage(const FMT: String; Args: array of const);
+procedure TCustomInstaller.Usage(const FMT: String; const Args: array of const);
 
   Procedure LogCmd(const LC,Msg : String);
   begin
@@ -6602,27 +6627,36 @@ var
   i: Integer;
   Continue: Boolean;
 begin
-  if APackage.UnitDir='' then
-    begin
-      Log(vldebug, SDbgSearchExtDepPath, [APackage.Name]);
-      GetPluginManager.BeforeResolvePackagePath(Self, APackage, Continue);
-      if Continue then
-        begin
-        for I := 0 to Defaults.SearchPath.Count-1 do
+{$ifndef NO_THREADING}
+  APackage.EnterResolveDirsCS;
+  try
+{$endif}
+    if APackage.UnitDir='' then
+      begin
+        Log(vldebug, SDbgSearchExtDepPath, [APackage.Name]);
+        GetPluginManager.BeforeResolvePackagePath(Self, APackage, Continue);
+        if Continue then
           begin
-            if Defaults.SearchPath[i]<>'' then
-              GetPluginManager.ResolvePackagePath(Self, APackage, Defaults.SearchPath[i], Continue);
-            if not Continue then
-              Break
+          for I := 0 to Defaults.SearchPath.Count-1 do
+            begin
+              if Defaults.SearchPath[i]<>'' then
+                GetPluginManager.ResolvePackagePath(Self, APackage, Defaults.SearchPath[i], Continue);
+              if not Continue then
+                Break
+            end;
+
+          if Continue then
+            GetPluginManager.AfterResolvePackagePath(Self, APackage, Continue);
           end;
 
-        if Continue then
-          GetPluginManager.AfterResolvePackagePath(Self, APackage, Continue);
-        end;
-
-      if APackage.UnitDir = '' then
-        APackage.UnitDir := DirNotFound
-    end;
+        if APackage.UnitDir = '' then
+          APackage.UnitDir := DirNotFound
+      end;
+{$ifndef NO_THREADING}
+  finally
+    APackage.LeaveResolveDirsCS;
+  end;
+{$endif}
 end;
 
 
@@ -8195,7 +8229,7 @@ procedure TBuildEngine.Compile(Packages: TPackages);
         else
           begin
             inc(FProgressCount);
-            log(vlWarning,SWarnSkipPackageTargetProgress,[(FProgressCount)/FProgressMax * 100, APackage.Name, Defaults.Target]);
+            log(vlInfo,SInfoSkipPackageTargetProgress,[(FProgressCount)/FProgressMax * 100, APackage.Name, Defaults.Target]);
             APackage.FTargetState:=tsNoCompile;
           end;
       end;
@@ -8204,7 +8238,7 @@ procedure TBuildEngine.Compile(Packages: TPackages);
 Var
   I : integer;
 {$ifndef NO_THREADING}
-  Thr : Integer;
+  Thr, ThreadCount : Integer;
   Finished : boolean;
   ErrorState: boolean;
   ErrorMessage: string;
@@ -8234,7 +8268,7 @@ Var
             else // A problem occurred, stop the compilation
               begin
               ErrorState:=true;
-              ErrorMessage:=AThread.ErrorMessage;
+              ErrorMessage:='Error inside worker thread for package '+Athread.APackage.Name+': '+AThread.ErrorMessage;
               Finished:=true;
               end;
             AThread.APackage := nil;
@@ -8288,7 +8322,7 @@ begin
           else
             begin
             inc(FProgressCount);
-            log(vlWarning,SWarnSkipPackageTargetProgress,[(FProgressCount)/FProgressMax * 100, P.Name, Defaults.Target]);
+            log(vlInfo,SInfoSkipPackageTargetProgress,[(FProgressCount)/FProgressMax * 100, P.Name, Defaults.Target]);
             end;
         end;
     end
@@ -8299,34 +8333,71 @@ begin
       ErrorState := False;
       Finished := False;
       I := 0;
+      ThreadCount:=0;
       // This event is set by the worker-threads to notify the main/this thread
       // that a package finished it's task.
       NotifyThreadWaiting := RTLEventCreate;
       SetLength(Threads,Defaults.ThreadsAmount);
-      // Create all worker-threads
-      for Thr:=0 to Defaults.ThreadsAmount-1 do
-        Threads[Thr] := TCompileWorkerThread.Create(self,NotifyThreadWaiting);
-      try
-        // When a thread notifies this thread that it is ready, loop on all
-        // threads to check their state and if possible assign a new package
-        // to them to compile.
-        while not Finished do
-          begin
-            RTLeventWaitFor(NotifyThreadWaiting);
-            for Thr:=0 to Defaults.ThreadsAmount-1 do if not Finished then
-              ProcessThreadResult(Threads[Thr]);
-          end;
-        // Compilation finished or aborted. Wait for all threads to end.
-        for thr:=0 to Defaults.ThreadsAmount-1 do
-          begin
-            Threads[Thr].Terminate;
-            RTLeventSetEvent(Threads[Thr].NotifyStartTask);
-            Threads[Thr].WaitFor;
-          end;
+      try 
+        // Create all worker-threads
+        try
+          for Thr:=0 to Defaults.ThreadsAmount-1 do
+            begin
+              Threads[Thr] := TCompileWorkerThread.Create(self,NotifyThreadWaiting);
+              if assigned(Threads[Thr]) then
+                inc(ThreadCount);
+            end;
+        except
+          on E: Exception do
+            begin
+              ErrorMessage := E.Message;
+              ErrorState:=true;
+            end;
+        end;
+        try
+          // When a thread notifies this thread that it is ready, loop on all
+          // threads to check their state and if possible assign a new package
+          // to them to compile.
+          while not Finished do
+            begin
+              RTLeventWaitFor(NotifyThreadWaiting);
+              for Thr:=0 to Defaults.ThreadsAmount-1 do
+                if assigned(Threads[Thr]) and not Finished then
+                  ProcessThreadResult(Threads[Thr]);
+            end;
+        except
+          on E: Exception do
+            begin
+              if not ErrorState then
+                ErrorMessage := E.Message;
+              ErrorState:=true;
+            end;
+        end;
+        try
+          // Compilation finished or aborted. Wait for all threads to end.
+          for thr:=0 to Defaults.ThreadsAmount-1 do
+            if assigned(Threads[Thr]) then
+              begin
+                Threads[Thr].Terminate;
+                RTLeventSetEvent(Threads[Thr].NotifyStartTask);
+                Threads[Thr].WaitFor;
+              end;
+        except
+          on E: Exception do
+            begin
+              if not ErrorState then
+                ErrorMessage := E.Message;
+              ErrorState:=true;
+            end;
+        end;
       finally
         RTLeventdestroy(NotifyThreadWaiting);
         for thr:=0 to Defaults.ThreadsAmount-1 do
-          Threads[Thr].Free;
+          if assigned(Threads[Thr]) then
+            begin
+              Threads[Thr].Free;
+              dec(ThreadCount);
+            end;
       end;
     if ErrorState then
       raise Exception.Create(ErrorMessage);
@@ -8351,7 +8422,7 @@ begin
           log(vlWarning, SWarnInstallationPackagecomplete, [P.Name, Defaults.Target]);
         end
       else
-        log(vlWarning,SWarnSkipPackageTarget,[P.Name, Defaults.Target]);
+        log(vlInfo,SInfoSkipPackageTarget,[P.Name, Defaults.Target]);
     end;
   NotifyEventCollection.CallEvents(neaAfterInstall, Self);
 end;
@@ -8380,7 +8451,7 @@ begin
             log(vlWarning, SWarnInstallationPackagecomplete, [P.Name, Defaults.Target]);
           end
         else
-          log(vlWarning,SWarnSkipPackageTarget,[P.Name, Defaults.Target]);
+          log(vlInfo,SInfoSkipPackageTarget,[P.Name, Defaults.Target]);
       end;
   finally
     FinishArchive(P);
@@ -9451,7 +9522,7 @@ begin
 end;
 
 
-Function TDictionary.Substitute(Const Source : String; Macros : Array of string) : String;
+Function TDictionary.Substitute(Const Source : String; const Macros : Array of string) : String;
 Var
   I : Integer;
 begin
@@ -9462,6 +9533,7 @@ begin
       Inc(I,2);
     end;
   Result:=ReplaceStrings(Source);
+  I:=0;
   While I<High(Macros) do
     begin
       RemoveItem(Macros[i]);

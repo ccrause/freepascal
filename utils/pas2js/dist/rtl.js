@@ -98,32 +98,31 @@ var rtl = {
   m_initializing: 4, // running initialization
   m_initialized: 5,
 
-  module: function(module_name, intfuseslist, intfcode, impluseslist, implcode){
-    if (rtl.debug_load_units) rtl.debug('rtl.module name="'+module_name+'" intfuses='+intfuseslist+' impluses='+impluseslist+' hasimplcode='+rtl.isFunction(implcode));
+  module: function(module_name, intfuseslist, intfcode, impluseslist){
+    if (rtl.debug_load_units) rtl.debug('rtl.module name="'+module_name+'" intfuses='+intfuseslist+' impluses='+impluseslist);
     if (!rtl.hasString(module_name)) rtl.error('invalid module name "'+module_name+'"');
     if (!rtl.isArray(intfuseslist)) rtl.error('invalid interface useslist of "'+module_name+'"');
     if (!rtl.isFunction(intfcode)) rtl.error('invalid interface code of "'+module_name+'"');
     if (!(impluseslist==undefined) && !rtl.isArray(impluseslist)) rtl.error('invalid implementation useslist of "'+module_name+'"');
-    if (!(implcode==undefined) && !rtl.isFunction(implcode)) rtl.error('invalid implementation code of "'+module_name+'"');
 
     if (pas[module_name])
       rtl.error('module "'+module_name+'" is already registered');
 
-    var module = pas[module_name] = {
+    var r = Object.create(rtl.tSectionRTTI);
+    var module = r.$module = pas[module_name] = {
       $name: module_name,
       $intfuseslist: intfuseslist,
       $impluseslist: impluseslist,
       $state: rtl.m_loading,
       $intfcode: intfcode,
-      $implcode: implcode,
+      $implcode: null,
       $impl: null,
-      $rtti: Object.create(rtl.tSectionRTTI)
+      $rtti: r
     };
-    module.$rtti.$module = module;
-    if (implcode) module.$impl = {
-      $module: module,
-      $rtti: module.$rtti
-    };
+    if (impluseslist) module.$impl = {
+          $module: module,
+          $rtti: r
+        };
   },
 
   exitcode: 0,
@@ -286,15 +285,16 @@ var rtl = {
     return parent;
   },
 
-  initClass: function(c,parent,name,initfn){
+  initClass: function(c,parent,name,initfn,rttiname){
+    if (!rttiname) rttiname = name;
     parent[name] = c;
     c.$class = c; // Note: o.$class === Object.getPrototypeOf(o)
-    c.$classname = name;
+    c.$classname = rttiname;
     parent = rtl.initStruct(c,parent,name);
     c.$fullname = parent.$name+'.'+name;
     // rtti
     if (rtl.debug_rtti) rtl.debug('initClass '+c.$fullname);
-    var t = c.$module.$rtti.$Class(c.$name,{ "class": c });
+    var t = c.$module.$rtti.$Class(rttiname,{ "class": c });
     c.$rtti = t;
     if (rtl.isObject(c.$ancestor)) t.ancestor = c.$ancestor.$rtti;
     if (!t.ancestor) t.ancestor = null;
@@ -302,7 +302,7 @@ var rtl = {
     initfn.call(c);
   },
 
-  createClass: function(parent,name,ancestor,initfn){
+  createClass: function(parent,name,ancestor,initfn,rttiname){
     // create a normal class,
     // ancestor must be null or a normal class,
     // the root ancestor can be an external class
@@ -340,10 +340,10 @@ var rtl = {
         this.$final();
       };
     };
-    rtl.initClass(c,parent,name,initfn);
+    rtl.initClass(c,parent,name,initfn,rttiname);
   },
 
-  createClassExt: function(parent,name,ancestor,newinstancefnname,initfn){
+  createClassExt: function(parent,name,ancestor,newinstancefnname,initfn,rttiname){
     // Create a class using an external ancestor.
     // If newinstancefnname is given, use that function to create the new object.
     // If exist call BeforeDestruction and AfterConstruction.
@@ -352,6 +352,7 @@ var rtl = {
     if (isFunc){
       // create pascal class descendent from JS function
       c = Object.create(ancestor.prototype);
+      c.$ancestorfunc = ancestor;
     } else if (ancestor.$func){
       // create pascal class descendent from a pascal class descendent of a JS function
       isFunc = true;
@@ -391,12 +392,11 @@ var rtl = {
       if (this[fnname]) this[fnname]();
       if (this.$final) this.$final();
     };
-    rtl.initClass(c,parent,name,initfn);
+    rtl.initClass(c,parent,name,initfn,rttiname);
     if (isFunc){
       function f(){}
       f.prototype = c;
       c.$func = f;
-      c.$ancestorfunc = ancestor;
     }
   },
 
@@ -460,6 +460,7 @@ var rtl = {
       h(t,'$name');
       h(t,'$parent');
       h(t,'$module');
+      h(t,'$initSpec');
     }
     initfn.call(t);
     if (!t.$new){
@@ -471,13 +472,6 @@ var rtl = {
     h(t,'$eq');
     h(t,'$assign');
     return t;
-  },
-
-  recNewS: function(parent,name,initfn,full){
-    // register specialized record type
-    parent[name] = function(){
-      rtl.recNewT(parent,name,initfn,full);
-    }
   },
 
   is: function(instance,type){
@@ -1006,11 +1000,11 @@ var rtl = {
 
   arrayConcatN: function(){
     var a = null;
-    for (var i=1; i<arguments.length; i++){
+    for (var i=0; i<arguments.length; i++){
       var src = arguments[i];
       if (src === null) continue;
       if (a===null){
-        a=src; // Note: concat(a) does not clone
+        a=rtl.arrayRef(src); // Note: concat(a) does not clone
       } else {
         a=a.concat(src);
       }

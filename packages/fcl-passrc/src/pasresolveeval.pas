@@ -1027,6 +1027,13 @@ var
 begin
   if o=nil then
     Result:='nil'
+  else if (o is TPasArrayType) and (TPasArrayType(o).Name='') then
+    begin
+    if TPasArrayType(o).ElType = nil then
+      Result:='array of const'
+    else
+      Result:=Format('TArray<%s>', [TPasArrayType(o).ElType.Name]);
+    end
   else if o is TPasElement then
     begin
     Result:=TPasElement(o).Name;

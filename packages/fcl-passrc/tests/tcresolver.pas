@@ -104,7 +104,8 @@ type
 
   TSystemUnitPart = (
     supTObject,
-    supTVarRec
+    supTVarRec,
+    supTTypeKind
     );
   TSystemUnitParts = set of TSystemUnitPart;
 
@@ -322,6 +323,7 @@ type
     Procedure TestIncStringFail;
     Procedure TestTypeInfo;
     Procedure TestTypeInfo_FailRTTIDisabled;
+    Procedure TestGetTypeKind;
 
     // statements
     Procedure TestForLoop;
@@ -371,6 +373,7 @@ type
     Procedure TestUnit_DottedPrg;
     Procedure TestUnit_DottedUnit;
     Procedure TestUnit_DottedExpr;
+    Procedure TestUnit_DottedSystem;
     Procedure TestUnit_DuplicateDottedUsesFail;
     Procedure TestUnit_DuplicateUsesDiffName;
     Procedure TestUnit_Unit1DotUnit2Fail;
@@ -2210,6 +2213,15 @@ begin
   Intf:=TStringList.Create;
   // interface
   Intf.Add('type');
+  if supTTypeKind in Parts then
+    begin
+    Intf.Add('  TTypeKind=(tkUnknown,tkInteger,tkChar,tkEnumeration,tkFloat,');
+    Intf.Add('             tkSet,tkMethod,tkSString,tkLString,tkAString,');
+    Intf.Add('             tkWString,tkVariant,tkArray,tkRecord,tkInterface,');
+    Intf.Add('             tkClass,tkObject,tkWChar,tkBool,tkInt64,tkQWord,');
+    Intf.Add('             tkDynArray,tkInterfaceRaw,tkProcVar,tkUString,tkUChar,');
+    Intf.Add('             tkHelper,tkFile,tkClassRef,tkPointer);');
+    end;
   Intf.Add('  integer=longint;');
   Intf.Add('  sizeint=int64;');
     //'const',
@@ -5065,6 +5077,44 @@ begin
   CheckResolverException(sSymbolCannotBePublished,nSymbolCannotBePublished);
 end;
 
+procedure TTestResolver.TestGetTypeKind;
+begin
+  StartProgram(true,[supTTypeKind]);
+  Add([
+  'type',
+  '  integer = longint;',
+  '  TRec = record',
+  '    v: integer;',
+  '  end;',
+  '  TClass = class of TObject;',
+  '  TObject = class',
+  '    class function ClassType: TClass; virtual; abstract;',
+  '  end;',
+  'var',
+  '  i: integer;',
+  '  s: string;',
+  '  p: pointer;',
+  '  r: TRec;',
+  '  o: TObject;',
+  '  c: TClass;',
+  '  k: TTypeKind;',
+  'begin',
+  '  k:=gettypekind(integer);',
+  '  k:=gettypekind(longint);',
+  '  k:=gettypekind(i);',
+  '  k:=gettypekind(s);',
+  '  k:=gettypekind(p);',
+  '  k:=gettypekind(r.v);',
+  '  k:=gettypekind(TObject.ClassType);',
+  '  k:=gettypekind(o.ClassType);',
+  '  k:=gettypekind(o);',
+  '  k:=gettypekind(c);',
+  '  k:=gettypekind(c.ClassType);',
+  '  k:=gettypekind(k);',
+  '']);
+  ParseProgram;
+end;
+
 procedure TTestResolver.TestForLoop;
 begin
   StartProgram(false);
@@ -5923,6 +5973,31 @@ begin
   'begin',
   '  unitdots3.sub3.unit3.dosome;',
   '']);
+  ParseProgram;
+end;
+
+procedure TTestResolver.TestUnit_DottedSystem;
+begin
+  AddModuleWithIntfImplSrc('System.SysUtils.pas',
+    LinesToStr([
+    'type TFlag = word;'
+    ]),
+    ''
+    );
+  AddModuleWithIntfImplSrc('UnitA.pas',
+    LinesToStr([
+    ''
+    ]),
+    LinesToStr([
+    'uses System.SysUtils;',
+    'type TSize = TFlag;',
+    'type TWidth = System.SysUtils.TFlag;',
+    'type TBird = System.integer;',
+    'type TEagle = integer;',
+    '']) );
+  StartProgram(true);
+  Add('uses UnitA;');
+  Add('begin');
   ParseProgram;
 end;
 
