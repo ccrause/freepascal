@@ -557,8 +557,18 @@ end;
         overflow, continue: TAsmLabel;
         temp1, temp2: tregister;
         instr: taicpu;
+        checkoverflow: boolean;
       begin
-        if not setflags then
+        { 8 & 16 bit operands are converted to 32 bit for the operation
+          and converted back to the orignal size later.  This means that only some
+          situations will potentially lead to overflow.  Only perform overflow
+          checking if it can occur for the given operation ond operand sizes }
+        checkoverflow:=setflags and
+          ((op=OP_ADD) and (size in [OS_S32, OS_32])) or
+          ((op=OP_SUB) and (size=OS_S32)) or
+          //(op=OP_DIV) or // only overflow if x/0 or -maxint/-1
+          ((op=OP_MUL) and (size in [OS_S32,OS_32]));
+        if not checkoverflow then
           inherited a_op_reg_reg_reg_checkoverflow(list, op, size, src1, src2, dst,
             setflags, ovloc)
         else
@@ -581,7 +591,7 @@ end;
               OP_ADD:
                 begin
                   // Signed operands?
-                  if size in [OS_S8, OS_S16, OS_S32] then
+                  if size=OS_S32 then
                     begin
                       { for signed r = a + b overflow only happens if
                         signs of operands are the same and result has different sign:
@@ -607,7 +617,7 @@ end;
                       a_call_name(list,'FPC_OVERFLOW',false);
                       a_label(list, continue);
                     end
-                  else
+                  else if size=OS_32 then
                     begin
                       { for unsigned r = a + b overflow if r < a or r < b
                         bltu dst, src1, overflow
@@ -626,6 +636,35 @@ end;
                       a_call_name(list,'FPC_OVERFLOW',false);
                       a_label(list, continue);
                     end;
+                end;
+              OP_SUB:
+                begin
+                  { for signed r = a - b convert check to r = a + (-b)
+                    Overflow check is then the same as for OP_ADD
+                    signs of operands are the same and result has different sign:
+                    overflow if (r XOR a) AND (r XOR b) < 0
+                    neg temp2, src2
+                    xor temp1, dst, src1
+                    xor temp2, dst, temp2
+                    and temp1, temp1, temp2
+                    bgez temp1, continue
+                    call fpc_overflow
+                    continue:
+                  }
+                  current_asmdata.getjumplabel(continue);
+                  temp1:=getintregister(list,size);
+                  temp2:=getintregister(list,size);
+                  a_op_reg_reg(list, OP_NEG, size, src2, temp2);
+                  a_op_reg_reg_reg(list, OP_XOR, size, dst, src1, temp1);
+                  a_op_reg_reg_reg(list, OP_XOR, size, dst, src2, temp2);
+                  a_op_reg_reg_reg(list, OP_AND, size, temp1, temp2, temp1);
+                  // Directly call bgez
+                  instr := taicpu.op_reg_sym(A_B, temp1, continue);
+                  instr.condition := C_GEZ;
+                  list.concat(instr);
+                  // Release temp1, temp2?
+                  a_call_name(list,'FPC_OVERFLOW',false);
+                  a_label(list, continue);
                 end;
               else
                 ;
@@ -751,22 +790,21 @@ end;
                   -------- Top of frame ---------
                   temps/params/return
                   .
-                  .                         <- FP
+                  .                         <- FP (a15)
                   -------- Reg save area --------
                   a15 (caller FP)
                   a0  (return address)
                   other regs
                   .
-                  .                         <- SP
+                  .                         <- SP (a1)
                   --------- Below frame --------- }
 
                   if (localsize<>0) then
                     localsize:=align(localsize,current_settings.alignment.localalignmax);
-                  // Store caller FP (a15) at FP-4, return addresss (a0) at FP-8, followed by rest of regs
+                  { Store caller FP (a15) at FP-4, return addresss (a0) at FP-8, followed by rest of regs }
                   Include(regs,RS_A15);
                   Include(regs,RS_A0);
                   registerarea:=2*4;
-                  // SP is always live, no need to save/restore
                   if regs<>[] then
                      begin
                        for r:=RS_A2 to RS_A14 do
@@ -778,18 +816,13 @@ end;
                   if (LocalSize<>0) or (registerarea <> 0) then
                     begin
                       list.concat(taicpu.op_reg_reg_const(A_ADDI,NR_STACK_POINTER_REG,NR_STACK_POINTER_REG,-(localsize+registerarea)));
-                      // Store previous FP at SP+registerarea
                       list.concat(taicpu.op_reg_reg_const(A_S32i,NR_FRAME_POINTER_REG,NR_STACK_POINTER_REG,registerarea-4));
-                      // Store previous PC at SP+registerarea-4
                       list.concat(taicpu.op_reg_reg_const(A_S32i,NR_A0,NR_STACK_POINTER_REG,registerarea-8));
-                      // Update FP to new frame
                       list.concat(taicpu.op_reg_reg_const(A_ADDI,NR_FRAME_POINTER_REG,NR_STACK_POINTER_REG,registerarea));
-                      // Subtract 2 saved registers
                       dec(registerarea, 2*4);
                     end;
                   if regs<>[] then
                     begin
-                      // a0 & a15 already accounted for above
                       for r:=RS_A14 downto RS_A2 do
                         if r in regs then
                           begin
@@ -897,14 +930,13 @@ end;
                        registersize:=align(registersize,current_settings.alignment.localalignmax);
                      end;
 
-                  // Restore FP, PC
+                  { Restore FP, PC }
                   registeroffset:=registersize;
                   dec(registeroffset,4);
                   list.concat(taicpu.op_reg_reg_const(A_L32I,NR_A15,NR_STACK_POINTER_REG, registeroffset));
                   dec(registeroffset,4);
                   list.concat(taicpu.op_reg_reg_const(A_L32I,NR_A0,NR_STACK_POINTER_REG, registeroffset));
-
-                  // restore rest of registers
+                  { restore rest of registers }
                   if regs<>[] then
                     begin
                       for r:=RS_A14 downto RS_A2 do
@@ -919,7 +951,7 @@ end;
                   list.concat(taicpu.op_reg_reg_const(A_ADDI,NR_STACK_POINTER_REG,NR_STACK_POINTER_REG,localsize+registersize));
                 end;
               list.Concat(taicpu.op_none(A_RET));
-            end
+            end;
           else
             Internalerror(2020031403);
         end;
