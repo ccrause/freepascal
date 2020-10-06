@@ -33,10 +33,10 @@ type
   {$endif}
 {$endif FPC_HAS_FEATURE_EXITCODE}
 
-Procedure HandleError (Errno : Longint); external name 'FPC_HANDLEERROR';
-Procedure HandleErrorFrame (Errno : longint;frame : Pointer); forward;
-Procedure HandleErrorAddrFrame (Errno : longint;addr : CodePointer; frame : Pointer); forward;
-Procedure HandleErrorAddrFrameInd (Errno : longint;addr : CodePointer; frame : Pointer); forward;
+Procedure HandleError (Errno : TExitCode); external name 'FPC_HANDLEERROR';
+Procedure HandleErrorFrame (Errno : TExitCode;frame : Pointer); forward;
+Procedure HandleErrorAddrFrame (Errno : TExitCode;addr : CodePointer; frame : Pointer); forward;
+Procedure HandleErrorAddrFrameInd (Errno : TExitCode;addr : CodePointer; frame : Pointer); forward;
 
 {$ifdef FPC_HAS_FEATURE_TEXTIO}
 type
@@ -860,7 +860,7 @@ end;
   { This provides a dummy implementation
     of get_pc_addr function, for CPU's that don't need
     the instruction address to walk the stack. }
-function get_pc_addr : codepointer;
+function get_pc_addr : codepointer;inline;
 begin
   get_pc_addr:=nil;
 end;
@@ -1268,7 +1268,7 @@ begin
 end;
 
 
-Procedure Halt(ErrNum: Longint);noreturn;
+Procedure Halt(ErrNum: TExitCode);noreturn;
 Begin
 {$ifdef FPC_HAS_FEATURE_EXITCODE}
 {$ifdef FPC_LIMITED_EXITCODE}
@@ -1320,7 +1320,7 @@ end;
 {$endif FPC_SYSTEM_HAS_CAPTUREBACKTRACE}
 
 
-Procedure HandleErrorAddrFrame (Errno : longint;addr : CodePointer; frame : Pointer);[public,alias:'FPC_BREAK_ERROR']; {$ifdef CPUI386} register; {$endif}
+Procedure HandleErrorAddrFrame (Errno : TExitCode;addr : CodePointer; frame : Pointer);[public,alias:'FPC_BREAK_ERROR']; {$ifdef CPUI386} register; {$endif}
 begin
   If codepointer(ErrorProc)<>Nil then
     ErrorProc(Errno,addr,frame);
@@ -1337,13 +1337,13 @@ end;
 { This is used internally by system skip first level,
   and generated the same output as before, when
   HandleErrorFrame function was used internally. }
-Procedure HandleErrorAddrFrameInd (Errno : longint;addr : CodePointer; frame : Pointer);
+Procedure HandleErrorAddrFrameInd (Errno : TExitCode;addr : CodePointer; frame : Pointer);
 begin
   get_caller_stackinfo (frame, addr);
   HandleErrorAddrFrame (Errno,addr,frame);
 end;
 
-Procedure HandleErrorFrame (Errno : longint;frame : Pointer);
+Procedure HandleErrorFrame (Errno : TExitCode;frame : Pointer);
 {
   Procedure to handle internal errors, i.e. not user-invoked errors
   Internal function should ALWAYS call HandleError instead of RunError.
@@ -1354,7 +1354,7 @@ begin
 end;
 
 
-procedure fpc_handleerror (Errno : longint); compilerproc; [public,alias : 'FPC_HANDLEERROR'];
+procedure fpc_handleerror (Errno : TExitCode); compilerproc; [public,alias : 'FPC_HANDLEERROR'];
 {
   Procedure to handle internal errors, i.e. not user-invoked errors
   Internal function should ALWAYS call HandleError instead of RunError.
@@ -1399,7 +1399,7 @@ end;
 
 Procedure dump_stack(var f : text;fp : Pointer; addr : CodePointer);
 var
-  i : Longint;
+  i : ObjpasInt;
   prevfp : Pointer;
   is_dev : boolean;
 Begin
@@ -1435,7 +1435,7 @@ End;
 
 procedure dump_stack(var f: text; skipframes: longint);
 var
-  i,count: longint;
+  i,count: ObjpasInt;
   frames: array [0..255] of codepointer;
 begin
   if do_isdevice(textrec(f).handle) then
@@ -1459,7 +1459,7 @@ end;
 procedure DumpExceptionBackTrace(var f:text);
 var
   FrameNumber,
-  FrameCount   : longint;
+  FrameCount   : ObjpasInt;
   Frames       : PCodePointer;
 begin
   if RaiseList=nil then
@@ -1525,7 +1525,7 @@ end;
 // if "s" goes out of scope in the parent procedure, the pointer is dangling.
 
 var p   : ppchar;
-    i   : LongInt;
+    i   : ObjpasInt;
 begin
   if High(s)<Low(s) Then Exit(NIL);
   Getmem(p,sizeof(pchar)*(high(s)-low(s)+ReserveEntries+2));  // one more for NIL, one more
@@ -1560,7 +1560,7 @@ end;
 Function StringToPPChar(S: PChar;ReserveEntries:integer):ppchar;
 
 var
-  i,nr  : longint;
+  i,nr  : ObjpasInt;
   Buf : ^char;
   p   : ppchar;
 
@@ -1731,7 +1731,7 @@ end;
 { Allow slash and backslash as separators }
 procedure DoDirSeparators(var p: pchar; inplace: boolean = true);
 var
-  i : longint;
+  i : ObjpasInt;
   len : sizeint;
   newp : pchar;
 begin
@@ -1753,7 +1753,7 @@ end;
 
 procedure DoDirSeparators(var p: pwidechar; inplace: boolean = true);
 var
-  i : longint;
+  i : ObjpasInt;
   len : sizeint;
   newp : pwidechar;
 begin
@@ -1776,7 +1776,7 @@ end;
 
 procedure DoDirSeparators(var p:shortstring);
 var
-  i : longint;
+  i : ObjpasInt;
 begin
   for i:=1 to length(p) do
     if p[i] in AllowDirectorySeparators then
@@ -1787,7 +1787,7 @@ end;
 {$ifdef FPC_HAS_FEATURE_ANSISTRINGS}
 procedure DoDirSeparators(var ps:RawByteString);
 var
-  i : longint;
+  i : ObjpasInt;
   p : pchar;
   unique : boolean;
 begin
@@ -1810,7 +1810,7 @@ end;
 {$ifdef FPC_HAS_FEATURE_UNICODESTRINGS}
 procedure DoDirSeparators(var ps:UnicodeString);
 var
-  i : longint;
+  i : ObjpasInt;
   p : pwidechar;
   unique : boolean;
 begin

@@ -39,18 +39,22 @@ Interface
       TCpuAsmOptimizer = class(TARMAsmOptimizer)
         { uses the same constructor as TAopObj }
         function PeepHoleOptPass1Cpu(var p: tai): boolean; override;
+        function PeepHoleOptPass2Cpu(var p: tai): boolean; override;
         function PostPeepHoleOptsCpu(var p: tai): boolean; override;
         function RegLoadedWithNewValue(reg: tregister; hp: tai): boolean;override;
         function InstructionLoadsFromReg(const reg: TRegister; const hp: tai): boolean;override;
-        function LookForPostindexedPattern(p : taicpu) : boolean;
+        function LookForPostindexedPattern(var p : tai) : boolean;
       private
+        function RemoveSuperfluousFMov(const p: tai; movp: tai; const optimizer: string): boolean;
         function OptPass1Shift(var p: tai): boolean;
         function OptPostCMP(var p: tai): boolean;
         function OptPass1Data(var p: tai): boolean;
-        function RemoveSuperfluousFMov(const p: tai; movp: tai; const optimizer: string): boolean;
+        function OptPass1FData(var p: tai): Boolean;
         function OptPass1STP(var p: tai): boolean;
         function OptPass1Mov(var p: tai): boolean;
         function OptPass1FMov(var p: tai): Boolean;
+
+        function OptPass2LDRSTR(var p: tai): boolean;
       End;
 
 Implementation
@@ -169,20 +173,20 @@ Implementation
 
       ldr/str regX,[reg1], regY/const
   }
-  function TCpuAsmOptimizer.LookForPostindexedPattern(p: taicpu) : boolean;
+  function TCpuAsmOptimizer.LookForPostindexedPattern(var p: tai) : boolean;
     var
       hp1 : tai;
     begin
       Result:=false;
-      if (p.oper[1]^.typ = top_ref) and
-        (p.oper[1]^.ref^.addressmode=AM_OFFSET) and
-        (p.oper[1]^.ref^.index=NR_NO) and
-        (p.oper[1]^.ref^.offset=0) and
-        GetNextInstructionUsingReg(p, hp1, p.oper[1]^.ref^.base) and
+      if (taicpu(p).oper[1]^.typ = top_ref) and
+        (taicpu(p).oper[1]^.ref^.addressmode=AM_OFFSET) and
+        (taicpu(p).oper[1]^.ref^.index=NR_NO) and
+        (taicpu(p).oper[1]^.ref^.offset=0) and
+        GetNextInstructionUsingReg(p, hp1, taicpu(p).oper[1]^.ref^.base) and
         { we cannot check NR_DEFAULTFLAGS for modification yet so don't allow a condition }
         MatchInstruction(hp1, [A_ADD, A_SUB], [PF_None]) and
-        (taicpu(hp1).oper[0]^.reg=p.oper[1]^.ref^.base) and
-        (taicpu(hp1).oper[1]^.reg=p.oper[1]^.ref^.base) and
+        (taicpu(hp1).oper[0]^.reg=taicpu(p).oper[1]^.ref^.base) and
+        (taicpu(hp1).oper[1]^.reg=taicpu(p).oper[1]^.ref^.base) and
         (
          { valid offset? }
          (taicpu(hp1).oper[2]^.typ=top_const) and
@@ -190,16 +194,20 @@ Implementation
          (abs(taicpu(hp1).oper[2]^.val)<256)
         ) and
         { don't apply the optimization if the base register is loaded }
-        (getsupreg(p.oper[0]^.reg)<>getsupreg(p.oper[1]^.ref^.base)) and
+        (getsupreg(taicpu(p).oper[0]^.reg)<>getsupreg(taicpu(p).oper[1]^.ref^.base)) and
         not(RegModifiedBetween(taicpu(hp1).oper[0]^.reg,p,hp1)) and
         not(RegModifiedBetween(taicpu(hp1).oper[2]^.reg,p,hp1)) then
         begin
-          DebugMsg('Peephole Str/LdrAdd/Sub2Str/Ldr Postindex done', p);
-          p.oper[1]^.ref^.addressmode:=AM_POSTINDEXED;
-          if taicpu(hp1).opcode=A_ADD then
-            p.oper[1]^.ref^.offset:=taicpu(hp1).oper[2]^.val
+          if taicpu(p).opcode = A_LDR then
+            DebugMsg('Peephole LdrAdd/Sub2Ldr Postindex done', p)
           else
-            p.oper[1]^.ref^.offset:=-taicpu(hp1).oper[2]^.val;
+            DebugMsg('Peephole StrAdd/Sub2Str Postindex done', p);
+
+          taicpu(p).oper[1]^.ref^.addressmode:=AM_POSTINDEXED;
+          if taicpu(hp1).opcode=A_ADD then
+            taicpu(p).oper[1]^.ref^.offset:=taicpu(hp1).oper[2]^.val
+          else
+            taicpu(p).oper[1]^.ref^.offset:=-taicpu(hp1).oper[2]^.val;
           asml.Remove(hp1);
           hp1.Free;
           Result:=true;
@@ -395,10 +403,17 @@ Implementation
     var
       hp1: tai;
     begin
-      result:=false;
-      if GetNextInstructionUsingReg(p, hp1, taicpu(p).oper[0]^.reg) and
-        RemoveSuperfluousMove(p, hp1, 'DataMov2Data') then
-        Result:=true;
+      Result := GetNextInstructionUsingReg(p, hp1, taicpu(p).oper[0]^.reg) and
+        RemoveSuperfluousMove(p, hp1, 'DataMov2Data');
+    end;
+
+
+  function TCpuAsmOptimizer.OptPass1FData(var p: tai): Boolean;
+    var
+      hp1: tai;
+    begin
+      Result := GetNextInstructionUsingReg(p, hp1, taicpu(p).oper[0]^.reg) and
+        RemoveSuperfluousFMov(p, hp1, 'FOpFMov2FOp');
     end;
 
 
@@ -428,21 +443,20 @@ Implementation
         (taicpu(p).oper[2]^.ref^.index=NR_NO) and
         (taicpu(p).oper[2]^.ref^.offset=-16) and
         (taicpu(p).oper[2]^.ref^.addressmode=AM_PREINDEXED) and
-        GetNextInstruction(p, hp1) and
-        GetNextInstruction(hp1, hp2) and
-        SkipEntryExitMarker(hp2, hp2) and
-        GetNextInstruction(hp2, hp3) and
-        SkipEntryExitMarker(hp3, hp3) and
-        GetNextInstruction(hp3, hp4) and
 
+        GetNextInstruction(p, hp1) and
         MatchInstruction(hp1, A_MOV, [C_None], [PF_NONE]) and
         MatchOperand(taicpu(hp1).oper[0]^,taicpu(p).oper[0]^) and
         (taicpu(hp1).oper[1]^.typ = top_reg) and
         (taicpu(hp1).oper[1]^.reg = NR_STACK_POINTER_REG) and
 
+        GetNextInstruction(hp1, hp2) and
+        SkipEntryExitMarker(hp2, hp2) and
         MatchInstruction(hp2, A_BL, [C_None], [PF_NONE]) and
         (taicpu(hp2).oper[0]^.typ = top_ref) and
 
+        GetNextInstruction(hp2, hp3) and
+        SkipEntryExitMarker(hp3, hp3) and
         MatchInstruction(hp3, A_LDP, [C_None], [PF_NONE]) and
         MatchOpType(taicpu(hp3),top_reg,top_reg,top_ref) and
         (taicpu(hp3).oper[0]^.reg = NR_X29) and
@@ -452,6 +466,7 @@ Implementation
         (taicpu(hp3).oper[2]^.ref^.offset=16) and
         (taicpu(hp3).oper[2]^.ref^.addressmode=AM_POSTINDEXED) and
 
+        GetNextInstruction(hp3, hp4) and
         MatchInstruction(hp4, A_RET, [C_None], [PF_None]) and
         (taicpu(hp4).ops = 0) then
         begin
@@ -526,6 +541,164 @@ Implementation
     end;
 
 
+  function TCpuAsmOptimizer.OptPass2LDRSTR(var p: tai): boolean;
+    var
+      hp1, hp1_last: tai;
+      ThisRegister: TRegister;
+      OffsetVal, ValidOffset, MinOffset, MaxOffset: asizeint;
+      TargetOpcode: TAsmOp;
+      Breakout: Boolean;
+    begin
+      Result := False;
+      ThisRegister := taicpu(p).oper[0]^.reg;
+
+      case taicpu(p).opcode of
+        A_LDR:
+          TargetOpcode := A_LDP;
+        A_STR:
+          TargetOpcode := A_STP;
+        else
+          InternalError(2020081501);
+      end;
+
+      { reg appearing in ref invalidates these optimisations }
+      if (TargetOpcode = A_STP) or not RegInRef(ThisRegister, taicpu(p).oper[1]^.ref^) then
+        begin
+          { LDP/STP has a smaller permitted offset range than LDR/STR.
+
+            TODO: For a group of out-of-range LDR/STR instructions, can
+            we declare a temporary register equal to the offset base
+            address, modify the STR instructions to use that register
+            and then convert them to STP instructions?  Note that STR
+            generally takes 2 cycles (on top of the memory latency),
+            while LDP/STP takes 3.
+          }
+
+          if (getsubreg(ThisRegister) = R_SUBQ) then
+            begin
+              ValidOffset := 8;
+              MinOffset := -512;
+              MaxOffset := 504;
+            end
+          else
+            begin
+              ValidOffset := 4;
+              MinOffset := -256;
+              MaxOffset := 252;
+            end;
+
+          hp1_last := p;
+
+          { Look for nearby LDR/STR instructions }
+          if (taicpu(p).oppostfix = PF_NONE) and
+            (taicpu(p).oper[1]^.ref^.addressmode = AM_OFFSET) then
+            { If SkipGetNext is True, GextNextInstruction isn't called }
+            while GetNextInstruction(hp1_last, hp1) do
+              begin
+                if (hp1.typ <> ait_instruction) then
+                  Break;
+
+                if (taicpu(hp1).opcode = taicpu(p).opcode) then
+                  begin
+                    Breakout := False;
+
+                    if (taicpu(hp1).oppostfix = PF_NONE) and
+                      { Registers need to be the same size }
+                      (getsubreg(ThisRegister) = getsubreg(taicpu(hp1).oper[0]^.reg)) and
+                      (
+                        (TargetOpcode = A_STP) or
+                        { LDP x0, x0, [sp, #imm] is undefined behaviour, even
+                          though such an LDR pair should have been optimised
+                          out by now. STP is okay }
+                        (ThisRegister <> taicpu(hp1).oper[0]^.reg)
+                      ) and
+                      (taicpu(hp1).oper[1]^.ref^.addressmode = AM_OFFSET) and
+                      (taicpu(p).oper[1]^.ref^.base = taicpu(hp1).oper[1]^.ref^.base) and
+                      (taicpu(p).oper[1]^.ref^.index = taicpu(hp1).oper[1]^.ref^.index) and
+                      { Make sure the address registers haven't changed }
+                      not RegModifiedBetween(taicpu(hp1).oper[1]^.ref^.base, p, hp1) and
+                      (
+                        (taicpu(hp1).oper[1]^.ref^.index = NR_NO) or
+                        not RegModifiedBetween(taicpu(hp1).oper[1]^.ref^.index, p, hp1)
+                      ) and
+                      { Don't need to check "RegInRef" because the base registers are identical,
+                        and the first one was checked already. [Kit] }
+                      (((TargetOpcode=A_LDP) and not RegUsedBetween(taicpu(hp1).oper[0]^.reg, p, hp1)) or
+                       ((TargetOpcode=A_STP) and not RegModifiedBetween(taicpu(hp1).oper[0]^.reg, p, hp1))) then
+                      begin
+                        { Can we convert these two LDR/STR instructions into a
+                          single LDR/STP? }
+
+                        OffsetVal := taicpu(hp1).oper[1]^.ref^.offset - taicpu(p).oper[1]^.ref^.offset;
+                        if (OffsetVal = ValidOffset) then
+                          begin
+                            if  (taicpu(p).oper[1]^.ref^.offset >= MinOffset) and (taicpu(hp1).oper[1]^.ref^.offset <= MaxOffset) then
+                              begin
+                                { Convert:
+                                    LDR/STR reg0, [reg2, #ofs]
+                                    ...
+                                    LDR/STR reg1. [reg2, #ofs + 8] // 4 if registers are 32-bit
+                                  To:
+                                    LDP/STP reg0, reg1, [reg2, #ofs]
+                                }
+                                taicpu(p).opcode := TargetOpcode;
+                                if TargetOpcode = A_STP then
+                                  DebugMsg('Peephole Optimization: StrStr2Stp', p)
+                                else
+                                  DebugMsg('Peephole Optimization: LdrLdr2Ldp', p);
+                                taicpu(p).ops := 3;
+                                taicpu(p).loadref(2, taicpu(p).oper[1]^.ref^);
+                                taicpu(p).loadreg(1, taicpu(hp1).oper[0]^.reg);
+
+                                asml.Remove(hp1);
+                                hp1.Free;
+                                Result := True;
+                                Exit;
+                              end;
+                          end
+                        else if (OffsetVal = -ValidOffset) then
+                          begin
+                            if (taicpu(hp1).oper[1]^.ref^.offset >= MinOffset) and (taicpu(p).oper[1]^.ref^.offset <= MaxOffset) then
+                              begin
+                                { Convert:
+                                    LDR/STR reg0, [reg2, #ofs + 8] // 4 if registers are 32-bit
+                                    ...
+                                    LDR/STR reg1. [reg2, #ofs]
+                                  To:
+                                    LDP/STP reg1, reg0, [reg2, #ofs]
+                                }
+                                taicpu(p).opcode := TargetOpcode;
+                                if TargetOpcode = A_STP then
+                                  DebugMsg('Peephole Optimization: StrStr2Stp (reverse)', p)
+                                else
+                                  DebugMsg('Peephole Optimization: LdrLdr2Ldp (reverse)', p);
+                                taicpu(p).ops := 3;
+                                taicpu(p).loadref(2, taicpu(hp1).oper[1]^.ref^);
+                                taicpu(p).loadreg(1, taicpu(p).oper[0]^.reg);
+                                taicpu(p).loadreg(0, taicpu(hp1).oper[0]^.reg);
+
+                                asml.Remove(hp1);
+                                hp1.Free;
+                                Result := True;
+                                Exit;
+                              end;
+                          end;
+                      end;
+                  end
+                else
+                  Break;
+
+                { Don't continue looking for LDR/STR pairs if the address register
+                  gets modified }
+                if RegModifiedByInstruction(taicpu(p).oper[1]^.ref^.base, hp1) then
+                  Break;
+
+                hp1_last := hp1;
+              end;
+        end;
+    end;
+
+
   function TCpuAsmOptimizer.OptPostCMP(var p : tai): boolean;
     var
      hp1,hp2: tai;
@@ -567,14 +740,9 @@ Implementation
       if p.typ=ait_instruction then
         begin
           case taicpu(p).opcode of
-            A_LDR:
-              begin
-                Result:=LookForPostindexedPattern(taicpu(p));
-              end;
+            A_LDR,
             A_STR:
-              begin
-                Result:=LookForPostindexedPattern(taicpu(p));
-              end;
+              Result:=LookForPostindexedPattern(p);
             A_MOV:
               Result:=OptPass1Mov(p);
             A_STP:
@@ -612,13 +780,27 @@ Implementation
             A_FNEG,
             A_FCVT,
             A_FABS:
-              begin
-                if GetNextInstructionUsingReg(p, hp1, taicpu(p).oper[0]^.reg) and
-                  RemoveSuperfluousFMov(p, hp1, 'FOpFMov2FOp') then
-                  Result:=true;
-              end;
+              Result:=OptPass1FData(p);
             A_FMOV:
               Result:=OptPass1FMov(p);
+            else
+              ;
+          end;
+        end;
+    end;
+
+
+  function TCpuAsmOptimizer.PeepHoleOptPass2Cpu(var p: tai): boolean;
+    var
+      hp1: tai;
+    begin
+      result := false;
+      if p.typ=ait_instruction then
+        begin
+          case taicpu(p).opcode of
+            A_LDR,
+            A_STR:
+              Result:=OptPass2LDRSTR(p);
             else
               ;
           end;

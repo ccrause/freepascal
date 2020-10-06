@@ -860,7 +860,7 @@ function get_next_varsym(def: tabstractrecorddef; const SymList:TFPHashObjectLis
                 end
               else
                 begin
-                  IncompatibleTypes(node.resultdef, def);
+                  Message(parser_e_illegal_expression);
                   datadef:=carraydef.getreusable(cansichartype,1);
                 end;
               ftcb.finish_internal_data_builder(datatcb,ll,datadef,varalign);
@@ -909,7 +909,7 @@ function get_next_varsym(def: tabstractrecorddef; const SymList:TFPHashObjectLis
                    end;
                 end
               else
-                IncompatibleTypes(node.resultdef, def);
+                Message(parser_e_illegal_expression);
           end
         else
           if (node.nodetype=addrn) or

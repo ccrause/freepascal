@@ -138,6 +138,7 @@ unit aoptx86;
         function OptPass1Cmp(var p : tai) : boolean;
         function OptPass1PXor(var p : tai) : boolean;
         function OptPass1VPXor(var p: tai): boolean;
+        function OptPass1Imul(var p : tai) : boolean;
 
         function OptPass2MOV(var p : tai) : boolean;
         function OptPass2Imul(var p : tai) : boolean;
@@ -3819,8 +3820,8 @@ unit aoptx86;
            (taicpu(hp1).opsize = taicpu(p).opsize) and
            RefsEqual(taicpu(p).oper[0]^.ref^, taicpu(hp1).oper[0]^.ref^) then
           begin
-            { replacing fstp f;fld f by fst f is only valid for extended because of rounding }
-            if (taicpu(p).opsize=S_FX) and
+            { replacing fstp f;fld f by fst f is only valid for extended because of rounding or if fastmath is on }
+            if ((taicpu(p).opsize=S_FX) or (cs_opt_fastmath in current_settings.optimizerswitches)) and
                GetNextInstruction(hp1, hp2) and
                (hp2.typ = ait_instruction) and
                IsExitCode(hp2) and
@@ -3834,18 +3835,27 @@ unit aoptx86;
                 RemoveLastDeallocForFuncRes(p);
                 Result := true;
               end
-            (* can't be done because the store operation rounds
             else
-              { fst can't store an extended value! }
-              if (taicpu(p).opsize <> S_FX) and
-                 (taicpu(p).opsize <> S_IQ) then
+              { we can do this only in fast math mode as fstp is rounding ...
+                ... still disabled as it breaks the compiler and/or rtl }
+              if ({ (cs_opt_fastmath in current_settings.optimizerswitches) or }
+                { ... or if another fstp equal to the first one follows }
+                (GetNextInstruction(hp1,hp2) and
+                (hp2.typ = ait_instruction) and
+                (taicpu(p).opcode=taicpu(hp2).opcode) and
+                (taicpu(p).opsize=taicpu(hp2).opsize))
+                ) and
+                { fst can't store an extended/comp value }
+                (taicpu(p).opsize <> S_FX) and
+                (taicpu(p).opsize <> S_IQ) then
                 begin
                   if (taicpu(p).opcode = A_FSTP) then
                     taicpu(p).opcode := A_FST
-                  else taicpu(p).opcode := A_FIST;
+                  else
+                    taicpu(p).opcode := A_FIST;
+                  DebugMsg(SPeepholeOptimization + 'FstpFld2Fst',p);
                   RemoveInstruction(hp1);
-                end
-            *)
+                end;
           end;
       end;
 
@@ -4164,7 +4174,37 @@ unit aoptx86;
            RemoveInstruction(hp1);
            Result:=true;
            Exit;
-         end;
+         end
+        {
+           replace
+             pxor reg1,reg1
+             movapd/s reg1,reg2
+             dealloc reg1
+
+             by
+
+             pxor reg2,reg2
+        }
+        else if GetNextInstruction(p,hp1) and
+          { we mix single and double opperations here because we assume that the compiler
+            generates vmovapd only after double operations and vmovaps only after single operations }
+          MatchInstruction(hp1,A_MOVAPD,A_MOVAPS,[S_NO]) and
+          MatchOperand(taicpu(p).oper[0]^,taicpu(p).oper[1]^) and
+          MatchOperand(taicpu(p).oper[1]^,taicpu(hp1).oper[0]^) and
+          (taicpu(p).oper[0]^.typ=top_reg) then
+          begin
+            TransferUsedRegs(TmpUsedRegs);
+            UpdateUsedRegs(TmpUsedRegs, tai(p.next));
+            if not(RegUsedAfterInstruction(taicpu(p).oper[1]^.reg,hp1,TmpUsedRegs)) then
+              begin
+                taicpu(p).loadoper(0,taicpu(hp1).oper[1]^);
+                taicpu(p).loadoper(1,taicpu(hp1).oper[1]^);
+                DebugMsg(SPeepholeOptimization + 'PXorMovapd2PXor done',p);
+                RemoveInstruction(hp1);
+                result:=true;
+              end;
+          end;
+
      end;
 
 
@@ -4191,8 +4231,42 @@ unit aoptx86;
            RemoveInstruction(hp1);
            Result:=true;
            Exit;
+         end
+       else
+         Result:=OptPass1VOP(p);
+     end;
+
+   function TX86AsmOptimizer.OptPass1Imul(var p: tai): boolean;
+     var
+       hp1 : tai;
+     begin
+       result:=false;
+       { replace
+           IMul   const,%mreg1,%mreg2
+           Mov    %reg2,%mreg3
+           dealloc  %mreg3
+
+           by
+           Imul   const,%mreg1,%mreg23
+       }
+       if (taicpu(p).ops=3) and
+         GetNextInstruction(p,hp1) and
+         MatchInstruction(hp1,A_MOV,[taicpu(p).opsize]) and
+         MatchOperand(taicpu(p).oper[2]^,taicpu(hp1).oper[0]^) and
+         (taicpu(hp1).oper[1]^.typ=top_reg) then
+         begin
+           TransferUsedRegs(TmpUsedRegs);
+           UpdateUsedRegs(TmpUsedRegs, tai(p.next));
+           if not(RegUsedAfterInstruction(taicpu(hp1).oper[0]^.reg,hp1,TmpUsedRegs)) then
+             begin
+               taicpu(p).loadoper(2,taicpu(hp1).oper[1]^);
+               DebugMsg(SPeepholeOptimization + 'ImulMov2Imul done',p);
+               RemoveInstruction(hp1);
+               result:=true;
+             end;
          end;
      end;
+
 
 
    function TX86AsmOptimizer.OptPass2MOV(var p : tai) : boolean;
@@ -5482,32 +5556,81 @@ unit aoptx86;
             if reg_and_hp1_is_instr and
               (taicpu(hp1).opcode = A_AND) and
               MatchOpType(taicpu(hp1),top_const,top_reg) and
-              (taicpu(hp1).oper[1]^.reg = taicpu(p).oper[1]^.reg) then
+              ((taicpu(hp1).oper[1]^.reg = taicpu(p).oper[1]^.reg)
+{$ifdef x86_64}
+               { check for implicit extension to 64 bit }
+               or
+               ((taicpu(p).opsize in [S_BL,S_WL]) and
+                (taicpu(hp1).opsize=S_Q) and
+                SuperRegistersEqual(taicpu(p).oper[1]^.reg,taicpu(hp1).oper[1]^.reg)
+               )
+{$endif x86_64}
+              )
+              then
               begin
                 case taicpu(p).opsize Of
                   S_BL, S_BW{$ifdef x86_64}, S_BQ{$endif x86_64}:
                     if (taicpu(hp1).oper[0]^.val = $ff) then
                       begin
-                        DebugMsg(SPeepholeOptimization + 'var4',p);
+                        DebugMsg(SPeepholeOptimization + 'MovzAnd2Movz1',p);
                         RemoveInstruction(hp1);
+                        Result:=true;
+                        exit;
                       end;
                     S_WL{$ifdef x86_64}, S_WQ{$endif x86_64}:
                       if (taicpu(hp1).oper[0]^.val = $ffff) then
                         begin
-                          DebugMsg(SPeepholeOptimization + 'var5',p);
+                          DebugMsg(SPeepholeOptimization + 'MovzAnd2Movz2',p);
                           RemoveInstruction(hp1);
+                          Result:=true;
+                          exit;
                         end;
 {$ifdef x86_64}
                     S_LQ:
                       if (taicpu(hp1).oper[0]^.val = $ffffffff) then
                         begin
-                          if (cs_asm_source in current_settings.globalswitches) then
-                            asml.insertbefore(tai_comment.create(strpnew(SPeepholeOptimization + 'var6')),p);
+                          DebugMsg(SPeepholeOptimization + 'MovzAnd2Movz3',p);
                           RemoveInstruction(hp1);
+                          Result:=true;
+                          exit;
                         end;
 {$endif x86_64}
-                  else
-                    ;
+                    else
+                      ;
+                end;
+                { we cannot get rid of the and, but can we get rid of the movz ?}
+                if SuperRegistersEqual(taicpu(p).oper[0]^.reg,taicpu(p).oper[1]^.reg) then
+                  begin
+                    case taicpu(p).opsize Of
+                      S_BL, S_BW{$ifdef x86_64}, S_BQ{$endif x86_64}:
+                        if (taicpu(hp1).oper[0]^.val and $ff)=taicpu(hp1).oper[0]^.val then
+                          begin
+                            DebugMsg(SPeepholeOptimization + 'MovzAnd2And1',p);
+                            RemoveCurrentP(p,hp1);
+                            Result:=true;
+                            exit;
+                          end;
+                        S_WL{$ifdef x86_64}, S_WQ{$endif x86_64}:
+                          if (taicpu(hp1).oper[0]^.val and $ffff)=taicpu(hp1).oper[0]^.val then
+                            begin
+                              DebugMsg(SPeepholeOptimization + 'MovzAnd2And2',p);
+                              RemoveCurrentP(p,hp1);
+                              Result:=true;
+                              exit;
+                            end;
+{$ifdef x86_64}
+                        S_LQ:
+                          if (taicpu(hp1).oper[0]^.val and $ffffffff)=taicpu(hp1).oper[0]^.val then
+                            begin
+                              DebugMsg(SPeepholeOptimization + 'MovzAnd2And3',p);
+                              RemoveCurrentP(p,hp1);
+                              Result:=true;
+                              exit;
+                            end;
+{$endif x86_64}
+                        else
+                          ;
+                    end;
                 end;
               end;
             { changes some movzx constructs to faster synonyms (all examples
@@ -5702,17 +5825,17 @@ unit aoptx86;
               end
             else if MatchOpType(taicpu(p),top_const,top_reg) and
               MatchInstruction(hp1,A_MOVZX,[]) and
-              (taicpu(hp1).oper[0]^.typ = top_reg) and
-              MatchOperand(taicpu(p).oper[1]^,taicpu(hp1).oper[1]^) and
+              MatchOpType(taicpu(hp1),top_reg,top_reg) and
+              SuperRegistersEqual(taicpu(p).oper[1]^.reg,taicpu(hp1).oper[1]^.reg) and
               (getsupreg(taicpu(hp1).oper[0]^.reg)=getsupreg(taicpu(hp1).oper[1]^.reg)) and
                (((taicpu(p).opsize=S_W) and
                  (taicpu(hp1).opsize=S_BW)) or
                 ((taicpu(p).opsize=S_L) and
-                 (taicpu(hp1).opsize in [S_WL,S_BL]))
+                 (taicpu(hp1).opsize in [S_WL,S_BL{$ifdef x86_64},S_BQ,S_WQ{$endif x86_64}]))
 {$ifdef x86_64}
                   or
                  ((taicpu(p).opsize=S_Q) and
-                  (taicpu(hp1).opsize in [S_BQ,S_WQ]))
+                  (taicpu(hp1).opsize in [S_BQ,S_WQ,S_BL,S_WL]))
 {$endif x86_64}
                 ) then
                   begin

@@ -403,6 +403,7 @@ Type
   CodePointer = Pointer;
   CodePtrInt = PtrInt;
   CodePtrUInt = PtrUInt;
+  TExitCode = Longint;
 {$endif CPU64}
 
 {$ifdef CPU32}
@@ -415,6 +416,7 @@ Type
   CodePointer = Pointer;
   CodePtrInt = PtrInt;
   CodePtrUInt = PtrUInt;
+  TExitCode = Longint;
 {$endif CPU32}
 
 {$ifdef CPU16}
@@ -446,6 +448,8 @@ Type
   {$endif}
   ValSInt = Integer;
   ValUInt = Word;
+  { this is TP compatible }
+  TExitCode = Word;
 {$endif CPU16}
 
 {$if defined(VER2) or defined(VER3_0)}
@@ -774,7 +778,7 @@ const
   ModuleIsCpp : Boolean = FALSE;
 
 var
-  ExitCode    : Longint; public name 'operatingsystem_result';
+  ExitCode    : TExitCode; public name 'operatingsystem_result';
   RandSeed    : Cardinal;
   { Delphi compatibility }
 
@@ -1143,7 +1147,7 @@ function fpc_SarInt64(Const AValue : Int64;const Shift : Byte): Int64;compilerpr
 {$endif}
 
 {$ifdef FPC_HAS_INTERNAL_BSR}
-{$if defined(cpui386) or defined(cpux86_64) or defined(cpuarm) or defined(cpuaarch64) or defined(cpupowerpc32) or defined(cpupowerpc64)}
+{$if defined(cpui386) or defined(cpux86_64) or defined(cpuarm) or defined(cpuaarch64) or defined(cpupowerpc32) or defined(cpupowerpc64) or defined(cpuxtensa)}
 {$define FPC_HAS_INTERNAL_BSR_BYTE}
 {$define FPC_HAS_INTERNAL_BSR_WORD}
 {$define FPC_HAS_INTERNAL_BSR_DWORD}
@@ -1473,15 +1477,15 @@ function get_caller_frame(framebp:pointer;addr:pointer=nil):pointer;[INTERNPROC:
 function get_frame:pointer;{$ifdef SYSTEMINLINE}inline;{$endif}
 {$ENDIF}
 
-Function Get_pc_addr : CodePointer;
+Function Get_pc_addr : CodePointer;{$ifdef SYSTEMINLINE}inline;{$endif}
 
 { Writes at most 'count' caller stack frames to pre-allocated buffer pointed to
   by 'frames', skipping 'skipframes' initial frames. Returns number of frames written. }
 function CaptureBacktrace(skipframes,count:sizeint;frames:PCodePointer):sizeint;
 
-function get_caller_addr(framebp:pointer;addr:codepointer=nil):codepointer;
-function get_caller_frame(framebp:pointer;addr:codepointer=nil):pointer;
-procedure get_caller_stackinfo(var framebp : pointer; var addr : codepointer);
+function get_caller_addr(framebp:pointer;addr:codepointer=nil):codepointer;{$ifdef SYSTEMINLINE}inline;{$endif}
+function get_caller_frame(framebp:pointer;addr:codepointer=nil):pointer;{$ifdef SYSTEMINLINE}inline;{$endif}
+procedure get_caller_stackinfo(var framebp : pointer; var addr : codepointer);{$ifdef SYSTEMINLINE}inline;{$endif}
 
 Function IOResult:Word;
 Function SPtr:Pointer;[internconst:fpc_in_const_ptr];
@@ -1604,7 +1608,7 @@ procedure DumpExceptionBacktrace(var f:text);
 
 Procedure RunError(w:Word);noreturn;
 Procedure RunError;{$ifdef SYSTEMINLINE}inline;{$endif}noreturn;
-Procedure Halt(errnum:Longint);noreturn;
+Procedure Halt(errnum:TExitCode);noreturn;
 {$ifdef FPC_HAS_FEATURE_HEAP}
 Procedure AddExitProc(Proc:TProcedure);
 {$endif FPC_HAS_FEATURE_HEAP}

@@ -490,7 +490,7 @@ implementation
 
 
       var
-        t       , vl, hp: tnode;
+        t,vl,hp,lefttarget,righttarget: tnode;
         lt,rt   : tnodetype;
         hdef,
         rd,ld   , inttype: tdef;
@@ -506,6 +506,7 @@ implementation
         b       : boolean;
         cr, cl  : Tconstexprint;
         v2p, c2p, c1p, v1p: pnode;
+        p1,p2: TConstPtrUInt;
       begin
         result:=nil;
         l1:=0;
@@ -1309,6 +1310,54 @@ implementation
               end;
           end;
 
+        { check if
+           typeinfo(<type1>)=/<>typeinfo(<type2>)
+          can be evaluated at compile time
+        }
+        lefttarget:=actualtargetnode(@left)^;
+        righttarget:=actualtargetnode(@right)^;
+        if (nodetype in [equaln,unequaln]) and (lefttarget.nodetype=inlinen) and (righttarget.nodetype=inlinen) and
+          (tinlinenode(lefttarget).inlinenumber=in_typeinfo_x) and (tinlinenode(righttarget).inlinenumber=in_typeinfo_x) and
+          (tinlinenode(lefttarget).left.nodetype=typen) and (tinlinenode(righttarget).left.nodetype=typen) then
+          begin
+            case nodetype of
+              equaln:
+                result:=cordconstnode.create(ord(ttypenode(tinlinenode(lefttarget).left).resultdef=ttypenode(tinlinenode(righttarget).left).resultdef),bool8type,false);
+              unequaln:
+                result:=cordconstnode.create(ord(ttypenode(tinlinenode(lefttarget).left).resultdef<>ttypenode(tinlinenode(righttarget).left).resultdef),bool8type,false);
+              else
+                Internalerror(2020092901);
+            end;
+            exit;
+          end;
+
+        if is_constpointernode(left) and is_constpointernode(right) then
+          begin
+            p1:=0;
+            p2:=0;
+            if left.nodetype=pointerconstn then
+              p1:=tpointerconstnode(left).value;
+            if right.nodetype=pointerconstn then
+              p2:=tpointerconstnode(right).value;
+            case nodetype of
+              equaln:
+                result:=cordconstnode.create(ord(p1=p2),bool8type,false);
+              unequaln:
+                result:=cordconstnode.create(ord(p1<>p2),bool8type,false);
+              gtn:
+                result:=cordconstnode.create(ord(p1>p2),bool8type,false);
+              ltn:
+                result:=cordconstnode.create(ord(p1<p2),bool8type,false);
+              gten:
+                result:=cordconstnode.create(ord(p1>=p2),bool8type,false);
+              lten:
+                result:=cordconstnode.create(ord(p1<=p2),bool8type,false);
+              else
+                Internalerror(2020100101);
+            end;
+            exit;
+          end;
+
         { slow simplifications }
         if cs_opt_level2 in current_settings.optimizerswitches then
           begin
@@ -1348,7 +1397,7 @@ implementation
                    (left.nodetype=equaln) and
                    (right.nodetype=equaln) and
                    (not might_have_sideeffects(left)) and
-                   (not might_have_sideeffects(right)) and
+                   (not might_have_sideeffects(right,[mhs_exceptions])) and
                    (is_constintnode(taddnode(left).left) or is_constintnode(taddnode(left).right) or
                     is_constpointernode(taddnode(left).left) or is_constpointernode(taddnode(left).right) or
                     is_constcharnode(taddnode(left).left) or is_constcharnode(taddnode(left).right)) and
