@@ -8,6 +8,7 @@
         <MainUnitHasUsesSectionForAllUnits Value="False"/>
         <MainUnitHasCreateFormStatements Value="False"/>
         <MainUnitHasTitleStatement Value="False"/>
+        <MainUnitHasScaledStatement Value="False"/>
         <LRSInOutputDirectory Value="False"/>
         <CompatibilityMode Value="True"/>
       </Flags>
@@ -22,12 +23,14 @@
     </PublishOptions>
     <RunParams>
       <local>
+        <CommandLineParams Value="-Ff\home\christo\xtensa\ESP8266_RTOS_SDK_V3_3 -va -Co -Tfreertos -MObjFPC -n @~\fpc\cc\fpc.cfg -Fl\home\christo\xtensa\ESP8266_RTOS_SDK_V3_3\libs -Fl~\xtensa\xtensa-lx106-elf\xtensa-lx106-elf\sysroot\lib -Fl~\xtensa\xtensa-lx106-elf\lib\gcc\xtensa-lx106-elf\5.2.0 -Wpesp8266 -Cacall0 -Fu\home\christo\fpc\xtensa\freertos-fp \home\christo\fpc\xtensa\examples\testmul\test.pp"/>
         <LaunchingApplication PathPlusParams="\usr\X11R6\bin\xterm -T &apos;Lazarus Run Output&apos; -e $(LazarusDir)\tools\runwait.sh $(TargetCmdLine)"/>
       </local>
       <FormatVersion Value="2"/>
       <Modes Count="1">
         <Mode0 Name="default">
           <local>
+            <CommandLineParams Value="-Ff\home\christo\xtensa\ESP8266_RTOS_SDK_V3_3 -va -Co -Tfreertos -MObjFPC -n @~\fpc\cc\fpc.cfg -Fl\home\christo\xtensa\ESP8266_RTOS_SDK_V3_3\libs -Fl~\xtensa\xtensa-lx106-elf\xtensa-lx106-elf\sysroot\lib -Fl~\xtensa\xtensa-lx106-elf\lib\gcc\xtensa-lx106-elf\5.2.0 -Wpesp8266 -Cacall0 -Fu\home\christo\fpc\xtensa\freertos-fp \home\christo\fpc\xtensa\examples\testmul\test.pp"/>
             <LaunchingApplication PathPlusParams="\usr\X11R6\bin\xterm -T &apos;Lazarus Run Output&apos; -e $(LazarusDir)\tools\runwait.sh $(TargetCmdLine)"/>
           </local>
         </Mode0>
@@ -43,6 +46,9 @@
         <IsPartOfProject Value="True"/>
       </Unit1>
     </Units>
+    <Debugger>
+      <Backend Value="{58FDC88F-B56E-4841-B1D8-CDFED78501E8}"/>
+    </Debugger>
   </ProjectOptions>
   <CompilerOptions>
     <Version Value="11"/>
@@ -63,6 +69,16 @@
         <UseAnsiStrings Value="False"/>
       </SyntaxOptions>
     </Parsing>
+    <CodeGeneration>
+      <Optimizations>
+        <OptimizationLevel Value="0"/>
+      </Optimizations>
+    </CodeGeneration>
+    <Linking>
+      <Debugging>
+        <DebugInfoType Value="dsDwarf2"/>
+      </Debugging>
+    </Linking>
     <Other>
       <Verbosity>
         <ShowWarn Value="False"/>
@@ -73,7 +89,8 @@
         <StopAfterErrCount Value="50"/>
       </ConfigFile>
       <CustomOptions Value="-dxtensa
--Sew"/>
+-Sew
+-dDEBUG_NODE_XML"/>
     </Other>
   </CompilerOptions>
 </CONFIG>
