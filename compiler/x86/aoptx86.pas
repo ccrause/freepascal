@@ -1429,7 +1429,6 @@ unit aoptx86;
             else if GetNextInstruction(p,hp1) then
               begin
                 if MatchInstruction(hp1,[taicpu(p).opcode],[S_NO]) and
-                  MatchOpType(taicpu(hp1),top_reg,top_reg) and
                   MatchOperand(taicpu(p).oper[1]^,taicpu(hp1).oper[0]^) then
                   begin
                     { vmova* reg1,reg2
@@ -1439,7 +1438,8 @@ unit aoptx86;
                       vmova* reg1,reg3 }
                     TransferUsedRegs(TmpUsedRegs);
                     UpdateUsedRegs(TmpUsedRegs, tai(p.next));
-                    if not(RegUsedAfterInstruction(taicpu(p).oper[1]^.reg,hp1,TmpUsedRegs)) then
+                    if MatchOpType(taicpu(hp1),top_reg,top_reg) and
+                      not(RegUsedAfterInstruction(taicpu(p).oper[1]^.reg,hp1,TmpUsedRegs)) then
                       begin
                         DebugMsg(SPeepholeOptimization + '(V)MOVA*(V)MOVA*2(V)MOVA* 1',p);
                         taicpu(p).loadoper(1,taicpu(hp1).oper[1]^);
@@ -1448,11 +1448,14 @@ unit aoptx86;
                         exit;
                       end
                     { special case:
-                      vmova* reg1,reg2
-                      vmova* reg2,reg1
+                      vmova* reg1,<op>
+                      vmova* <op>,reg1
                       =>
-                      vmova* reg1,reg2 }
-                    else if MatchOperand(taicpu(p).oper[0]^,taicpu(hp1).oper[1]^) then
+                      vmova* reg1,<op> }
+                    else if MatchOperand(taicpu(p).oper[0]^,taicpu(hp1).oper[1]^) and
+                      ((taicpu(p).oper[0]^.typ<>top_ref) or
+                       (not(vol_read in taicpu(p).oper[0]^.ref^.volatility))
+                      ) then
                       begin
                         DebugMsg(SPeepholeOptimization + '(V)MOVA*(V)MOVA*2(V)MOVA* 2',p);
                         RemoveInstruction(hp1);
@@ -1460,30 +1463,30 @@ unit aoptx86;
                         exit;
                       end
                   end
-              else if ((MatchInstruction(p,[A_MOVAPS,A_VMOVAPS],[S_NO]) and
-                 MatchInstruction(hp1,[A_MOVSS,A_VMOVSS],[S_NO])) or
-                 ((MatchInstruction(p,[A_MOVAPD,A_VMOVAPD],[S_NO]) and
-                 MatchInstruction(hp1,[A_MOVSD,A_VMOVSD],[S_NO])))
-                ) and
-                MatchOperand(taicpu(p).oper[1]^,taicpu(hp1).oper[0]^) then
-                begin
-                  { vmova* reg1,reg2
-                    vmovs* reg2,<op>
-                    dealloc reg2
-                    =>
-                    vmovs* reg1,reg3 }
-                  TransferUsedRegs(TmpUsedRegs);
-                  UpdateUsedRegs(TmpUsedRegs, tai(p.next));
-                  if not(RegUsedAfterInstruction(taicpu(p).oper[1]^.reg,hp1,TmpUsedRegs)) then
-                    begin
-                      DebugMsg(SPeepholeOptimization + '(V)MOVA*(V)MOVS*2(V)MOVS* 1',p);
-                      taicpu(p).opcode:=taicpu(hp1).opcode;
-                      taicpu(p).loadoper(1,taicpu(hp1).oper[1]^);
-                      RemoveInstruction(hp1);
-                      result:=true;
-                      exit;
-                    end
-                end;
+                else if ((MatchInstruction(p,[A_MOVAPS,A_VMOVAPS],[S_NO]) and
+                  MatchInstruction(hp1,[A_MOVSS,A_VMOVSS],[S_NO])) or
+                  ((MatchInstruction(p,[A_MOVAPD,A_VMOVAPD],[S_NO]) and
+                    MatchInstruction(hp1,[A_MOVSD,A_VMOVSD],[S_NO])))
+                  ) and
+                  MatchOperand(taicpu(p).oper[1]^,taicpu(hp1).oper[0]^) then
+                  begin
+                    { vmova* reg1,reg2
+                      vmovs* reg2,<op>
+                      dealloc reg2
+                      =>
+                      vmovs* reg1,reg3 }
+                    TransferUsedRegs(TmpUsedRegs);
+                    UpdateUsedRegs(TmpUsedRegs, tai(p.next));
+                    if not(RegUsedAfterInstruction(taicpu(p).oper[1]^.reg,hp1,TmpUsedRegs)) then
+                      begin
+                        DebugMsg(SPeepholeOptimization + '(V)MOVA*(V)MOVS*2(V)MOVS* 1',p);
+                        taicpu(p).opcode:=taicpu(hp1).opcode;
+                        taicpu(p).loadoper(1,taicpu(hp1).oper[1]^);
+                        RemoveInstruction(hp1);
+                        result:=true;
+                        exit;
+                      end
+                  end;
             end;
           if GetNextInstructionUsingReg(p,hp1,taicpu(p).oper[1]^.reg) then
             begin
@@ -4166,7 +4169,7 @@ unit aoptx86;
        if MatchOperand(taicpu(p).oper[0]^,taicpu(p).oper[1]^) and
          MatchOpType(taicpu(p),top_reg,top_reg) and
          GetNextInstructionUsingReg(p,hp1,taicpu(p).oper[0]^.reg) and
-         MatchInstruction(taicpu(hp1),taicpu(p).opcode,[taicpu(p).opsize]) and
+         MatchInstruction(hp1,taicpu(p).opcode,[taicpu(p).opsize]) and
          MatchOperand(taicpu(p).oper[0]^,taicpu(hp1).oper[0]^) and
          MatchOperand(taicpu(hp1).oper[0]^,taicpu(hp1).oper[1]^) then
          begin
@@ -4223,7 +4226,7 @@ unit aoptx86;
        if MatchOperand(taicpu(p).oper[0]^,taicpu(p).oper[1]^,taicpu(p).oper[2]^) and
          MatchOpType(taicpu(p),top_reg,top_reg,top_reg) and
          GetNextInstructionUsingReg(p,hp1,taicpu(p).oper[0]^.reg) and
-         MatchInstruction(taicpu(hp1),taicpu(p).opcode,[taicpu(p).opsize]) and
+         MatchInstruction(hp1,taicpu(p).opcode,[taicpu(p).opsize]) and
          MatchOperand(taicpu(p).oper[0]^,taicpu(hp1).oper[0]^) and
          MatchOperand(taicpu(hp1).oper[0]^,taicpu(hp1).oper[1]^,taicpu(hp1).oper[2]^) then
          begin
@@ -4235,6 +4238,7 @@ unit aoptx86;
        else
          Result:=OptPass1VOP(p);
      end;
+
 
    function TX86AsmOptimizer.OptPass1Imul(var p: tai): boolean;
      var
@@ -6037,7 +6041,7 @@ unit aoptx86;
     function TX86AsmOptimizer.SkipSimpleInstructions(var hp1 : tai) : Boolean;
       begin
         { we can skip all instructions not messing with the stack pointer }
-        while assigned(hp1) and {MatchInstruction(taicpu(hp1),[A_LEA,A_MOV,A_MOVQ,A_MOVSQ,A_MOVSX,A_MOVSXD,A_MOVZX,
+        while assigned(hp1) and {MatchInstruction(hp1,[A_LEA,A_MOV,A_MOVQ,A_MOVSQ,A_MOVSX,A_MOVSXD,A_MOVZX,
           A_AND,A_OR,A_XOR,A_ADD,A_SHR,A_SHL,A_IMUL,A_SETcc,A_SAR,A_SUB,A_TEST,A_CMOVcc,
           A_MOVSS,A_MOVSD,A_MOVAPS,A_MOVUPD,A_MOVAPD,A_MOVUPS,
           A_VMOVSS,A_VMOVSD,A_VMOVAPS,A_VMOVUPD,A_VMOVAPD,A_VMOVUPS],[]) and}
