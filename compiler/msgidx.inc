@@ -466,6 +466,10 @@ const
   parser_w_enumeration_out_of_range=03353;
   parser_e_method_for_type_in_other_unit=03354;
   parser_e_generic_constraints_not_allowed_here=03355;
+  parser_e_location_size_too_small=03356;
+  parser_e_location_size_too_large=03357;
+  parser_e_location_regpair_only_data=03358;
+  parser_e_location_regpair_only_consecutive=03359;
   type_e_mismatch=04000;
   type_e_incompatible_types=04001;
   type_e_not_equal_types=04002;
@@ -849,6 +853,8 @@ const
   asmr_w_multiple_segment_overrides=07140;
   asmr_w_segment_override_ignored_in_64bit_mode=07141;
   asmr_e_mismatch_broadcasting_elements=07142;
+  asmr_e_invalid_arrangement=07143;
+  asmr_e_a64_invalid_regset=07144;
   asmw_f_too_many_asm_files=08000;
   asmw_f_assembler_output_not_supported=08001;
   asmw_f_comp_not_supported=08002;
@@ -1127,9 +1133,9 @@ const
   option_info=11024;
   option_help_pages=11025;
 
-  MsgTxtSize = 85795;
+  MsgTxtSize = 86201;
 
   MsgIdxMax : array[1..20] of longint=(
-    28,106,356,130,99,63,143,36,223,68,
+    28,106,360,130,99,63,145,36,223,68,
     62,20,30,1,1,1,1,1,1,1
   );

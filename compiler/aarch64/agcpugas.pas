@@ -305,7 +305,11 @@ unit agcpugas;
                         internalerror(2020041214);
                     end
                   else
-                    lastsec:=tai_section(hp);
+                    begin
+                      lastsec:=tai_section(hp);
+                      { also reset the last encountered symbol }
+                      lastsym:=nil;
+                    end;
 
                   if assigned(tmplist) then
                     begin
@@ -313,10 +317,11 @@ unit agcpugas;
                       tmplist.free;
                       tmplist:=nil;
                     end;
+
                 end;
               ait_symbol:
                 begin
-                  if tai_symbol(hp).is_global then
+                  if tai_symbol(hp).sym.typ=AT_FUNCTION then
                     lastsym:=tai_symbol(hp);
                 end;
               ait_instruction:
@@ -365,7 +370,7 @@ unit agcpugas;
                         { note: we can pass Nil here, because in case of a LLVM
                                 backend this whole code shouldn't be required
                                 anyway }
-                        xdatasym:=current_asmdata.DefineAsmSymbol('xdata_'+lastsec.name^,AB_LOCAL,AT_DATA,nil);
+                        xdatasym:=current_asmdata.DefineAsmSymbol('xdata_'+lastsym.sym.name,AB_LOCAL,AT_DATA,nil);
 
                         tmplist:=tasmlist.create;
                         new_section(tmplist,sec_pdata,lastsec.name^,0);
@@ -650,7 +655,7 @@ unit agcpugas;
                 else
                   begin
                     if ref.refaddr<>addr_no then
-                      internalerror(2014121506);
+                      internalerror(2014121502);
                     if (ref.offset<>0) then
                       result:=result+', #'+tostr(ref.offset);
                   end;
@@ -668,26 +673,13 @@ unit agcpugas;
 
 
     function getopstr(asminfo: pasminfo; hp: taicpu; opnr: longint; const o: toper): string;
+      var
+        i: longint;
+        reg: tregister;
       begin
         case o.typ of
           top_reg:
-            { we cannot yet represent "umov w0, v4.s[0]" or "ins v4.d[0], x1",
-              so for now we use "s4" or "d4" instead -> translate here }
-            if ((hp.opcode=A_INS) or
-                (hp.opcode=A_UMOV)) and
-               (getregtype(hp.oper[opnr]^.reg)=R_MMREGISTER) then
-              begin
-                case getsubreg(hp.oper[opnr]^.reg) of
-                  R_SUBMMS:
-                    getopstr:='v'+tostr(getsupreg(hp.oper[opnr]^.reg))+'.S[0]';
-                  R_SUBMMD:
-                    getopstr:='v'+tostr(getsupreg(hp.oper[opnr]^.reg))+'.D[0]';
-                  else
-                    internalerror(2014122907);
-                end;
-              end
-            else
-              getopstr:=gas_regname(o.reg);
+            getopstr:=gas_regname(o.reg);
           top_shifterop:
             begin
               getopstr:=gas_shiftmode2str[o.shifterop^.shiftmode];
@@ -720,7 +712,24 @@ unit agcpugas;
             begin
               str(o.val_real,Result);
               Result:='#'+Result;
-            end
+            end;
+          top_regset:
+            begin
+              reg:=o.basereg;
+              result:='{'+gas_regname(reg);
+              for i:=1 to o.nregs-1 do
+                begin
+                  setsupreg(reg,succ(getsupreg(reg)) mod 32);
+                  result:=result+', '+gas_regname(reg);
+                end;
+              result:=result+'}';
+              if o.regsetindex<>255 then
+                result:=result+'['+tostr(o.regsetindex)+']'
+            end;
+          top_indexedreg:
+            begin
+              result:=gas_regname(o.indexedreg)+'['+tostr(o.regindex)+']';
+            end;
           else
             internalerror(2014121507);
         end;

@@ -3939,6 +3939,7 @@ begin
   def_system_macro('FPC_DYNARRAYCOPY_FIXED');
   def_system_macro('FPC_HAS_MEMBAR');
   def_system_macro('FPC_SETBASE_USED');
+  def_system_macro('FPC_ALIGNED_THREADVARTABLES');
 
   { don't remove this, it's also for fpdoc necessary (FK) }
   def_system_macro('FPC_HAS_FEATURE_SUPPORT');
@@ -3951,7 +3952,7 @@ begin
       InternalError(2013092801);
   if tf_x86_far_procs_push_odd_bp in target_info.flags then
     if not UpdateTargetSwitchStr('FARPROCSPUSHODDBP', init_settings.targetswitches, true) then
-      InternalError(2013092801);
+      InternalError(2013092802);
 
   { Use standard Android NDK prefixes when cross-compiling }
   if (source_info.system<>target_info.system) and (target_info.system in systems_android) then
