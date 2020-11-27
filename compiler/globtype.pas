@@ -229,7 +229,8 @@ interface
          cs_link_pre_binutils_2_19,
          cs_link_vlink,
          { disable LTO for the system unit (needed to work around linker bugs on macOS) }
-         cs_lto_nosystem
+         cs_lto_nosystem,
+	 cs_assemble_on_target
        );
        tglobalswitches = set of tglobalswitch;
 
@@ -787,7 +788,11 @@ interface
       TRADirection = (rad_forward, rad_backwards, rad_backwards_reinit);
 
     type
+{$ifndef symansistr}
       TIDString = string[maxidlen];
+{$else}
+      TIDString = TSymStr;
+{$endif}
 
       tnormalset = set of byte; { 256 elements set }
       pnormalset = ^tnormalset;

@@ -35,6 +35,7 @@ uses
 {$DEFINE HAS_LOCALTIMEZONEOFFSET}
 {$DEFINE HAS_GETTICKCOUNT}
 {$DEFINE HAS_GETTICKCOUNT64}
+{$DEFINE HAS_FILEDATETIME}
 {$DEFINE OS_FILESETDATEBYNAME}
 
 // this target has an fileflush implementation, don't include dummy
@@ -664,6 +665,24 @@ begin
   Result:=-1;
 end;
 
+Function FileGetDate (Handle : THandle; out FileDateTime: TDateTime) : Boolean;
+Var
+  FT : TFileTime;
+begin
+  Result :=
+     GetFileTime(Handle,nil,nil,@ft) and
+     FindDataTimeToDateTime(FT, FileDateTime);
+end;
+
+Function FileGetDateUTC (Handle : THandle; out FileDateTimeUTC: TDateTime) : Boolean;
+Var
+  FT : TFileTime;
+begin
+  Result :=
+     GetFileTime(Handle,nil,nil,@ft) and
+     FindDataTimeToUTC(FT, FileDateTimeUTC);
+end;
+
 Function FileSetDate (Handle : THandle;Age : Int64) : Longint;
 Var
   FT: TFileTime;
@@ -673,6 +692,32 @@ begin
     SetFileTime(Handle, nil, nil, @FT) then
     Exit;
   Result := GetLastError;
+end;
+
+Function FileSetDate (Handle : THandle; const FileDateTime: TDateTime) : Longint;
+var
+  FT: TFiletime;
+  LT: TFiletime;
+  ST: TSystemTime;
+begin
+  DateTimeToSystemTime(FileDateTime,ST);
+  if SystemTimeToFileTime(ST,LT) and LocalFileTimeToFileTime(LT,FT)
+    and SetFileTime(Handle,nil,nil,@FT) then
+    Result:=0
+  else
+    Result:=GetLastError;
+end;
+
+Function FileSetDateUTC (Handle : THandle; const FileDateTimeUTC: TDateTime) : Longint;
+var
+  FT: TFiletime;
+  ST: TSystemTime;
+begin
+  DateTimeToSystemTime(FileDateTimeUTC,ST);
+  if SystemTimeToFileTime(ST,FT) and SetFileTime(Handle,nil,nil,@FT) then
+    Result:=0
+  else
+    Result:=GetLastError;
 end;
 
 {$IFDEF OS_FILESETDATEBYNAME}
@@ -686,6 +731,40 @@ begin
   If (Fd<>feInvalidHandle) then
     try
       Result:=FileSetDate(fd,Age);
+    finally
+      FileClose(fd);
+    end
+  else
+    Result:=GetLastOSError;
+end;
+
+Function FileSetDate (Const FileName : UnicodeString;const FileDateTime : TDateTime) : Longint;
+Var
+  fd : THandle;
+begin
+  FD := CreateFileW (PWideChar (FileName), GENERIC_READ or GENERIC_WRITE,
+                     FILE_SHARE_WRITE, nil, OPEN_EXISTING,
+                     FILE_FLAG_BACKUP_SEMANTICS, 0);
+  If (Fd<>feInvalidHandle) then
+    try
+      Result:=FileSetDate(fd,FileDateTime);
+    finally
+      FileClose(fd);
+    end
+  else
+    Result:=GetLastOSError;
+end;
+
+Function FileSetDateUTC (Const FileName : UnicodeString;const FileDateTimeUTC : TDateTime) : Longint;
+Var
+  fd : THandle;
+begin
+  FD := CreateFileW (PWideChar (FileName), GENERIC_READ or GENERIC_WRITE,
+                     FILE_SHARE_WRITE, nil, OPEN_EXISTING,
+                     FILE_FLAG_BACKUP_SEMANTICS, 0);
+  If (Fd<>feInvalidHandle) then
+    try
+      Result:=FileSetDateUTC(fd,FileDateTimeUTC);
     finally
       FileClose(fd);
     end
@@ -813,6 +892,12 @@ begin
   windows.Getlocaltime(SystemTime);
 end;
 
+function GetUniversalTime(var SystemTime: TSystemTime): Boolean;
+begin
+  windows.GetSystemTime(SystemTime);
+  Result:=True;
+end;
+
 function GetLocalTimeOffset: Integer;
 
 var
@@ -832,6 +917,76 @@ begin
 end;
 
 
+function GetLocalTimeOffset(const DateTime: TDateTime; const InputIsUTC: Boolean; out Offset: Integer): Boolean;
+var
+  Year: Integer;
+const
+  DaysPerWeek = 7;
+
+  // MonthOf and YearOf are not available in SysUtils
+  function MonthOf(const AValue: TDateTime): Word;
+  var
+    Y,D : Word;
+  begin
+    DecodeDate(AValue,Y,Result,D);
+  end;
+  function YearOf(const AValue: TDateTime): Word;
+  var
+    D,M : Word;
+  begin
+    DecodeDate(AValue,Result,D,M);
+  end;
+
+  function RelWeekDayToDateTime(const SysTime: TSystemTime): TDateTime;
+  var
+    WeekDay, IncDays: Integer;
+  begin
+    // get first day in month
+    Result := EncodeDate(Year, SysTime.Month, 1);
+    WeekDay := DayOfWeek(Result)-1;
+    // get the correct first weekday in month
+    IncDays := SysTime.wDayOfWeek-WeekDay;
+    if IncDays<0 then
+      Inc(IncDays, DaysPerWeek);
+    // inc weeks
+    Result := Result+IncDays+DaysPerWeek*(SysTime.Day-1);
+    // SysTime.DayOfWeek=5 means the last one - check if we are not in the next month
+    while (MonthOf(Result)>SysTime.Month) do
+      Result := Result-DaysPerWeek;
+    Result := Result+EncodeTime(SysTime.Hour, SysTime.Minute, SysTime.Second, SysTime.Millisecond);
+  end;
+
+var
+  TZInfo: TTimeZoneInformation;
+  DSTStart, DSTEnd: TDateTime;
+
+begin
+  Year := YearOf(DateTime);
+  TZInfo := Default(TTimeZoneInformation);
+  // GetTimeZoneInformationForYear is supported only on Vista and newer
+  if not ((Win32MajorVersion>=6) and GetTimeZoneInformationForYear(Year, nil, TZInfo)) then
+    Exit(False);
+
+  if (TZInfo.StandardDate.Month>0) and (TZInfo.DaylightDate.Month>0) then
+  begin // there is DST
+    // DaylightDate and StandardDate are local times
+    DSTStart := RelWeekDayToDateTime(TZInfo.DaylightDate);
+    DSTEnd := RelWeekDayToDateTime(TZInfo.StandardDate);
+    if InputIsUTC then
+    begin
+      DSTStart := DSTStart + (TZInfo.Bias+TZInfo.StandardBias)/MinsPerDay;
+      DSTEnd := DSTEnd + (TZInfo.Bias+TZInfo.DaylightBias)/MinsPerDay;
+    end;
+    if (DSTStart<=DateTime) and (DateTime<DSTEnd) then
+      Offset := TZInfo.Bias+TZInfo.DaylightBias
+    else
+      Offset := TZInfo.Bias+TZInfo.StandardBias;
+  end else // no DST
+    Offset := TZInfo.Bias;
+  Result := True;
+end;
+
+
 function GetTickCount: LongWord;
 begin
   Result := Windows.GetTickCount;
@@ -847,19 +1002,13 @@ var
 {$ENDIF}
 
 function GetTickCount64: QWord;
-{$IFNDEF WINCE}
-var
-  lib: THandle;
-{$ENDIF}
 begin
 {$IFNDEF WINCE}
+  if Assigned(WinGetTickCount64) then
+    Exit(WinGetTickCount64());
   { on Vista and newer there is a GetTickCount64 implementation }
   if Win32MajorVersion >= 6 then begin
-    if not Assigned(WinGetTickCount64) then begin
-      lib := LoadLibrary('kernel32.dll');
-      WinGetTickCount64 := TGetTickCount64(
-                             GetProcAddress(lib, 'GetTickCount64'));
-    end;
+    WinGetTickCount64 := TGetTickCount64(GetProcAddress(GetModuleHandle('kernel32.dll'), 'GetTickCount64'));
     Result := WinGetTickCount64();
   end else
 {$ENDIF}

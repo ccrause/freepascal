@@ -43,8 +43,8 @@ uses
   FPPas2Js, FPPJsSrcMap, Pas2jsLogger, Pas2jsFS, Pas2jsPParser, Pas2jsUseAnalyzer;
 
 const
-  VersionMajor = 1;
-  VersionMinor = 5;
+  VersionMajor = 2;
+  VersionMinor = 1;
   VersionRelease = 1;
   VersionExtra = '';
   DefaultConfigFile = 'pas2js.cfg';
@@ -154,7 +154,7 @@ type
     rvcUnit
     );
   TP2JSResourceStringFile = (rsfNone,rsfUnit,rsfProgram);
-  TResourceMode = (rmNone,rmHTML,rmJS);
+  TResourceMode = (Skip,rmNone,rmHTML,rmJS);
 
 const
   DefaultP2jsCompilerOptions = [coShowErrors,coWriteableConst,coUseStrict,coSourceMapXSSIHeader];
@@ -1101,6 +1101,8 @@ begin
   Scanner.CurrentValueSwitch[vsInterfaces]:=InterfaceTypeNames[Compiler.InterfaceType];
   if coAllowCAssignments in Compiler.Options then
     Scanner.Options:=Scanner.Options+[po_cassignments];
+  if Compiler.ResourceMode=rmNone then
+    Scanner.Options:= Scanner.Options+[po_DisableResources];
   // Note: some Scanner.Options are set by TPasResolver
   for i:=0 to Compiler.Defines.Count-1 do
     begin
@@ -3756,6 +3758,10 @@ begin
     begin
       Enable:=c='+';
       Delete(aValue,length(aValue),1);
+    end
+    else if lowercase(LeftStr(aValue,2))='no' then begin
+      Enable:=false;
+      Delete(aValue,1,2);
     end;
     Case LowerCase(aValue) of
      'enumnumbers': SetOption(coEnumValuesAsNumbers,Enable);
@@ -4713,8 +4719,8 @@ begin
   w('     -Jrnone: Do not write resource string file');
   w('     -Jrunit: Write resource string file per unit with all resource strings');
   w('     -Jrprogram: Write resource string file per program with all used resource strings in program');
-  w('   -Jr<x> Control writing of linked resources');
-  w('     -JRnone: Do not write resources');
+  w('   -JR<x> Control writing of linked resources');
+  w('     -JRnone: Skip resource directives');
   w('     -JRjs: Write resources in Javascript structure');
   w('     -JRhtml[=filename] : Write resources as preload links in HTML file (default is projectfile-res.html)');
   w('   -Jpcmd<command>: Run postprocessor. For each generated js execute command passing the js as stdin and read the new js from stdout. This option can be added multiple times to call several postprocessors in succession.');
@@ -4738,7 +4744,8 @@ begin
   w('      -OoEnumNumbers[-]: write enum value as number instead of name. Default in -O1.');
   w('      -OoRemoveNotUsedPrivates[-]: Default is enabled');
   w('      -OoRemoveNotUsedDeclarations[-]: Default enabled for programs with -Jc');
-  w('      -OoShortRefGlobals[-]: Insert JS local var for types and modules. Default enabled in -O2');
+  w('      -OoRemoveNotUsedPublished[-] : Default is disabled');
+  w('      -OoShortRefGlobals[-]: Insert JS local var for types, modules and static functions. Default enabled in -O2');
   w('  -P<x>  : Set target processor. Case insensitive:');
   w('    -Pecmascript5: default');
   w('    -Pecmascript6');
@@ -4755,6 +4762,7 @@ begin
   w('  -T<x>  : Set target platform');
   w('    -Tbrowser: default');
   w('    -Tnodejs : add pas.run(), includes -Jc');
+  w('    -Telectron: experimental');
   w('  -u<x>  : Undefines the symbol <x>');
   w('  -v<x>  : Be verbose. <x> is a combination of the following letters:');
   w('    e    : Show errors (default)');
@@ -4934,6 +4942,7 @@ begin
   Log.LogPlain('Supported targets (targets marked with ''{*}'' are under development):');
   Log.LogPlain(['  ',PasToJsPlatformNames[PlatformBrowser],': webbrowser']);
   Log.LogPlain(['  ',PasToJsPlatformNames[PlatformNodeJS],': Node.js']);
+  Log.LogPlain(['  ',PasToJsPlatformNames[PlatformElectron],': Electron app']);
   Log.LogLn;
   Log.LogPlain('Supported CPU instruction sets:');
   Log.LogPlain('  ECMAScript5, ECMAScript6');
@@ -5290,9 +5299,8 @@ begin
   end else begin
     // search Pascal file with InFilename
     FoundPasFilename:=FS.FindUnitFileName(UseUnitname,InFilename,ModuleDir,FoundPasIsForeign);
-    if FoundPasFilename='' then
-      exit; // an in-filename unit source is missing -> stop
-    FoundPasUnitName:=ExtractFilenameOnly(InFilename);
+    if FoundPasFilename<>'' then
+      FoundPasUnitName:=ExtractFilenameOnly(InFilename);
 
     // Note: at the moment if there is a source do not search for pcu
     // Eventually search for both, load pcu and if that fails unload pcu and load source
@@ -5301,7 +5309,9 @@ begin
       // no pas file -> search pcu
       FoundPCUFilename:=PCUSupport.FindPCU(UseUnitName);
       if FoundPCUFilename<>'' then
+      begin
         FoundPCUUnitName:=UseUnitName;
+      end;
     end;
   end;
 

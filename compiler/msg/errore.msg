@@ -432,6 +432,7 @@ scan_w_setpeosversion_not_support=02103_W_SETPEOSVERSION is not supported by the
 scan_w_setpesubsysversion_not_support=02104_W_SETPESUBSYSVERSION is not supported by the target OS
 % The \var{\{\$SETPESUBSYSVERSION\}} directive is not supported by the target OS.
 scan_n_changecputype=02105_N_Changed CPU type to be consistent with specified controller
+scan_e_emptymacroname=02106_E_A macro/compiler variable name cannot be empty
 % \end{description}
 #
 # Parser
@@ -3418,7 +3419,7 @@ unit_u_ppu_llvm_mismatch=10067_U_Skipping unit, PPU and compiler have to be both
 #
 #  Options
 #
-# 11061 is the last used one
+# 11062 is the last used one
 #
 option_usage=11000_O_$1 [options] <inputfile> [options]
 # BeginOfTeX
@@ -3574,6 +3575,7 @@ option_features_only_for_system_unit=11060_E_Feature switches are only supported
 % To selected a certain feature, the system unit must be compiled with this feature enabled. All other units inherited the features set by the
 % system unit through the ppu of the system unit.
 option_debug_info_requires_external_linker=11061_N_The selected debug format is not supported by the internal linker, switching to external linking
+option_valgrind_heaptrc_mismatch=11062_E_You can not use both options ($1) ($2) at same time.
 %\end{description}
 # EndOfTeX
 
@@ -3961,7 +3963,9 @@ A*2CV<x>_Set section threadvar model to <x>
 **2CX_Create also smartlinked library
 **1d<x>_Defines the symbol <x>
 **1D_Generate a DEF file
+**2DD<x>_Set the date string returned by %DATE% to x, it is not checked for being a valid date string
 **2Dd<x>_Set description to <x>
+**2DT<x>_Set the time string returned by %TIME% to x, it is not checked for being a valid time string
 **2Dv<x>_Set DLL version to <x>
 *O2Dw_PM application
 **1e<x>_Set path to executable
@@ -4090,6 +4094,7 @@ F*2P<x>_Set target CPU (aarch64,arm,avr,i386,i8086,jvm,m68k,mips,mipsel,powerpc,
 **2SI<x>_Set interface style to <x>
 **3SIcom_COM compatible interface (default)
 **3SIcorba_CORBA compatible interface
+**2sT_Generate script only to link on target
 **2Sm_Support macros like C (global)
 **2So_Same as -Mtp
 **2Sr_Transparent file names in ISO mode
@@ -4099,7 +4104,7 @@ F*2P<x>_Set target CPU (aarch64,arm,avr,i386,i8086,jvm,m68k,mips,mipsel,powerpc,
 **2Sy_@<pointer> returns a typed pointer, same as $T+
 **1s_Do not call assembler and linker
 **2sh_Generate script to link on host
-**2st_Generate script to link on target
+**2st_Generate script to assemble and link on target
 **2sr_Skip register allocation phase (use with -alr)
 **1T<x>_Target operating system:
 # i386 targets
@@ -4148,6 +4153,7 @@ F*2P<x>_Set target CPU (aarch64,arm,avr,i386,i8086,jvm,m68k,mips,mipsel,powerpc,
 6*2Tnetbsd_NetBSD
 6*2Tmacosclassic_Classic Mac OS
 6*2Tpalmos_PalmOS
+6*2Tsinclairql_Sinclair QL
 # i8086 targets
 8*2Tembedded_Embedded
 8*2Tmsdos_MS-DOS (and compatible)
@@ -4155,10 +4161,10 @@ F*2P<x>_Set target CPU (aarch64,arm,avr,i386,i8086,jvm,m68k,mips,mipsel,powerpc,
 # arm targets
 A*2Tandroid_Android
 A*2Taros_AROS
-A*2Tdarwin_Darwin/iPhoneOS/iOS
 A*2Tembedded_Embedded
 A*2Tfreertos_FreeRTOS
 A*2Tgba_Game Boy Advance
+A*2Tios_iOS
 A*2Tlinux_Linux
 A*2Tnds_Nintendo DS
 A*2Tnetbsd_NetBSD
@@ -4167,7 +4173,8 @@ A*2Tsymbian_Symbian
 A*2Twince_Windows CE
 # aarch64 targets
 a*2Tandroid_Android
-a*2Tdarwin_Darwin/iOS
+a*2Tdarwin_Darwin/Mac OS X
+a*2Tios_iOS
 a*2Tlinux_Linux
 a*2Twin64_Windows 64
 # jvm targets
@@ -4312,6 +4319,9 @@ A*2WR_Generate relocation code (Windows)
 8*3Wtexe_Create a DOS .EXE file (default)
 8*3Wtcom_Create a DOS .COM file (requires tiny memory model)
 P*2WT_Specify MPW tool type application (Classic Mac OS)
+6*2WQ<x>_Set executable metadata format (Sinclair QL)
+6*3WQqhdr_Set metadata to QDOS File Header style (default)
+6*3WQxtcc_Set metadata to XTcc style
 **2WX_Enable executable stack (Linux)
 **1X_Executable options:
 **2X9_Generate linkerscript for GNU Binutils ld older than version 2.19.1 (Linux)

@@ -407,7 +407,7 @@ implementation
      end;
 
 
-{$if defined(cpuextended) and defined(FPC_HAS_TYPE_EXTENDED)}
+{$if defined(cpuextended) and (defined(FPC_HAS_TYPE_EXTENDED) or defined(FPC_SOFT_FPUX80))}
     function llvmextendedtostr(const e: extended): TSymStr;
       var
         extendedval: record
@@ -502,7 +502,7 @@ implementation
                end;
              result:='';
            end;
-{$if defined(cpuextended) and defined(FPC_HAS_TYPE_EXTENDED)}
+{$if defined(cpuextended) and (defined(FPC_HAS_TYPE_EXTENDED) or defined(FPC_SOFT_FPUX80))}
          top_extended80:
            begin
              result:=llvmextendedtostr(o.eval);
@@ -875,7 +875,7 @@ implementation
                 writer.AsmWriteLn(asminfo^.comment+'value: '+single2str(tai_realconst(hp).value.s32val));
               aitrealconst_s64bit:
                 writer.AsmWriteLn(asminfo^.comment+'value: '+double2str(tai_realconst(hp).value.s64val));
-{$if defined(cpuextended) and defined(FPC_HAS_TYPE_EXTENDED)}
+{$if defined(cpuextended) and (defined(FPC_HAS_TYPE_EXTENDED) or defined(FPC_SOFT_FPUX80))}
               { can't write full 80 bit floating point constants yet on non-x86 }
               aitrealconst_s80bit:
                 writer.AsmWriteLn(asminfo^.comment+'value: '+extended2str(tai_realconst(hp).value.s80val));
@@ -892,7 +892,7 @@ implementation
             writer.AsmWrite(llvmdoubletostr(hp.value.s32val));
           aitrealconst_s64bit:
             writer.AsmWriteln(llvmdoubletostr(hp.value.s64val));
-{$if defined(cpuextended) and defined(FPC_HAS_TYPE_EXTENDED)}
+{$if defined(cpuextended) and (defined(FPC_HAS_TYPE_EXTENDED) or defined(FPC_SOFT_FPUX80))}
           aitrealconst_s80bit:
             writer.AsmWrite(llvmextendedtostr(hp.value.s80val));
 {$endif defined(cpuextended)}
@@ -1004,8 +1004,8 @@ implementation
              (pd.mangledname=(target_info.cprefix+'setjmp')) then
             writer.AsmWrite(' returns_twice');
           if po_inline in pd.procoptions then
-            writer.AsmWrite(' inlinehint');
-          if (po_noinline in pd.procoptions) or
+            writer.AsmWrite(' inlinehint')
+          else if (po_noinline in pd.procoptions) or
              (pio_inline_forbidden in pd.implprocoptions) then
             writer.AsmWrite(' noinline');
           { ensure that functions that happen to have the same name as a
@@ -1019,7 +1019,9 @@ implementation
           if pio_thunk in pd.implprocoptions then
             writer.AsmWrite(' "thunk"');
           if llvmflag_null_pointer_valid in llvmversion_properties[current_settings.llvmversion] then
-            writer.AsmWrite(' "null-pointer-is-valid"="true"');
+            writer.AsmWrite(' "null-pointer-is-valid"="true"')
+          else if llvmflag_null_pointer_valid_new in llvmversion_properties[current_settings.llvmversion] then
+            writer.AsmWrite(' null_pointer_is_valid');
           if not(pio_fastmath in pd.implprocoptions) then
             writer.AsmWrite(' strictfp');
         end;

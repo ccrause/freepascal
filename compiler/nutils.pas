@@ -562,9 +562,16 @@ implementation
     function load_result_node:tnode;
       var
         srsym : tsym;
-      begin
+        pd : tprocdef;
+       begin
         result:=nil;
         srsym:=get_local_or_para_sym('result');
+        if not assigned(srsym) then
+          begin
+            pd:=current_procinfo.procdef;
+            if assigned(pd.procsym) then
+              srsym:=get_local_or_para_sym(pd.procsym.name);
+          end;
         if assigned(srsym) then
           result:=cloadnode.create(srsym,srsym.owner)
         else
@@ -872,7 +879,17 @@ implementation
                     exit;
                   p := tunarynode(p).left;
                 end;
-              vecn,
+              vecn:
+                begin
+                  inc(result,node_complexity(tbinarynode(p).left));
+                  inc(result);
+                  if (result >= NODE_COMPLEXITY_INF) then
+                    begin
+                      result := NODE_COMPLEXITY_INF;
+                      exit;
+                    end;
+                  p := tbinarynode(p).right;
+                end;
               statementn:
                 begin
                   inc(result,node_complexity(tbinarynode(p).left));

@@ -505,6 +505,8 @@ interface
         IF_T4,                  { disp8 - tuple - 4 }
         IF_T8,                  { disp8 - tuple - 8 }
         IF_T1S,                 { disp8 - tuple - 1 scalar }
+        IF_T1S8,                { disp8 - tuple - 1 scalar byte }
+        IF_T1S16,               { disp8 - tuple - 1 scalar word }
         IF_T1F32,
         IF_T1F64,
         IF_TMDDUP,
@@ -963,7 +965,7 @@ implementation
            while (localsize>0) do
             begin
 {$ifndef i8086}
-              if CPUX86_HAS_CMOV in cpu_capabilities[current_settings.cputype] then
+              if (CPUX86_HAS_CMOV in cpu_capabilities[current_settings.cputype]) then
                 begin
                   for j:=low(alignarray_cmovcpus) to high(alignarray_cmovcpus) do
                    if (localsize>=length(alignarray_cmovcpus[j])) then
@@ -2127,6 +2129,8 @@ implementation
                       else tuplesize := 4;
               end;
             end
+            else if IF_T1S8 in aInsEntry^.Flags then tuplesize := 1
+            else if IF_T1S16 in aInsEntry^.Flags then tuplesize := 2
             else if IF_T1F32 in aInsEntry^.Flags then tuplesize := 4
             else if IF_T1F64 in aInsEntry^.Flags then tuplesize := 8
             else if IF_T2 in aInsEntry^.Flags then
@@ -2182,12 +2186,15 @@ implementation
           begin
             if aInput.typ = top_ref then
             begin
-              if (aInput.ref^.offset <> 0) and
-                 ((aInput.ref^.offset mod tuplesize) = 0) and
-                 (abs(aInput.ref^.offset) div tuplesize <= 127) then
-              begin
-                aInput.ref^.offset := aInput.ref^.offset div tuplesize;
-                EVEXTupleState := etsIsTuple;
+	      if aInput.ref^.base <> NR_NO then
+	      begin	      
+	        if (aInput.ref^.offset <> 0) and
+                   ((aInput.ref^.offset mod tuplesize) = 0) and
+                   (abs(aInput.ref^.offset) div tuplesize <= 127) then
+                begin
+                  aInput.ref^.offset := aInput.ref^.offset div tuplesize;
+                  EVEXTupleState := etsIsTuple;
+    	        end;  
               end;
             end;
           end;
@@ -4777,6 +4784,16 @@ implementation
                 R_SUBQ,
                 R_SUBMMWHOLE:
                   result:=taicpu.op_ref_reg(A_VMOVQ,S_NO,tmpref,r);
+                R_SUBMMY:
+                   if ref.alignment>=32 then
+                     result:=taicpu.op_ref_reg(A_VMOVDQA,S_NO,tmpref,r)
+                   else
+                     result:=taicpu.op_ref_reg(A_VMOVDQU,S_NO,tmpref,r);
+                R_SUBMMZ:
+                   if ref.alignment>=64 then
+                     result:=taicpu.op_ref_reg(A_VMOVDQA64,S_NO,tmpref,r)
+                   else
+                     result:=taicpu.op_ref_reg(A_VMOVDQU64,S_NO,tmpref,r);
                 R_SUBMMX:
                   result:=taicpu.op_ref_reg(A_VMOVDQU,S_NO,tmpref,r);
                 else
@@ -4836,6 +4853,16 @@ implementation
                   result:=taicpu.op_reg_ref(A_VMOVSD,S_NO,r,tmpref);
                 R_SUBMMS:
                   result:=taicpu.op_reg_ref(A_VMOVSS,S_NO,r,tmpref);
+                R_SUBMMY:
+                   if ref.alignment>=32 then
+                     result:=taicpu.op_reg_ref(A_VMOVDQA,S_NO,r,tmpref)
+                   else
+                     result:=taicpu.op_reg_ref(A_VMOVDQU,S_NO,r,tmpref);
+                R_SUBMMZ:
+                   if ref.alignment>=64 then
+                     result:=taicpu.op_reg_ref(A_VMOVDQA64,S_NO,r,tmpref)
+                   else
+                     result:=taicpu.op_reg_ref(A_VMOVDQU64,S_NO,r,tmpref);
                 R_SUBQ,
                 R_SUBMMWHOLE:
                   result:=taicpu.op_reg_ref(A_VMOVQ,S_NO,r,tmpref);

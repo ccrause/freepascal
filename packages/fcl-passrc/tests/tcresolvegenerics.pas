@@ -138,6 +138,7 @@ type
     procedure TestGenProc_FunctionDelphi;
     procedure TestGenProc_OverloadDuplicate;
     procedure TestGenProc_MissingTemplatesFail;
+    procedure TestGenProc_SpecializeNonGenericFail;
     procedure TestGenProc_Forward;
     procedure TestGenProc_External;
     procedure TestGenProc_UnitIntf;
@@ -1931,7 +1932,7 @@ begin
   '  PRec = ^specialize TRec<word>;',
   'begin',
   '']);
-  CheckParserException('Expected "Identifier" at token "specialize" in file afile.pp at line 4 column 11',nParserExpectTokenError);
+  CheckParserException('Expected "Identifier or file"',nParserExpectTokenError);
 end;
 
 procedure TTestResolveGenerics.TestGen_HelperForArray;
@@ -2214,6 +2215,19 @@ begin
   'begin',
   '']);
   CheckParserException('Expected "<"',nParserExpectTokenError);
+end;
+
+procedure TTestResolveGenerics.TestGenProc_SpecializeNonGenericFail;
+begin
+  StartProgram(false);
+  Add([
+  'procedure Run;',
+  'begin',
+  'end;',
+  'begin',
+  '  specialize Run<word>();',
+  '']);
+  CheckResolverException('Run expected, but Run<> found',nXExpectedButYFound);
 end;
 
 procedure TTestResolveGenerics.TestGenProc_Forward;

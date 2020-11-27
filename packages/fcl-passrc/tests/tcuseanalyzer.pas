@@ -78,6 +78,7 @@ type
     procedure TestM_Class;
     procedure TestM_ClassForward;
     procedure TestM_Class_Property;
+    procedure TestM_ClassForward_Generic;
     procedure TestM_Class_PropertyProtected;
     procedure TestM_Class_PropertyOverride;
     procedure TestM_Class_PropertyOverride2;
@@ -178,6 +179,7 @@ type
     procedure TestWP_Attributes;
     procedure TestWP_Attributes_ForwardClass;
     procedure TestWP_Attributes_Params;
+    procedure TestWP_Attributes_PublishedFields; // ToDo
 
     // scope references
     procedure TestSR_Proc_UnitVar;
@@ -1150,6 +1152,30 @@ begin
   Add('  Obj.A:=Obj.A;');
   Add('  Obj.C:=Obj.C;');
   AnalyzeProgram;
+end;
+
+procedure TTestUseAnalyzer.TestM_ClassForward_Generic;
+begin
+  StartUnit(false);
+  Add([
+  '{$mode delphi}',
+  'interface',
+  'type',
+  '  {tobject_used}TObject = class',
+  '  end;',
+  '  TBird = class;',
+  '  TAnt = class end;',
+  '  TBird = class end;',
+  'implementation',
+  'type',
+  '  TBird2 = class;',
+  '  TAnt2 = class end;',
+  '  TBird2 = class end;',
+  'var Bird2: TBird2;',
+  'begin',
+  '  if Bird2=nil then;',
+  '']);
+  AnalyzeUnit;
 end;
 
 procedure TTestUseAnalyzer.TestM_Class_PropertyProtected;
@@ -3427,15 +3453,20 @@ begin
   '  TObject = class',
   '    constructor {#TObject_Create_used}Create;',
   '  end;',
+  '  {#TRedAttribute_notused}TRedAttribute = class',
+  '  end;',
   '  {#TCustomAttribute_used}TCustomAttribute = class',
   '  end;',
   '  [TCustom]',
   '  TBird = class;',
   '  TMyInt = word;',
   '  TBird = class end;',
-  'constructor TObject.Create; begin end;',
+  'constructor TObject.Create;',
   'begin',
-  '  if typeinfo(TBird)=nil then ;',
+  'end;',
+  'var b: TBird;',
+  'begin',
+  '  b:=TBird.Create;',
   '']);
   AnalyzeWholeProgram;
 end;
@@ -3467,6 +3498,46 @@ begin
   'begin',
   '  if typeinfo(o)=nil then ;',
   '  a.Destroy;',
+  '']);
+  AnalyzeWholeProgram;
+end;
+
+procedure TTestUseAnalyzer.TestWP_Attributes_PublishedFields;
+begin
+  exit;
+
+  StartProgram(false);
+  Add([
+  '{$modeswitch prefixedattributes}',
+  'type',
+  '  TObject = class',
+  '    constructor {#TObject_Create_notused}Create;',
+  '    destructor {#TObject_Destroy_used}Destroy; virtual;',
+  '  end;',
+  '  {#TCustomAttribute_used}TCustomAttribute = class',
+  '  end;',
+  '  {#BigAttribute_used}BigAttribute = class(TCustomAttribute)',
+  '    constructor {#Big_A_used}Create(Id: word = 3); overload;',
+  '    destructor {#Big_B_used}Destroy; override;',
+  '  end;',
+  '  {$M+}',
+  '  TBird = class',
+  '  public',
+  '    FColor: word;',
+  '  published',
+  '    Size: word;',
+  '    procedure Fly;',
+  '    [Big(3)]',
+  '    property Color: word read FColor;',
+  '  end;',
+  'constructor TObject.Create; begin end;',
+  'destructor TObject.Destroy; begin end;',
+  'constructor BigAttribute.Create(Id: word); begin end;',
+  'destructor BigAttribute.Destroy; begin end;',
+  'var',
+  '  b: TBird;',
+  'begin',
+  '  if typeinfo(b)=nil then ;',
   '']);
   AnalyzeWholeProgram;
 end;
