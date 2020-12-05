@@ -981,7 +981,7 @@ const
      'yield'
     );
   // reserved words, not usable as global identifiers, can be used as sub identifiers
-  JSReservedGlobalWords: array[0..51] of string = (
+  JSReservedGlobalWords: array[0..52] of string = (
      // keep sorted, first uppercase, then lowercase !
      'Array',
      'ArrayBuffer',
@@ -992,6 +992,7 @@ const
      'EvalError',
      'Float32Array',
      'Float64Array',
+     'FormData',
      'Generator',
      'GeneratorFunction',
      'Infinity',
@@ -1088,6 +1089,17 @@ const
   Pas2jsBaseTypeNames: array[TPas2jsBaseType] of string = (
     'None',
     'JSValue'
+    );
+
+type
+  TPas2jsBuiltInProc = (
+    pbpDebugger,
+    pbpAWait
+    );
+const
+  Pas2jsBuiltInProcNames: array[TPas2jsBuiltInProc] of string = (
+    'Debugger',
+    'AWait'
     );
 
 const
@@ -1442,9 +1454,11 @@ type
   TPas2JSResolver = class(TPasResolver)
   private
     FJSBaseTypes: array[TPas2jsBaseType] of TPasUnresolvedSymbolRef;
+    FJSBuiltInProcs: array[TPas2jsBuiltInProc] of TResElDataBuiltInProc;
     FExternalNames: TPasResHashList; // list of TPasIdentifier, case sensitive
     FFirstElementData, FLastElementData: TPas2JsElementData;
     function GetJSBaseTypes(aBaseType: TPas2jsBaseType): TPasUnresolvedSymbolRef; inline;
+    function GetJSBuiltInProcs(aProc: TPas2jsBuiltInProc): TResElDataBuiltInProc; inline;
     procedure InternalAdd(Item: TPasIdentifier);
     procedure OnClearHashItem(Item, Dummy: pointer);
   protected
@@ -1545,6 +1559,8 @@ type
       override;
     procedure SpecializeGenericImpl(SpecializedItem: TPRSpecializedItem);
       override;
+    procedure SpecializeProcedure(GenEl, SpecEl: TPasProcedure;
+      SpecializedItem: TPRSpecializedItem); override;
     function SpecializeParamsNeedDelay(SpecializedItem: TPRSpecializedItem): TPasElement; virtual;
     function IsSpecializedNonStaticMethod(ProcType: TPasProcedureType): boolean;
   protected
@@ -1601,6 +1617,7 @@ type
       RaiseOnError: boolean): integer; override;
     function FindLocalBuiltInSymbol(El: TPasElement): TPasElement; override;
     property JSBaseTypes[aBaseType: TPas2jsBaseType]: TPasUnresolvedSymbolRef read GetJSBaseTypes;
+    property JSBuiltInProcs[aProc: TPas2jsBuiltInProc]: TResElDataBuiltInProc read GetJSBuiltInProcs;
     // compute literals and constants
     function ExtractPasStringLiteral(El: TPasElement; const S: String): TJSString; virtual;
     function ResolverToJSValue(Value: TResEvalValue; ErrorEl: TPasElement): TJSValue; virtual;
@@ -1787,7 +1804,7 @@ type
     ImplContext: TSectionContext;
     ImplHeaderStatements: TFPList;
     ImplSrcElements: TJSSourceElements;
-    ImplHeaderIndex: integer; // index in TJSSourceElements(JSElement).Statements
+    ImplHeaderIndex: integer; // index in ImplSrcElements.Statements
     destructor Destroy; override;
     procedure AddImplHeaderStatement(JS: TJSElement);
   end;
@@ -3176,7 +3193,13 @@ end;
 function TPas2JSResolver.GetJSBaseTypes(aBaseType: TPas2jsBaseType
   ): TPasUnresolvedSymbolRef;
 begin
-  Result:=TPasUnresolvedSymbolRef(FJSBaseTypes[aBaseType]);
+  Result:=FJSBaseTypes[aBaseType];
+end;
+
+function TPas2JSResolver.GetJSBuiltInProcs(aProc: TPas2jsBuiltInProc
+  ): TResElDataBuiltInProc;
+begin
+  Result:=FJSBuiltInProcs[aProc];
 end;
 
 procedure TPas2JSResolver.InternalAdd(Item: TPasIdentifier);
@@ -4552,19 +4575,24 @@ var
   ClassScope: TPas2JSClassScope;
   ptm: TProcTypeModifier;
   TypeEl, ElTypeEl, HelperForType: TPasType;
+  FuncType: TPasFunctionType;
 begin
   inherited FinishProcedureType(El);
 
   if El is TPasFunctionType then
     begin
-    TypeEl:=ResolveAliasType(TPasFunctionType(El).ResultEl.ResultType);
-    if TypeEl.ClassType=TPasPointerType then
+    FuncType:=TPasFunctionType(El);
+    if FuncType.ResultEl<>nil then
       begin
-      ElTypeEl:=ResolveAliasType(TPasPointerType(TypeEl).DestType);
-      if ElTypeEl.ClassType=TPasRecordType then
-        // ^record
-      else
-        RaiseMsg(20180423110824,nNotSupportedX,sNotSupportedX,['pointer'],El);
+      TypeEl:=ResolveAliasType(FuncType.ResultEl.ResultType);
+      if TypeEl.ClassType=TPasPointerType then
+        begin
+        ElTypeEl:=ResolveAliasType(TPasPointerType(TypeEl).DestType);
+        if ElTypeEl.ClassType=TPasRecordType then
+          // ^record
+        else
+          RaiseMsg(20180423110824,nNotSupportedX,sNotSupportedX,['pointer'],El);
+        end;
       end;
     end;
 
@@ -5223,6 +5251,7 @@ begin
 
   El:=SpecializedItem.SpecializedEl;
   if (El is TPasGenericType)
+      and IsFullySpecialized(TPasGenericType(El))
       and (SpecializeParamsNeedDelay(SpecializedItem)<>nil) then
     TPas2JSResolverHub(Hub).AddJSDelaySpecialize(TPasGenericType(El));
 
@@ -5238,6 +5267,22 @@ begin
       end;
       end;
     end;
+end;
+
+procedure TPas2JSResolver.SpecializeProcedure(GenEl, SpecEl: TPasProcedure;
+  SpecializedItem: TPRSpecializedItem);
+var
+  GenProcScope, SpecProcScope: TPas2JSProcedureScope;
+begin
+  GenProcScope:=GenEl.CustomData as TPas2JSProcedureScope;
+  SpecProcScope:=SpecEl.CustomData as TPas2JSProcedureScope;
+  if SpecializedItem=nil then
+    begin
+    SpecProcScope.OverloadName:=GenProcScope.OverloadName;
+    SpecProcScope.JSName:=GenProcScope.JSName;
+    // SpecProcScope.ResultVarName is set on demand
+    end;
+  inherited SpecializeProcedure(GenEl, SpecEl, SpecializedItem);
 end;
 
 function TPas2JSResolver.SpecializeParamsNeedDelay(
@@ -6189,10 +6234,13 @@ end;
 procedure TPas2JSResolver.ClearBuiltInIdentifiers;
 var
   bt: TPas2jsBaseType;
+  pbp: TPas2jsBuiltInProc;
 begin
   inherited ClearBuiltInIdentifiers;
   for bt in TPas2jsBaseType do
     ReleaseAndNil(TPasElement(FJSBaseTypes[bt]){$IFDEF CheckPasTreeRefCount},'TPasResolver.AddCustomBaseType'{$ENDIF});
+  for pbp in TPas2jsBuiltInProc do
+    FJSBuiltInProcs[pbp]:=nil;
 end;
 
 function TPas2JSResolver.IsJSBaseType(TypeEl: TPasType; Typ: TPas2jsBaseType
@@ -6235,13 +6283,12 @@ begin
     AddBaseType(Pas2JSBuiltInNames[pbitnUIntDouble],btUIntDouble);
   if btIntDouble in TheBaseTypes then
     AddBaseType(Pas2JSBuiltInNames[pbitnIntDouble],btIntDouble);
-  AddBuiltInProc('Debugger','procedure Debugger',
+  FJSBuiltInProcs[pbpDebugger]:=AddBuiltInProc(Pas2jsBuiltInProcNames[pbpDebugger],
+      'procedure Debugger',
       @BI_Debugger_OnGetCallCompatibility,nil,
       nil,nil,bfCustom,[bipfCanBeStatement]);
-  // ToDo: AddBuiltInProc('Await','function await(T; const Expr: TJSPromise): T',
-  //    @BI_Await_OnGetCallCompatibility,@BI_Await_OnGetCallResult,
-  //    nil,nil,bfCustom,[bipfCanBeStatement]);
-  AddBuiltInProc('AWait','function await(const Expr: T): T',
+  FJSBuiltInProcs[pbpAWait]:=AddBuiltInProc(Pas2jsBuiltInProcNames[pbpAWait],
+      'function await(const Expr: T): T',
       @BI_AWait_OnGetCallCompatibility,@BI_AWait_OnGetCallResult,
       @BI_AWait_OnEval,@BI_AWait_OnFinishParamsExpr,bfCustom,[bipfCanBeStatement]);
 end;
@@ -6443,11 +6490,20 @@ begin
 end;
 
 function TPas2JSResolver.FindLocalBuiltInSymbol(El: TPasElement): TPasElement;
+var
+  Data: TObject;
+  pbp: TPas2jsBuiltInProc;
 begin
   Result:=inherited FindLocalBuiltInSymbol(El);
   if Result<>nil then exit;
-  if El.CustomData is TResElDataPas2JSBaseType then
-    Result:=JSBaseTypes[TResElDataPas2JSBaseType(El.CustomData).JSBaseType];
+  Data:=El.CustomData;
+  if Data is TResElDataPas2JSBaseType then
+    Result:=JSBaseTypes[TResElDataPas2JSBaseType(Data).JSBaseType]
+  else if (Data.ClassType=TResElDataBuiltInProc)
+      and (TResElDataBuiltInProc(Data).BuiltIn=bfCustom) then
+    for pbp in TPas2jsBuiltInProc do
+      if El.Name=Pas2jsBuiltInProcNames[pbp] then
+        Result:=FJSBuiltInProcs[pbp].Element;
 end;
 
 function TPas2JSResolver.ExtractPasStringLiteral(El: TPasElement;
@@ -8112,30 +8168,33 @@ begin
           AddToSourceElements(Src,ConvertDeclarations(El.InterfaceSection,IntfSecCtx));
 
         ImplFunc:=CreateImplementationSection(El,IntfSecCtx);
-        if ImplFunc=nil then
+        // add $mod.$implcode = ImplFunc;
+        AssignSt:=TJSSimpleAssignStatement(CreateElement(TJSSimpleAssignStatement,El));
+        AssignSt.LHS:=CreateMemberExpression([ModVarName,GetBIName(pbivnImplCode)]);
+        AssignSt.Expr:=ImplFunc;
+        AddToSourceElements(Src,AssignSt);
+
+        // append initialization section
+        CreateInitSection(El,Src,IntfSecCtx);
+
+        if TJSSourceElements(ImplFunc.AFunction.Body.A).Statements.Count=0 then
           begin
+          // empty implementation
+
           // remove unneeded $impl from interface
           RemoveFromSourceElements(Src,ImplVarSt);
-          if IntfSecCtx.HeaderIndex>0 then
-            dec(IntfSecCtx.HeaderIndex);
-          if IntfSecCtx.ImplHeaderIndex>0 then
-            dec(IntfSecCtx.ImplHeaderIndex);
+          // remove unneeded $mod.$implcode = function(){}
+          RemoveFromSourceElements(Src,AssignSt);
           HasImplUsesClause:=length(El.ImplementationSection.UsesClause)>0;
           end
         else
           begin
-          // add $mod.$implcode = ImplFunc;
-          AssignSt:=TJSSimpleAssignStatement(CreateElement(TJSSimpleAssignStatement,El));
-          AssignSt.LHS:=CreateMemberExpression([ModVarName,GetBIName(pbivnImplCode)]);
-          AssignSt.Expr:=ImplFunc;
-          AddToSourceElements(Src,AssignSt);
           HasImplUsesClause:=true;
           end;
+
         if HasImplUsesClause then
           // add implementation uses list: [<implementation uses1>,<uses2>, ...]
           ArgArray.AddElement(CreateUsesList(El.ImplementationSection,AContext));
-
-        CreateInitSection(El,Src,IntfSecCtx);
 
         end;
 
@@ -9733,11 +9792,30 @@ end;
 function TPasToJSConverter.CreateSubDeclJSNameExpr(El: TPasElement;
   JSName: string; AContext: TConvertContext; PosEl: TPasElement): TJSElement;
 var
+  C: TClass;
+  VarKinds: TCtxVarKinds;
   ParentName: String;
 begin
-  if AContext.IsGlobal then
+  C:=El.ClassType;
+  if C.InheritsFrom(TPasType) or (C=TPasConst) then
+    VarKinds:=[cvkGlobal]
+  else if C.InheritsFrom(TPasVariable) then
     begin
-    ParentName:=GetLocalName(El.Parent,[cvkGlobal,cvkCurType],AContext);
+    VarKinds:=[cvkCurType];
+    if ([vmClass, vmStatic]*TPasVariable(El).VarModifiers<>[]) then
+      VarKinds:=[cvkGlobal]
+    else if El.Parent is TPasMembersType then
+      VarKinds:=[cvkCurType]
+    else
+      VarKinds:=[cvkGlobal];
+    end
+  else if (El.Parent is TProcedureBody) then
+    VarKinds:=[]
+  else
+    VarKinds:=[cvkGlobal];
+  if VarKinds<>[] then
+    begin
+    ParentName:=GetLocalName(El.Parent,VarKinds,AContext);
     if ParentName='' then
       ParentName:='this';
     if JSName[1]='[' then
@@ -14826,7 +14904,7 @@ begin
     ObjLit.Name:=TJSString(TransformElToJSName(El,AContext));
     ObjLit.Expr:=CreateVarInit(El,AContext);
     end
-  else if AContext.IsGlobal then
+  else if AContext.IsGlobal or (El.Parent is TPasMembersType) then
     begin
     // create 'this.A=initvalue'
     AssignSt:=TJSSimpleAssignStatement(CreateElement(TJSSimpleAssignStatement,El));
@@ -14952,22 +15030,26 @@ Var
     Proc: TPasProcedure;
     FunType: TPasFunctionType;
     VarSt: TJSVariableStatement;
-    SrcEl: TPasElement;
-    Scope: TPas2JSProcedureScope;
+    ImplScope: TPas2JSProcedureScope;
   begin
     Proc:=El.Parent as TPasProcedure;
     FunType:=Proc.ProcType as TPasFunctionType;
     ResultEl:=FunType.ResultEl;
-    Scope:=Proc.CustomData as TPas2JSProcedureScope;
-    if Scope.ResultVarName<>'' then
-      ResultVarName:=Scope.ResultVarName
+    ImplScope:=Proc.CustomData as TPas2JSProcedureScope;
+    if (ResultEl=nil) or (ResultEl.ResultType=nil) then
+      begin
+      Proc:=ImplScope.DeclarationProc;
+      FunType:=Proc.ProcType as TPasFunctionType;
+      ResultEl:=FunType.ResultEl;
+      end;
+    if ImplScope.ResultVarName<>'' then
+      ResultVarName:=ImplScope.ResultVarName
     else
       ResultVarName:=ResolverResultVar;
 
     // add 'var result=initvalue'
-    SrcEl:=ResultEl;
     VarSt:=CreateVarStatement(ResultVarName,
-      CreateValInit(ResultEl.ResultType,nil,SrcEl,aContext),ResultEl);
+      CreateValInit(ResultEl.ResultType,nil,ResultEl,aContext),ResultEl);
     Add(VarSt,ResultEl);
     Result:=SLFirst;
   end;
@@ -15354,7 +15436,7 @@ var
   C: TClass;
   AssignSt: TJSSimpleAssignStatement;
   NeedInitFunction, HasConstructor, IsJSFunction, NeedClassExt,
-    SpecializeDelay: Boolean;
+    SpecializeDelay, NeedTypeInfo: Boolean;
   Proc: TPasProcedure;
 begin
   Result:=nil;
@@ -15463,6 +15545,7 @@ begin
       end;
 
     NeedInitFunction:=true;
+    NeedTypeInfo:=(pcsfPublished in Scope.Flags) or HasTypeInfo(El,AContext);
     IntfKind:='';
     if El.ObjKind=okInterface then
       begin
@@ -15473,8 +15556,7 @@ begin
         else
           RaiseNotSupported(El,AContext,20180405093512);
         end;
-      NeedInitFunction:=(pcsfPublished in Scope.Flags) or HasTypeInfo(El,AContext)
-                        or (IntfKind<>'') or (coShortRefGlobals in Options);
+      NeedInitFunction:=NeedTypeInfo or (IntfKind<>'') or (coShortRefGlobals in Options);
       end;
 
     if NeedInitFunction then
@@ -15616,11 +15698,14 @@ begin
           AddClassSupportedInterfaces(El,Src,FuncContext);
         AddClassMessageIds(El,Src,FuncContext,pbivnMessageInt);
         AddClassMessageIds(El,Src,FuncContext,pbivnMessageStr);
-        // add RTTI init function
-        if SpecializeDelay then
-          AddClassRTTI(El,DelaySrc,DelayFuncContext)
-        else
-          AddClassRTTI(El,Src,FuncContext);
+        if NeedTypeInfo then
+          begin
+          // add RTTI init function
+          if SpecializeDelay then
+            AddClassRTTI(El,DelaySrc,DelayFuncContext)
+          else
+            AddClassRTTI(El,Src,FuncContext);
+          end;
         end;
 
       end;// end of init function
@@ -17471,14 +17556,15 @@ begin
     if ImplDecl<>nil then
       RaiseInconsistency(20170910175032,El); // elements should have been added directly
     IntfContext.ImplHeaderIndex:=ImplContext.HeaderIndex;
-    if Src.Statements.Count=0 then
-      exit; // no implementation
     Result:=FunDecl;
   finally
     IntfContext.ImplContext:=nil;
     ImplContext.Free;
     if Result=nil then
+      begin
       FunDecl.Free;
+      IntfContext.ImplSrcElements:=nil;
+      end;
   end;
 end;
 
@@ -17552,6 +17638,8 @@ var
   aResolver: TPas2JSResolver;
 begin
   if not IsElementUsed(El) then exit;
+  if not AContext.Resolver.IsFullySpecialized(El) then
+    RaiseNotSupported(El,AContext,20201202145045,'not fully specialized, probably a bug in the analyzer');
   if not SpecializeNeedsDelay(El,AContext) then exit;
   C:=El.ClassType;
   if (C=TPasRecordType)
@@ -18588,7 +18676,7 @@ begin
   try
     New_FuncContext.ThisVar.Element:=El;
     New_FuncContext.ThisVar.Kind:=cvkCurType;
-    New_FuncContext.IsGlobal:=true;
+    New_FuncContext.IsGlobal:=false;
 
     // add class members
     For I:=0 to El.Members.Count-1 do
@@ -18600,8 +18688,10 @@ begin
           and (ClassVarModifiersType*TPasVariable(P).VarModifiers=[]) then
         begin
         if Kind=mfInit then
+        begin
           // mfInit: init var
-          NewEl:=CreateVarDecl(TPasVariable(P),New_FuncContext) // can be nil
+          NewEl:=CreateVarDecl(TPasVariable(P),New_FuncContext); // can be nil
+        end
         else
           begin
           // mfFinalize: clear reference
@@ -19445,6 +19535,8 @@ var
   Bracket: TJSBracketMemberExpression;
 begin
   El:=ResolveSimpleAliasType(El);
+  if El is TPasSpecializeType then
+    El:=TPasSpecializeTypeData(El.CustomData).SpecializedType;
   aName:=GetTypeInfoName(El,AContext,ErrorEl);
   if aName=GetBIName(pbivnRTTILocal) then
     Result:=CreatePrimitiveDotExpr(aName,El)
