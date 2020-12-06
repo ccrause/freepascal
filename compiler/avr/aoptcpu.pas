@@ -425,6 +425,114 @@ Implementation
 
                             RemoveCurrentP(p);
                           end;
+                      end
+
+                    { turn
+                              ldi     rx,lo8(ref)      // p
+                            ldi       ry,hi8(ref)      // hp1
+                            movw      r30,rx         // hp2
+                      or
+                              ldi     rx,lo8(ref)      // p
+                            ldi       ry,hi8(ref)      // hp1
+                            mov       r30,rx           // hp2
+                            mov       r31,ry           // hp3
+
+                      into
+                        ldi r30, lo8(ref)
+                        ldi r31, hi8(ref)
+                    }
+                    else if MatchOpType(taicpu(p),top_reg,top_ref) and
+                       GetNextInstruction(p, hp1) and
+                       MatchInstruction(hp1,A_LDI) and
+                       MatchOpType(taicpu(hp1),top_reg,top_ref) and  // 2nd ldi ...
+                       (GetNextInstruction(hp1, hp2) and
+                        MatchInstruction(hp2,[A_MOV, A_MOVW])) and
+                       (taicpu(hp2).oper[1]^.reg > NR_R15) then      // ldi can only operate on r16+
+                      begin
+                        TransferUsedRegs(TmpUsedRegs);
+                        UpdateUsedRegs(TmpUsedRegs,tai(p.next));
+                        UpdateUsedRegs(TmpUsedRegs,tai(hp1.next));
+
+                        if MatchInstruction(hp2, A_MOVW) and
+                          (taicpu(p).oper[0]^.reg=taicpu(hp2).oper[1]^.reg) and
+                          (getsupreg(taicpu(hp1).oper[0]^.reg)=(succ(getsupreg(taicpu(p).oper[0]^.reg)))) and
+                          GetNextInstructionUsingReg(hp2, hp3, taicpu(hp2).oper[1]^.reg) then
+                          begin
+                            // Do not remove rx/ry if re-used later
+                            if not(RegUsedAfterInstruction(taicpu(p).oper[0]^.reg, p, TmpUsedRegs)) then
+                              begin
+                                taicpu(p).loadreg(0, taicpu(hp2).oper[0]^.reg);
+                                taicpu(hp1).loadreg(0, TRegister(int64(taicpu(hp2).oper[0]^.reg)+1));
+
+                                // Remove first register
+                                alloc:=FindRegAllocBackward(taicpu(p).oper[0]^.reg,tai(p.Previous));
+                                dealloc:=FindRegDeAlloc(taicpu(p).oper[0]^.reg,tai(hp1.Next));
+                                if assigned(alloc) and assigned(dealloc) then
+                                  begin
+                                    asml.Remove(alloc);
+                                    alloc.Free;
+                                    asml.Remove(dealloc);
+                                    dealloc.Free;
+                                  end;
+
+                                // Remove second register
+                                alloc:=FindRegAllocBackward(taicpu(hp1).oper[0]^.reg,tai(hp1.Previous));
+                                dealloc:=FindRegDeAlloc(taicpu(hp1).oper[0]^.reg,tai(hp2.Next));
+                                if assigned(alloc) and assigned(dealloc) then
+                                  begin
+                                    asml.Remove(alloc);
+                                    alloc.Free;
+                                    asml.Remove(dealloc);
+                                    dealloc.Free;
+                                  end;
+
+                                DebugMsg('Peephole LdiLdiMov2LdiLdi performed', p);
+                                RemoveCurrentP(hp2);
+                              end
+                          end
+                        else if MatchInstruction(hp2, A_MOV) and
+                          GetNextInstruction(hp2, hp3) and
+                          MatchInstruction(hp3, A_MOV) and
+                          (taicpu(p).oper[0]^.reg=taicpu(hp2).oper[1]^.reg) and
+                          (taicpu(hp1).oper[0]^.reg=taicpu(hp3).oper[1]^.reg) and
+                          GetNextInstructionUsingReg(hp3, hp4, taicpu(hp2).oper[1]^.reg) then
+                          // also check if registers are consecutive?
+                          begin
+                            UpdateUsedRegs(TmpUsedRegs,tai(hp2.next));
+                            // Do not remove rx/ry if re-used later
+                            if not(RegUsedAfterInstruction(taicpu(hp2).oper[0]^.reg, p, TmpUsedRegs)) and
+                               not(RegUsedAfterInstruction(taicpu(hp3).oper[0]^.reg, p, TmpUsedRegs)) then
+                              begin
+                                taicpu(p).loadreg(0, taicpu(hp2).oper[0]^.reg);
+                                taicpu(hp1).loadreg(0, taicpu(hp3).oper[0]^.reg);
+
+                                // Remove first register
+                                alloc:=FindRegAllocBackward(taicpu(p).oper[0]^.reg,tai(p.Previous));
+                                dealloc:=FindRegDeAlloc(taicpu(p).oper[0]^.reg,tai(hp1.Next));
+                                if assigned(alloc) and assigned(dealloc) then
+                                  begin
+                                    asml.Remove(alloc);
+                                    alloc.Free;
+                                    asml.Remove(dealloc);
+                                    dealloc.Free;
+                                  end;
+
+                                // Remove second register
+                                alloc:=FindRegAllocBackward(taicpu(hp1).oper[0]^.reg,tai(hp1.Previous));
+                                dealloc:=FindRegDeAlloc(taicpu(hp1).oper[0]^.reg,tai(hp2.Next));
+                                if assigned(alloc) and assigned(dealloc) then
+                                  begin
+                                    asml.Remove(alloc);
+                                    alloc.Free;
+                                    asml.Remove(dealloc);
+                                    dealloc.Free;
+                                  end;
+
+                                DebugMsg('Peephole LdiLdiMov2LdiLdi performed', p);
+                                RemoveCurrentP(hp2);
+                                RemoveCurrentP(hp3);
+                              end;
+                          end;
                       end;
                   end;
                 A_STS:
