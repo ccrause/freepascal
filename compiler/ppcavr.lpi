@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <CONFIG>
   <ProjectOptions>
-    <Version Value="10"/>
+    <Version Value="11"/>
     <PathDelim Value="\"/>
     <General>
       <Flags>
@@ -19,14 +19,21 @@
     </BuildModes>
     <PublishOptions>
       <Version Value="2"/>
-      <IncludeFileFilter Value="*.(pas|pp|inc|lfm|lpr|lrs|lpi|lpk|sh|xml)"/>
-      <ExcludeFileFilter Value="*.(bak|ppu|ppw|o|so);*~;backup"/>
     </PublishOptions>
     <RunParams>
       <local>
-        <FormatVersion Value="1"/>
-        <LaunchingApplication PathPlusParams="/usr/X11R6/bin/xterm -T 'Lazarus Run Output' -e $(LazarusDir)/tools/runwait.sh $(TargetCmdLine)"/>
+        <CommandLineParams Value="-Tembedded -Pavr -MObjFPC -Scghi -O3 -l -vewnhibq -n @~\fpc\cc\fpc.cfg -Fi\home\christo\fpc\fpc-avr\src\tests\20201017\lib\avr-embedded -Fu\home\christo\fpc\fpc-avr\src\library -Fu\home\christo\fpc\fpc-avr\src\tests\20201017\ -FU\home\christo\fpc\fpc-avr\src\tests\20201017\lib\avr-embedded\ -FE\home\christo\fpc\fpc-avr\src\tests\20201017\ -o\home\christo\fpc\fpc-avr\src\tests\20201017\test -Wpattiny10 -g -a -XPavr- -al -Sm -Si -dF_CPU:=4000000 \home\christo\fpc\fpc-avr\src\tests\20201017\test.lpr"/>
+        <LaunchingApplication PathPlusParams="\usr\X11R6\bin\xterm -T 'Lazarus Run Output' -e $(LazarusDir)\tools\runwait.sh $(TargetCmdLine)"/>
       </local>
+      <FormatVersion Value="2"/>
+      <Modes Count="1">
+        <Mode0 Name="default">
+          <local>
+            <CommandLineParams Value="-Tembedded -Pavr -MObjFPC -Scghi -O3 -l -vewnhibq -n @~\fpc\cc\fpc.cfg -Fi\home\christo\fpc\fpc-avr\src\tests\20201017\lib\avr-embedded -Fu\home\christo\fpc\fpc-avr\src\library -Fu\home\christo\fpc\fpc-avr\src\tests\20201017\ -FU\home\christo\fpc\fpc-avr\src\tests\20201017\lib\avr-embedded\ -FE\home\christo\fpc\fpc-avr\src\tests\20201017\ -o\home\christo\fpc\fpc-avr\src\tests\20201017\test -Wpattiny10 -g -a -XPavr- -al -Sm -Si -dF_CPU:=4000000 \home\christo\fpc\fpc-avr\src\tests\20201017\test.lpr"/>
+            <LaunchingApplication PathPlusParams="\usr\X11R6\bin\xterm -T 'Lazarus Run Output' -e $(LazarusDir)\tools\runwait.sh $(TargetCmdLine)"/>
+          </local>
+        </Mode0>
+      </Modes>
     </RunParams>
     <Units Count="2">
       <Unit0>
@@ -58,6 +65,11 @@
         <UseAnsiStrings Value="False"/>
       </SyntaxOptions>
     </Parsing>
+    <Linking>
+      <Debugging>
+        <DebugInfoType Value="dsDwarf3"/>
+      </Debugging>
+    </Linking>
     <Other>
       <Verbosity>
         <ShowWarn Value="False"/>
