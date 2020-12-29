@@ -1303,7 +1303,8 @@ const
     msPrefixedAttributes,
     msOmitRTTI,
     msMultiHelpers,
-    msImplicitFunctionSpec];
+    msImplicitFunctionSpec,
+    msMultilineStrings];
 
   bsAllPas2jsBoolSwitchesReadOnly = [
     bsLongStrings
@@ -2072,7 +2073,7 @@ type
     Procedure AddImplHeaderStatement(JS: TJSElement; PosEl: TPasElement; aContext: TConvertContext); virtual;
     Procedure AddDelayedInits(El: TPasProgram; Src: TJSSourceElements; AContext: TConvertContext); virtual;
     Procedure AddDelaySpecializeInit(El: TPasGenericType; Src: TJSSourceElements; AContext: TConvertContext); virtual;
-    // set
+    // enum and sets
     Function CreateReferencedSet(El: TPasElement; SetExpr: TJSElement): TJSElement; virtual;
     // record
     Function CreateRecordInit(aRecord: TPasRecordType; Expr: TPasExpr;
@@ -6197,7 +6198,8 @@ begin
   cInterfaceToString:=cTypeConversion+1;
 
   {$IFDEF FPC_HAS_CPSTRING}
-  ExprEvaluator.DefaultStringCodePage:=CP_UTF8;
+  ExprEvaluator.DefaultSourceCodePage:=CP_UTF8;
+  ExprEvaluator.DefaultStringCodePage:=CP_UTF16;
   {$ENDIF}
   FExternalNames:=TPasResHashList.Create;
   StoreSrcColumns:=true;
@@ -6516,6 +6518,7 @@ function TPas2JSResolver.ExtractPasStringLiteral(El: TPasElement;
     #decimal
     #$hex
     ^l  l is a letter a-z
+    Note that invalid UTF-8 sequences are checked by the scanner
 }
 var
   p, StartP, i, l: integer;
@@ -6543,7 +6546,7 @@ begin
         '''':
           begin
           if p>StartP then
-            Result:=Result+StrToJSString(copy(S,StartP,p-StartP));
+            Result:=Result+StrToJSString(copy(S,StartP,p-StartP)); // todo error on invalid UTF-8 sequence
           inc(p);
           StartP:=p;
           if (p>l) or (S[p]<>'''') then
@@ -6557,10 +6560,11 @@ begin
         end;
       until false;
       if p>StartP then
-        Result:=Result+StrToJSString(copy(S,StartP,p-StartP));
+        Result:=Result+StrToJSString(copy(S,StartP,p-StartP)); // todo error on invalid UTF-8 sequence
       end;
     '#':
       begin
+      // word sequence
       inc(p);
       if p>l then
         RaiseInternalError(20170207155121);
@@ -6585,7 +6589,6 @@ begin
           end;
         if p=StartP then
           RaiseInternalError(20170207164956);
-        Result:=Result+CodePointToJSString(i);
         end
       else
         begin
@@ -6605,8 +6608,8 @@ begin
           end;
         if p=StartP then
           RaiseInternalError(20170207171148);
-        Result:=Result+CodePointToJSString(i);
         end;
+      Result:=Result+CodePointToJSString(i);
       end;
     '^':
       begin
@@ -8185,7 +8188,8 @@ begin
           RemoveFromSourceElements(Src,ImplVarSt);
           // remove unneeded $mod.$implcode = function(){}
           RemoveFromSourceElements(Src,AssignSt);
-          HasImplUsesClause:=length(El.ImplementationSection.UsesClause)>0;
+          HasImplUsesClause:=(El.ImplementationSection<>nil)
+                         and (length(El.ImplementationSection.UsesClause)>0);
           end
         else
           begin
@@ -9659,6 +9663,12 @@ begin
         DoError(20190211111038,nNoMemberIsProvidedToAccessProperty,sNoMemberIsProvidedToAccessProperty,[],RightEl);
       end;
     end;
+    end
+  else if RightRefDecl.ClassType=TPasEnumValue then
+    begin
+    // enum value
+    Result:=ConvertIdentifierExpr(RightEl,'',aContext);
+    exit;
     end;
   if (AContext.Access=caAssign)
       and aResolver.IsClassField(RightRefDecl) then
@@ -15229,6 +15239,7 @@ Var
     SectionScope: TPas2JSSectionScope;
     SectionCtx: TSectionContext;
     Src: TJSSourceElements;
+    ImplSect: TImplementationSection;
   begin
     SectionScope:=Section.CustomData as TPas2JSSectionScope;
     AContext.ScannerBoolSwitches:=SectionScope.BoolSwitches;
@@ -15247,8 +15258,9 @@ Var
       InitForwards(Section.Declarations,TSectionContext(AContext));
       if Section is TInterfaceSection then
         begin
-        InitForwards(TPasModule(Section.Parent).ImplementationSection.Declarations,
-                     TSectionContext(AContext));
+        ImplSect:=TPasModule(Section.Parent).ImplementationSection;
+        if ImplSect<>nil then
+          InitForwards(ImplSect.Declarations,TSectionContext(AContext));
         end;
       end;
   end;
@@ -17552,9 +17564,12 @@ begin
       end;
 
     // create implementation declarations
-    ImplDecl:=ConvertDeclarations(El.ImplementationSection,ImplContext);
-    if ImplDecl<>nil then
-      RaiseInconsistency(20170910175032,El); // elements should have been added directly
+    if El.ImplementationSection<>nil then
+      begin
+      ImplDecl:=ConvertDeclarations(El.ImplementationSection,ImplContext);
+      if ImplDecl<>nil then
+        RaiseInconsistency(20170910175032,El); // elements should have been added directly
+      end;
     IntfContext.ImplHeaderIndex:=ImplContext.HeaderIndex;
     Result:=FunDecl;
   finally
@@ -19496,6 +19511,7 @@ begin
     aJSWriter.Options:=DefaultJSWriterOptions;
     aJSWriter.IndentSize:=2;
     aJSWriter.SkipCurlyBrackets:=true;
+    aJSWriter.Writer.LineBreak:=#10;
     aJSWriter.WriteJS(El);
     Result:=aWriter.AsString;
   finally
@@ -21166,7 +21182,12 @@ var
       if ProcScope.ImplProc<>nil then
         ProcScope:=ProcScope.ImplProc.CustomData as TPas2JSProcedureScope;
       if ProcScope.SelfArg=nil then
+        begin
+        {$IFDEF VerbosePas2JS}
+        writeln('CreateReference Proc=',GetObjPath(Proc),' Left=',GetObjPath(Left),' LeftResolved=',GetResolverResultDbg(LeftResolved),' ProcScope.DeclarationProc=',GetObjPath(ProcScope.DeclarationProc));
+        {$ENDIF}
         RaiseNotSupported(PosEl,AContext,20190209214906,GetObjName(Proc));
+        end;
       Result:=CreateProcCallArgRef(Left,LeftResolved,ProcScope.SelfArg,AContext);
       end;
   end;
@@ -24439,15 +24460,6 @@ var
     Result:=(C=TPasFunction) or (C=TPasProcedure) or (C=TPasConstructor) or (C=TPasDestructor);
   end;
 
-  function ProcHasNoSelf(Proc: TPasProcedure): boolean;
-  begin
-    if Proc=nil then exit(false);
-    if not (Proc.Parent is TPasMembersType) then
-      exit(true);
-    if Proc.IsStatic then exit(true);
-    Result:=false;
-  end;
-
   procedure Append_GetClass(Member: TPasElement);
   var
     P: TPasElement;
@@ -26310,14 +26322,14 @@ begin
         end
       else if C=TPasConst then
         begin
-        NewEl:=ConvertConst(TPasConst(P),aContext);
+        NewEl:=ConvertConst(TPasConst(P),FuncContext);
         IsComplex:=true;
         end
       else if C=TPasProperty then
-        NewEl:=ConvertProperty(TPasProperty(P),AContext)
+        NewEl:=ConvertProperty(TPasProperty(P),FuncContext)
       else if C.InheritsFrom(TPasType) then
         begin
-        NewEl:=CreateTypeDecl(TPasType(P),aContext);
+        NewEl:=CreateTypeDecl(TPasType(P),FuncContext);
         if (C=TPasRecordType) or (C=TPasClassType) then
           IsComplex:=true;
         end
@@ -26325,7 +26337,7 @@ begin
         begin
         if (C=TPasClassConstructor)
            or (C=TPasClassDestructor) then
-          AddGlobalClassMethod(AContext,TPasProcedure(P))
+          AddGlobalClassMethod(FuncContext,TPasProcedure(P))
         else
           begin
           Methods.Add(P);

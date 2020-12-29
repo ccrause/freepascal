@@ -302,6 +302,9 @@ implementation
     {$ifdef i8086}
       cpuinfo,
     {$endif i8086}
+    {$if defined(xtensa) or defined(i386)}
+      cpuinfo,
+    {$endif defined(xtensa) or defined(i386)}
       cgbase,procinfo
       ;
 
@@ -1560,6 +1563,8 @@ implementation
         paratype: tdef;
       begin
         result:=nil;
+        elsestmnt:=nil;
+        in_nr:=Default(tinlinenumber);
         { optimize constant expressions }
         if (left.nodetype=ordconstn) then
           begin
@@ -1584,19 +1589,78 @@ implementation
                     CGMessagePos(right.fileinfo,cg_w_unreachable_code);
                end;
           end;
-{$if defined(xtensa)}
-        { use min/max intrinsic? }
-        if (left.nodetype in [gtn,gten,ltn,lten]) and IsSingleStatement(right,thenstmnt) and IsSingleStatement(t1,elsestmnt) and
-          (thenstmnt.nodetype=assignn) and (elsestmnt.nodetype=assignn) and
+{$ifndef llvm}
+{$if defined(i386) or defined(x86_64) or defined(xtensa)}
+        { use min/max intrinsic?
+          convert (with <op> being <, >, >=, <=
+          if a <op> b then
+            x:=a
+          else
+            x:=b;
+
+          and
+
+          if a <op> b then
+            x:=a;
+
+          into appropriate min/max intrinsics
+
+          }
+        if (cs_opt_level2 in current_settings.optimizerswitches) and
+           (left.nodetype in [gtn,gten,ltn,lten]) and IsSingleStatement(right,thenstmnt) and
+           ((t1=nil) or IsSingleStatement(t1,elsestmnt)) and
+          (thenstmnt.nodetype=assignn) and ((t1=nil) or (elsestmnt.nodetype=assignn)) and
           not(might_have_sideeffects(left)) and
-          tassignmentnode(thenstmnt).left.isequal(tassignmentnode(elsestmnt).left) and
-          is_32bitint(tassignmentnode(thenstmnt).right.resultdef) and
-          ((tassignmentnode(thenstmnt).right.isequal(taddnode(left).left) and (tassignmentnode(elsestmnt).right.isequal(taddnode(left).right))) or
-           (tassignmentnode(thenstmnt).right.isequal(taddnode(left).right) and (tassignmentnode(elsestmnt).right.isequal(taddnode(left).left)))) then
+          ((t1=nil) or tassignmentnode(thenstmnt).left.isequal(tassignmentnode(elsestmnt).left)) and
+{$if defined(i386) or defined(x86_64)}
+{$ifdef i386}
+          (((current_settings.fputype>=fpu_sse) and is_single(tassignmentnode(thenstmnt).left.resultdef)) or
+           ((current_settings.fputype>=fpu_sse2) and is_double(tassignmentnode(thenstmnt).left.resultdef))
+          ) and
+{$else i386}
+          (is_single(tassignmentnode(thenstmnt).left.resultdef) or is_double(tassignmentnode(thenstmnt).left.resultdef)) and
+{$endif i386}
+{$endif defined(i386) or defined(x86_64)}
+{$if defined(xtensa)}
+          (CPUXTENSA_HAS_MINMAX in cpu_capabilities[current_settings.cputype]) and is_32bitint(tassignmentnode(thenstmnt).right.resultdef) and
+{$endif defined(xtensa)}
+          (
+          { the right size of the assignment in the then clause must either }
+
+          { equal to the left ... }
+           (tassignmentnode(thenstmnt).right.isequal(taddnode(left).left) and
+
+            { ... and the else clause must be either not exist                 }
+            { and the left side of the assignment in the then clause must be   }
+            {  equal to the right operand of the comparison operator           }
+            (
+              ((t1=nil) and (tassignmentnode(thenstmnt).left.isequal(taddnode(left).right))) or
+
+              { or the else clause exists and the right side of the assignment in the else clause }
+              { must be equal to the right side of the comparison operator                        }
+              (assigned(elsestmnt) and tassignmentnode(elsestmnt).right.isequal(taddnode(left).right)))
+           ) or
+           { ... or right operand of the comparison operator }
+
+            (tassignmentnode(thenstmnt).right.isequal(taddnode(left).right) and
+            { ... and the else clause must be either not exist                 }
+            { and the left side of the assignment in the then clause must be   }
+            {  equal to the left operand of the comparison operator            }
+             (
+              ((t1=nil) and (tassignmentnode(thenstmnt).left.isequal(taddnode(left).left))) or
+
+              { or the else clause exists and the right side of the assignment in the else clause }
+              { must be equal to the left side of the comparison operator                         }
+              (assigned(elsestmnt) and tassignmentnode(elsestmnt).right.isequal(taddnode(left).left))
+             )
+           )
+          ) then
           begin
             paratype:=tassignmentnode(thenstmnt).left.resultdef;
-            if (left.nodetype in [gtn,gten]) and
-              (tassignmentnode(thenstmnt).right.isequal(taddnode(left).left) and (tassignmentnode(elsestmnt).right.isequal(taddnode(left).right))) then
+            if ((left.nodetype in [gtn,gten]) and
+              tassignmentnode(thenstmnt).right.isequal(taddnode(left).left)) or
+              ((left.nodetype in [ltn,lten]) and
+              tassignmentnode(thenstmnt).right.isequal(taddnode(left).right)) then
               begin
                 if is_double(paratype) then
                   in_nr:=in_max_double
@@ -1618,12 +1682,24 @@ implementation
                 else if is_s32bitint(paratype) then
                   in_nr:=in_min_longint;
               end;
-            Result:=cassignmentnode.create_internal(tassignmentnode(thenstmnt).left.getcopy,
-              cinlinenode.create(in_nr,false,ccallparanode.create(taddnode(left).right.getcopy,
-                    ccallparanode.create(taddnode(left).left.getcopy,nil)))
-              );
+            { for inline nodes, the first parameter is the last one in the linked list
+
+              Due to the defined behaviour for the min/max intrinsics that in case of a NaN
+              the second parameter is taken, we have to put the else part into the second parameter
+              thus pass it to the first callparanode call }
+            if t1=nil then
+              Result:=cassignmentnode.create_internal(tassignmentnode(thenstmnt).left.getcopy,
+                cinlinenode.create(in_nr,false,ccallparanode.create(tassignmentnode(thenstmnt).left.getcopy,
+                      ccallparanode.create(tassignmentnode(thenstmnt).right.getcopy,nil)))
+                )
+            else
+              Result:=cassignmentnode.create_internal(tassignmentnode(thenstmnt).left.getcopy,
+                cinlinenode.create(in_nr,false,ccallparanode.create(tassignmentnode(elsestmnt).right.getcopy,
+                      ccallparanode.create(tassignmentnode(thenstmnt).right.getcopy,nil)))
+                );
           end;
-{$endif defined(xtensa)}
+{$endif defined(i386) or defined(x86_64) or defined(xtensa)}
+{$endif llvm}
       end;
 
 

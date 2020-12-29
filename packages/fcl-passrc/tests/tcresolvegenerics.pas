@@ -156,7 +156,7 @@ type
     procedure TestGenProc_TypeParamCntOverload;
     procedure TestGenProc_TypeParamCntOverloadNoParams;
     procedure TestGenProc_TypeParamWithDefaultParamDelphiFail;
-    procedure TestGenProc_ParamSpecWithT; // ToDo: Func<T>(Bird: TBird<T>)
+    procedure TestGenProc_ParamSpecWithT;
     // ToDo: NestedResultAssign
 
     // generic function infer types
@@ -185,6 +185,8 @@ type
     procedure TestGenMethod_OverloadTypeParamCntObjFPC;
     procedure TestGenMethod_OverloadTypeParamCntDelphi;
     procedure TestGenMethod_OverloadArgs;
+    procedure TestGenMethod_TypeCastParam;
+    procedure TestGenMethod_TypeCastIdentDot;
   end;
 
 implementation
@@ -2980,6 +2982,59 @@ begin
   '  if obj.specialize {@B}Run<byte>(5)=6 then ;',
   '']);
   ParseProgram;
+end;
+
+procedure TTestResolveGenerics.TestGenMethod_TypeCastParam;
+begin
+  StartUnit(false);
+  Add([
+  '{$mode delphi}',
+  'interface',
+  'type',
+  '  TObject = class end;',
+  '  TAnt = class end;',
+  '  TArray<T> = array of T;',
+  '  TBird = class',
+  '    F: TArray<TObject>;',
+  '    procedure Run<S>(a: TArray<S>);',
+  '  end;',
+  'implementation',
+  'procedure TBird.Run<S>(a: TArray<S>);',
+  'begin',
+  '  a:=TArray<S>(a);',
+  '  F:=TArray<TObject>(a);',
+  'end;',
+  'var B: TBird;',
+  'initialization',
+  '  B.Run<TAnt>(nil);',
+  '']);
+  ParseUnit;
+end;
+
+procedure TTestResolveGenerics.TestGenMethod_TypeCastIdentDot;
+begin
+  StartUnit(false);
+  Add([
+  '{$mode delphi}',
+  'interface',
+  'type',
+  '  TObject = class end;',
+  '  TBird = class end;',
+  '  TEagle = class(TBird)',
+  '    procedure Run<S>(p: S);',
+  '    procedure Fly;',
+  '  end;',
+  'implementation',
+  'procedure TEagle.Run<S>(p: S);',
+  'begin',
+  'end;',
+  'procedure TEagle.Fly;',
+  'var Bird: TBird;',
+  'begin',
+  '  TEagle(Bird).Run<word>(3);',
+  'end;',
+  '']);
+  ParseUnit;
 end;
 
 initialization

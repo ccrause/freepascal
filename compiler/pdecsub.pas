@@ -1344,7 +1344,7 @@ implementation
             parse_generic:=(df_generic in pd.defoptions);
             if pd.is_generic or pd.is_specialization then
               symtablestack.push(pd.parast);
-            single_type(pd.returndef,[stoAllowSpecialization]);
+            pd.returndef:=result_type([stoAllowSpecialization]);
 
             // Issue #24863, enabled only for the main progra commented out for now because it breaks building of RTL and needs extensive
 // testing and/or RTL patching.
@@ -1555,10 +1555,6 @@ implementation
             include(pd.procoptions,po_variadic);
           end;
 
-        { file types can't be function results }
-        if assigned(pd) and
-           (pd.returndef.typ=filedef) then
-          message(parser_e_illegal_function_result);
         { support procedure proc stdcall export; }
         if not(check_proc_directive(false)) then
           begin
@@ -2241,7 +2237,8 @@ begin
     end;
 
   if consume_sym(sym,symtable) then
-    if (sym.typ=staticvarsym) and
+    if ((sym.typ=staticvarsym) or
+        (sym.typ=absolutevarsym) and (tabsolutevarsym(sym).abstyp=toaddr)) and
        ((tabstractvarsym(sym).vardef.typ=pointerdef) or
         is_32bitint(tabstractvarsym(sym).vardef)) then
       begin

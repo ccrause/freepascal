@@ -1,13 +1,25 @@
-{%mainunit dw_html}
-{$IFDEF chmInterface}
+unit dw_chm;
+
+interface
+
+uses Classes, DOM, DOM_HTML,
+    dGlobals, PasTree, dwriter, dw_html, ChmWriter, chmtypes;
+
 type
+
+  { TFpDocChmWriter }
+
+  TFpDocChmWriter = class (TChmWriter)
+  protected
+    procedure FileAdded(AStream: TStream; const AEntry: TFileEntryRec); override;
+  end;
 
   { TCHMHTMLWriter }
 
   TCHMHTMLWriter = class(THTMLWriter)
   private
     FOutChm: TStream;
-    FChm: TChmWriter;
+    FChm: TFpDocChmWriter;
     FTempUncompressed: TStream;
     FTempUncompressedName: String;
     FChmTitle: String;
@@ -35,7 +47,21 @@ type
     Class Function FileNameExtension : String; override;
     Class procedure SplitImport(var AFilename, ALinkPrefix: String); override;
   end;
-{$ELSE} // implementation
+
+implementation
+
+uses SysUtils, HTMWrite, chmsitemap;
+
+{ TFpDocChmWriter }
+
+procedure TFpDocChmWriter.FileAdded ( AStream: TStream;
+  const AEntry: TFileEntryRec ) ;
+begin
+  // Exclude Full text index for files starting from the dot
+  if Pos('.', AEntry.Name) <> 1 then
+    inherited FileAdded(AStream, AEntry);
+
+end;
 
 { TCHMHTMLWriter }
 
@@ -452,7 +478,7 @@ var
   i: Integer;
   PageDoc: TXMLDocument;
   FileStream: TMemoryStream;
-  FileName: String;
+  IFileName,FileName: String;
   FilePath: String;
 begin
   FileName := Engine.Output;
@@ -466,7 +492,7 @@ begin
 
   FTempUncompressedName := GetTempFileName+IntToStr(GetProcessID) +'.raw';
   FTempUncompressed := TFileStream.Create(FTempUncompressedName, fmOpenReadWrite  or fmCreate);
-  FChm := TChmWriter.Create(FOutChm, False);
+  FChm := TFpDocChmWriter.Create(FOutChm, False);
   FChm.Title := FChmTitle;
   FChm.TempRawStream := FTempUncompressed;
   FChm.OnGetFileData := @RetrieveOtherFiles;
@@ -502,16 +528,16 @@ begin
 
   //write any found images to CHM stream
   FileStream := TMemoryStream.Create;
-  for i := 0 to FImageFileList.Count - 1 do
+  for iFilename in ImageFileList do
   begin
-{$ifdef imagetest}    DoLog('  adding image: '+FImageFileList[i]); {$endif}
-    if FileExists(FImageFileList[i]) then
+{$ifdef imagetest}    DoLog('  adding image: '+iFileName); {$endif}
+    if FileExists(iFileName) then
     begin
 {$ifdef imagetest}    DoLog(' - found'); {$endif}
-      FileName := ExtractFileName(FImageFileList[i]);
-      FilePath := '/'+FixHTMLpath(ExtractFilePath(FImageFileList[i]));
+      FileName := ExtractFileName(iFileName);
+      FilePath := '/'+FixHTMLpath(ExtractFilePath(iFileName));
 
-      FileStream.LoadFromFile(FImageFileList[i]);
+      FileStream.LoadFromFile(iFileName);
       FChm.AddStreamToArchive(FileName, FilePath, FileStream, True);
       FileStream.Size := 0;
     end
@@ -611,4 +637,8 @@ begin
     end;
 end;
 
-{$ENDIF}
+initialization
+  RegisterWriter(TCHMHTMLWriter,'chm','Compressed HTML file output using fpdoc.css stylesheet.');
+finalization
+  UnRegisterWriter('chm');
+end.

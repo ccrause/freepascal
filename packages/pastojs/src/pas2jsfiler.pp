@@ -206,7 +206,8 @@ const
     'PrefixedAttributes',
     'OmitRTTI',
     'MultiHelpers',
-    'ImplicitFunctionSpecialization'
+    'ImplicitFunctionSpecialization',
+    'MultilineStrings'
     ); // Dont forget to update ModeSwitchToInt !
 
   PCUDefaultBoolSwitches: TBoolSwitches = [
@@ -448,7 +449,8 @@ const
     'Varargs',
     'ReferenceTo',
     'Async',
-    'Far'
+    'Far',
+    'CBlock'
     );
 
   PCUProcedureMessageTypeNames: array[TProcedureMessageType] of string = (
@@ -1635,6 +1637,7 @@ begin
     msOmitRTTI: Result:=48;
     msMultiHelpers: Result:=49;
     msImplicitFunctionSpec: Result:=50;
+    msMultiLineStrings: Result:=51;
   end;
 end;
 
@@ -4576,10 +4579,9 @@ begin
     RaiseMsg(20180219135933,Scope.Element);
   AddReferenceToObj(Obj,'ImplProc',Scope.ImplProc);
   AddReferenceToObj(Obj,'Overridden',Scope.OverriddenProc);
-  // ClassOrRecordScope: TPasClassScope; auto derived
-  if Scope.SelfArg<>nil then
-    RaiseMsg(20180211180457,Scope.Element); // SelfArg only valid for method implementation
-  // Mode: TModeSwitch: auto derived
+  // ClassOrRecordScope is auto derived
+  // SelfArg is auto derived
+  // Mode is auto derived
   WriteProcScopeFlags(Obj,'SFlags',Scope.Flags,[]);
   WriteBoolSwitches(Obj,'BoolSwitches',Scope.BoolSwitches,aContext.BoolSwitches);
   WriteModeSwitches(Obj,'ModeSwitches',Scope.ModeSwitches,aContext.ModeSwitches);
@@ -8198,12 +8200,16 @@ var
   aModule: TPasModule;
 
   function CreateOrContinueSection(const PropName: string; var Section: TPasSection;
-     SectionClass: TPasSectionClass): boolean;
+     SectionClass: TPasSectionClass; MustExist: boolean): boolean;
   var
     SubObj: TJSONObject;
   begin
     if not ReadObject(Obj,PropName,SubObj,aModule) then
-      RaiseMsg(20180308142146,aModule);
+      begin
+      if MustExist then
+        RaiseMsg(20180308142146,aModule);
+      exit;
+      end;
     if Section=nil then
       Section:=TPasSection(CreateElement(SectionClass,'',aModule));
     ReadSection(SubObj,Section,aContext);
@@ -8257,7 +8263,7 @@ begin
       // start or continue ProgramSection
       Prog:=TPasProgram(aModule);
       if not CreateOrContinueSection('Program',TPasSection(Prog.ProgramSection),
-          TProgramSection) then
+          TProgramSection,true) then
         exit; // pending uses interfaces -> pause
       end
     else if aModule.ClassType=TPasLibrary then
@@ -8265,7 +8271,7 @@ begin
       // start or continue LibrarySection
       Lib:=TPasLibrary(aModule);
       if not CreateOrContinueSection('Library',TPasSection(Lib.LibrarySection),
-          TLibrarySection) then
+          TLibrarySection,true) then
         exit; // pending uses interfaces -> pause
       end
     else
@@ -8275,12 +8281,12 @@ begin
         begin
         // start or continue unit Interface
         if not CreateOrContinueSection('Interface',TPasSection(aModule.InterfaceSection),
-            TInterfaceSection) then
+            TInterfaceSection,true) then
           exit; // pending uses interfaces -> pause
         end;
       // start or continue unit Implementation
       if not CreateOrContinueSection('Implementation',TPasSection(aModule.ImplementationSection),
-          TImplementationSection) then
+          TImplementationSection,false) then
         exit; // pending uses interfaces -> pause
       end;
     if (Obj.Find('Init')<>nil)
@@ -9492,11 +9498,14 @@ begin
     Scope.ClassRecScope:=Proc.Parent.CustomData as TPasClassOrRecordScope // no AddRef
   else
     ; // set via Set_ProcedureScope_ImplProc
-  // Scope.SelfArg only valid for method implementation
 
   Scope.Flags:=ReadProcScopeFlags(Obj,Proc,'SFlags',[]);
   Scope.BoolSwitches:=ReadBoolSwitches(Obj,Proc,'BoolSwitches',aContext.BoolSwitches);
   Scope.ModeSwitches:=ReadModeSwitches(Obj,Proc,'ModeSwitches',aContext.ModeSwitches);
+
+  // Scope.SelfArg
+  if (Scope.ClassRecScope<>nil) and (Scope.DeclarationProc=nil) then
+    Resolver.CreateProcSelfArg(Proc);
 
   //ReadIdentifierScope(Obj,Scope,aContext);
 end;
@@ -9628,17 +9637,6 @@ begin
 
     El.ProcType:=TPasProcedureType(CreateElement(TPasProcedureTypeClass(DeclProc.ProcType.ClassType),'',El));
     El.Modifiers:=ReadProcedureModifiers(Obj,El,'PMods',DeclProc.Modifiers*PCUProcedureModifiersImplProc);
-
-    if HasBody then
-      begin
-      // not a precompiled proc -> copy signature
-      //if El.ProcType is TPasFunctionType then
-      //  begin
-      //  FuncType:=TPasFunctionType(El.ProcType);
-      //  FuncType.ResultEl:=TPasResultElement(CreateElement(TPasResultElement,
-      //    TPasFunctionType(DeclProc.ProcType).ResultEl.Name,FuncType));
-      //  end;
-      end;
     end
   else
     begin
@@ -9671,6 +9669,7 @@ begin
       end;
     DefProcMods:=GetDefaultProcModifiers(El);
     El.Modifiers:=ReadProcedureModifiers(Obj,El,'PMods',DefProcMods);
+
     // read ProcType after El.Modifiers
     El.ProcType:=TPasProcedureType(ReadElementProperty(
                                  Obj,El,'ProcType',TPasProcedureType,aContext));

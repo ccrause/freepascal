@@ -945,9 +945,9 @@ begin
   'begin',
   '  DoIt;']);
   AnalyzeProgram;
-  CheckUseAnalyzerHint(mtHint,nPALocalVariableNotUsed,'Local variable "b" not used');
-  CheckUseAnalyzerHint(mtHint,nPALocalVariableIsAssignedButNeverUsed,
-    'Local variable "c" is assigned but never used');
+  CheckUseAnalyzerHint(mtHint,nPAFieldNotUsed,'Field "b" not used');
+  CheckUseAnalyzerHint(mtHint,nPAFieldIsAssignedButNeverUsed,
+    'Field "c" is assigned but never used');
   CheckUseAnalyzerUnexpectedHints;
 end;
 
@@ -2278,9 +2278,9 @@ begin
   Add('begin');
   Add('  Point(1);');
   AnalyzeProgram;
-  CheckUseAnalyzerHint(mtHint,nPALocalVariableIsAssignedButNeverUsed,
-    'Local variable "X" is assigned but never used');
-  CheckUseAnalyzerHint(mtHint,nPALocalVariableNotUsed,'Local variable "Y" not used');
+  CheckUseAnalyzerHint(mtHint,nPAFieldIsAssignedButNeverUsed,
+    'Field "X" is assigned but never used');
+  CheckUseAnalyzerHint(mtHint,nPAFieldNotUsed,'Field "Y" not used');
   CheckUseAnalyzerUnexpectedHints;
 end;
 
@@ -2319,7 +2319,7 @@ begin
   Add('begin');
   Add('  Point();');
   AnalyzeProgram;
-  CheckUseAnalyzerHint(mtHint,nPALocalVariableNotUsed,'Local variable "Y" not used');
+  CheckUseAnalyzerHint(mtHint,nPAFieldNotUsed,'Field "Y" not used');
   CheckUseAnalyzerUnexpectedHints;
 end;
 
@@ -2385,7 +2385,7 @@ begin
   '  specialize Point<word>();',
   '']);
   AnalyzeProgram;
-  CheckUseAnalyzerHint(mtHint,nPALocalVariableNotUsed,'Local variable "Y" not used');
+  CheckUseAnalyzerHint(mtHint,nPAFieldNotUsed,'Field "Y" not used');
   CheckUseAnalyzerUnexpectedHints;
 end;
 
@@ -2685,7 +2685,9 @@ procedure TTestUseAnalyzer.TestWP_Published;
 begin
   StartProgram(false);
   Add('type');
-  Add('  {#tobject_used}TObject = class');
+  Add('  {#tobject_notypeinfo}TObject = class');
+  Add('  end;');
+  Add('  {#tobject_typeinfo}TBird = class');
   Add('  private');
   Add('    {#fcol_used}FCol: string;');
   Add('    {#fbird_notused}FBird: string;');
@@ -2695,9 +2697,9 @@ begin
   Add('    property {#col_used}Col: string read FCol;');
   Add('  end;');
   Add('var');
-  Add('  {#o_used}o: TObject;');
+  Add('  {#b_used}b: TBird;');
   Add('begin');
-  Add('  o:=nil;');
+  Add('  b:=nil;');
   AnalyzeWholeProgram;
 end;
 
