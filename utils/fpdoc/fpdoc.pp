@@ -31,6 +31,8 @@ uses
   dw_XML,    // XML writer
   dw_dxml,   // Delphi XML doc.
   dw_HTML,   // HTML writer
+  dw_chm,    // CHM Writer
+  // dw_markdown, // Markdown writer
   dw_ipflin, // IPF writer (new linear output)
   dw_man,    // Man page writer
   dw_linrtf, // linear RTF writer
@@ -428,6 +430,8 @@ begin
 end;
 
 begin
+  //AssignFile(Output, 'fpdoc.log');
+  //rewrite(Output);
   With TFPDocApplication.Create(Nil) do
     try
       Run;

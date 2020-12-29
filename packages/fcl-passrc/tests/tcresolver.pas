@@ -299,7 +299,7 @@ type
     Procedure TestIntegerBoolFail;
     Procedure TestBooleanOperators;
     Procedure TestStringOperators;
-    Procedure TestWideCharOperators;
+    Procedure TestWideCharOperators_DelphiUnicode;
     Procedure TestFloatOperators;
     Procedure TestCAssignments;
     Procedure TestTypeCastBaseTypes;
@@ -1069,6 +1069,7 @@ begin
   FHub:=TPasResolverHub.Create(Self);
   inherited SetUp;
   Parser.Options:=Parser.Options+[po_ResolveStandardTypes];
+  Parser.CurrentModeswitches:=[msObjfpc];
   Scanner.OnDirective:=@OnScannerDirective;
   Scanner.OnLog:=@OnScannerLog;
 end;
@@ -2180,6 +2181,8 @@ begin
   Result.OnFindUnit:=@OnPasResolverFindUnit;
   Result.OnLog:=@OnPasResolverLog;
   Result.Hub:=Hub;
+  Result.ExprEvaluator.DefaultStringCodePage:=CP_UTF8;
+  Result.ExprEvaluator.DefaultSourceCodePage:=CP_UTF8;
   FModules.Add(Result);
 end;
 
@@ -2195,7 +2198,8 @@ function TCustomTestResolver.AddModuleWithIntfImplSrc(aFilename, InterfaceSrc,
 var
   Src: String;
 begin
-  Src:='unit '+ExtractFileUnitName(aFilename)+';'+LineEnding;
+  Src:='{$mode objfpc}';
+  Src+='unit '+ExtractFileUnitName(aFilename)+';'+LineEnding;
   Src+=LineEnding;
   Src+='interface'+LineEnding;
   Src+=LineEnding;
@@ -4676,9 +4680,9 @@ begin
   ParseProgram;
 end;
 
-procedure TTestResolver.TestWideCharOperators;
+procedure TTestResolver.TestWideCharOperators_DelphiUnicode;
 begin
-  ResolverEngine.ExprEvaluator.DefaultStringCodePage:=CP_UTF8;
+  ResolverEngine.ExprEvaluator.DefaultStringCodePage:=CP_UTF16;
   ResolverEngine.BaseTypeChar:=btWideChar;
   ResolverEngine.BaseTypeString:=btUnicodeString;
   StartProgram(false);
@@ -14305,7 +14309,6 @@ end;
 
 procedure TTestResolver.TestStaticArrayOfChar;
 begin
-  ResolverEngine.ExprEvaluator.DefaultStringCodePage:=CP_UTF8;
   StartProgram(false);
   Add([
   'type',
@@ -14327,7 +14330,6 @@ end;
 
 procedure TTestResolver.TestStaticArrayOfCharDelphi;
 begin
-  ResolverEngine.ExprEvaluator.DefaultStringCodePage:=CP_UTF8;
   StartProgram(false);
   Add([
   '{$mode delphi}',
