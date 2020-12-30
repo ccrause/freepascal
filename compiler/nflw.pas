@@ -302,6 +302,9 @@ implementation
     {$ifdef i8086}
       cpuinfo,
     {$endif i8086}
+    {$ifdef xtensa}
+      cpuinfo,
+    {$endif xtensa}
       cgbase,procinfo
       ;
 
@@ -1586,7 +1589,7 @@ implementation
           end;
 {$if defined(xtensa)}
         { use min/max intrinsic? }
-        if (left.nodetype in [gtn,gten,ltn,lten]) and IsSingleStatement(right,thenstmnt) and IsSingleStatement(t1,elsestmnt) and
+        if (CPUXTENSA_HAS_MINMAX in cpu_capabilities[current_settings.cputype]) and (left.nodetype in [gtn,gten,ltn,lten]) and IsSingleStatement(right,thenstmnt) and IsSingleStatement(t1,elsestmnt) and
           (thenstmnt.nodetype=assignn) and (elsestmnt.nodetype=assignn) and
           not(might_have_sideeffects(left)) and
           tassignmentnode(thenstmnt).left.isequal(tassignmentnode(elsestmnt).left) and
