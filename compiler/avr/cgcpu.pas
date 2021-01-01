@@ -114,16 +114,14 @@ unit cgcpu;
 
         procedure gen_multiply(list: TAsmList; op: topcg; size: TCgSize; src2, src1, dst: tregister; check_overflow: boolean; var ovloc: tlocation);
 
-        // Generate access to other memory areas
-        //procedure a_load_reg_ref_eeprom(list : TAsmList; fromsize, tosize: tcgsize; reg : tregister;const ref : treference);override;
-        //procedure a_load_ref_eeprom_reg(list : TAsmList; fromsize, tosize : tcgsize;const Ref : treference;reg : tregister);override;
-
         // Check which access method should be used to load a ref into a reg
         procedure checkLoadRefReg(list: TAsmList; const Ref: treference; reg: tregister
           );
 
       private
        procedure a_op_const_reg_reg_internal(list: TAsmList; op: TOpCg; size: tcgsize; a: tcgint; src, srchi, dst, dsthi: tregister);
+       // Check if load semantics require reference to be accessed via the Z register
+       function useZregForReferenceLoad(source: treference): boolean;
       protected
         procedure a_op_reg_reg_internal(list: TAsmList; Op: TOpCG; size: TCGSize; src, srchi, dst, dsthi: TRegister);
         procedure a_op_const_reg_internal(list : TAsmList; Op: TOpCG; size: TCGSize; a: tcgint; reg, reghi: TRegister);
@@ -546,6 +544,16 @@ unit cgcpu;
          else
            inherited a_op_const_reg_reg(list,op,size,a,src,dst);
        end;
+
+
+     function tcgavr.useZregForReferenceLoad(source: treference): boolean;
+       begin
+         result := (source.sectionName <> '') and
+                   ((CompareText(source.sectionName, '.progmem')=0) or
+                    ((CompareText(source.sectionName, '.eeprom')=0) and
+                     not(CPUAVR_HAS_NVM_DATASPACE in cpu_capabilities[current_settings.cputype])))
+       end;
+
 
      procedure tcgavr.a_op_const_reg_reg_checkoverflow(list: TAsmList; op: TOpCg; size: tcgsize; a: tcgint; src, dst: tregister; setflags: boolean; var ovloc: tlocation);
        var
@@ -1231,8 +1239,9 @@ unit cgcpu;
            end;
 
          { try to use std/sts }
-         if not((href.Base=NR_NO) and (href.Index=NR_NO)) or
-           ((href.sectionName <> '') and (CompareText(href.sectionName, '.eeprom')=0)) then
+         if not((href.Base=NR_NO) and (href.Index=NR_NO)) {or
+         // TODO: implement EEPROM write support
+           ((href.sectionName <> '') and (CompareText(href.sectionName, '.eeprom')=0))} then
            begin
              if not((href.addressmode=AM_UNCHANGED) and
                     (href.symbol=nil) and
@@ -1454,8 +1463,7 @@ unit cgcpu;
 
          { try to use ldd/lds }
          if not((href.Base=NR_NO) and (href.Index=NR_NO)) or
-            ((href.sectionName <> '') and ((CompareText(href.sectionName, '.progmem')=0) or
-            (CompareText(href.sectionName, '.eeprom')=0))) then
+           useZregForReferenceLoad(href) then
            begin
              if not((href.addressmode=AM_UNCHANGED) and
                     (href.symbol=nil) and
@@ -2225,88 +2233,75 @@ unit cgcpu;
 
     // Read ref into register
     procedure tcgavr.checkLoadRefReg(list: TAsmList; const Ref: treference; reg: tregister);
-    var
-      l1: TAsmLabel;
-      ai : taicpu;
-      tmpreg: TRegister;
-      EECRref, EEARHref, EEARLref, EEDRref: treference;
-      symbol: tsym;
-      symtab: TSymtable;
-    begin
-      // TODO: check eeprom access for avrxmega
-      if (Ref.sectionName <> '') and (CompareText('.eeprom', Ref.sectionName) = 0) then
-           begin
-             // from atmega328p datasheet:
-             // wait for EEPE bit in EEDR to clear before starting new read request
-             // lbl:
-             // sbic	0x1f, 1	; 31   // seems like the status register is always in reach of SBIx
-             // rjmp	lbl
-             // Now move address of reference to address register (EEARH & EEARL)
-             // out	0x22, r25	; 34
-             // out	0x21, r24	; 33
-             // Set bit 0 of EECR
-             // sbi	0x1f, 0	; 31
-             // Data is now available in EEDR
-             // in	r24, 0x20	; 32
-
-             // Wait if eeprom write is in progress
-             current_asmdata.getjumplabel(l1);
-             cg.a_label(list,l1);
-             reference_reset(EECRref, 1, []);
-             // If no symbol EECR is defined, or not an absolute symbol - through error
-             if not symtable.searchsym('EECR', symbol, symtab) or
-                not(symbol.typ=absolutevarsym) then
-               Internalerror(2021010101);
-             EECRref.offset := tabsolutevarsym(symbol).addroffset;
-             tmpreg:=getaddressregister(list);
-             list.concat(taicpu.op_reg_ref(A_LDS,tmpreg,EECRref));
-             list.concat(taicpu.op_reg_const(A_ANDI,tmpreg,2));
-
-             ai:=Taicpu.Op_Sym(A_BRxx,l1);
-             ai.SetCondition(C_NE);
-             ai.is_jmp:=true;
-             list.concat(ai);
-
-             // TODO: Ensure ref is stored in Z register earlier
-             reference_reset(EEARLref, 1, []);
-             // If no symbol EECR is defined, or not an absolute symbol - through error
-             if not symtable.searchsym('EEARL', symbol, symtab) or
-                not(symbol.typ=absolutevarsym) then
-               Internalerror(2021010102);
-             EEARLref.offset := tabsolutevarsym(symbol).addroffset;
-             if cpuinfo.embedded_controllers[current_settings.controllertype].eepromsize > 256 then
-               begin
-                 reference_reset(EEARHref, 1, []);
-                 // If no symbol EECR is defined, or not an absolute symbol - through error
-                 if not symtable.searchsym('EEARH', symbol, symtab) or
-                    not(symbol.typ=absolutevarsym) then
-                   Internalerror(2021010103);
-                 EEARHref.offset := tabsolutevarsym(symbol).addroffset;
-                 list.concat(taicpu.op_ref_reg(A_STS,EEARHref, GetNextReg(ref.base)));
-               end;
-             list.concat(taicpu.op_ref_reg(A_STS,EEARLref, ref.base));
-
-             // Set EERE bit in EECR register
-             //tmpreg:=getaddressregister(list);
-             list.concat(taicpu.op_reg_ref(A_LDS,tmpreg,EECRref));
-             list.concat(taicpu.op_reg_const(A_ORI,tmpreg,1));        // hard coded EERE bit, TODO: check if the bits are always the same
-             list.concat(taicpu.op_ref_reg(A_STS,EECRref,tmpreg));
-
-             // Now read data in EEDR register
-             reference_reset(EEDRref, 1, []);
-             if not symtable.searchsym('EEDR', symbol, symtab) or
-                not(symbol.typ=absolutevarsym) then
-               Internalerror(2021010104);
-             EEDRref.offset := tabsolutevarsym(symbol).addroffset;
-
-             list.concat(taicpu.op_reg_ref(A_LDS,tmpreg,EEDRref));
-             list.concat(taicpu.op_reg_reg(A_MOV,reg,tmpreg));
-           end
-      // flash access follow same semantics for classic AVRs as LD
-      // TODO: check flash access for avrxmega
-      else
-        list.concat(taicpu.op_reg_ref(GetLoad(Ref),reg,Ref));
-    end;
+      var
+        l1: TAsmLabel;
+        ai: taicpu;
+        tmpreg: TRegister;
+        EECRref, EEARHref, EEARLref, EEDRref, href: treference;
+        symbol: tsym;
+        symtab: TSymtable;
+      begin
+        // Newer controllers map eeprom into data space
+        if (Ref.sectionName <> '') and (CompareText('.eeprom', Ref.sectionName) = 0) then
+          begin
+            if not (CPUAVR_HAS_NVM_DATASPACE in cpu_capabilities[current_settings.cputype]) then
+              begin
+                // Wait if eeprom write is in progress
+                current_asmdata.getjumplabel(l1);
+                cg.a_label(list,l1);
+                reference_reset(EECRref, 1, []);
+                if not symtable.searchsym('EECR', symbol, symtab) or
+                   not(symbol.typ=absolutevarsym) then
+                  Internalerror(2021010101);
+                EECRref.offset := tabsolutevarsym(symbol).addroffset;
+                tmpreg:=getaddressregister(list);
+                list.concat(taicpu.op_reg_ref(A_LDS,tmpreg,EECRref));
+                list.concat(taicpu.op_reg_const(A_ANDI,tmpreg,2));
+                ai:=Taicpu.Op_Sym(A_BRxx,l1);
+                ai.SetCondition(C_NE);
+                ai.is_jmp:=true;
+                list.concat(ai);
+                // Store address of reference in eeprom address register
+                reference_reset(EEARLref, 1, []);
+                if not symtable.searchsym('EEARL', symbol, symtab) or
+                   not(symbol.typ=absolutevarsym) then
+                  Internalerror(2021010102);
+                EEARLref.offset := tabsolutevarsym(symbol).addroffset;
+                list.concat(taicpu.op_ref_reg(A_STS,EEARLref, ref.base));
+                // Only store high byte of reference if eeprom size > 256 bytes
+                if cpuinfo.embedded_controllers[current_settings.controllertype].eepromsize > 256 then
+                  begin
+                    reference_reset(EEARHref, 1, []);
+                    if not symtable.searchsym('EEARH', symbol, symtab) or
+                       not(symbol.typ=absolutevarsym) then
+                      Internalerror(2021010103);
+                    EEARHref.offset := tabsolutevarsym(symbol).addroffset;
+                    list.concat(taicpu.op_ref_reg(A_STS,EEARHref, GetNextReg(ref.base)));
+                  end;
+                // Set EERE bit in EECR register
+                list.concat(taicpu.op_reg_ref(A_LDS,tmpreg,EECRref));
+                list.concat(taicpu.op_reg_const(A_ORI,tmpreg,1));        // hard coded EERE bit, TODO: check if the bits are always the same
+                list.concat(taicpu.op_ref_reg(A_STS,EECRref,tmpreg));
+                // Now read data from EEDR register
+                reference_reset(EEDRref, 1, []);
+                if not symtable.searchsym('EEDR', symbol, symtab) or
+                   not(symbol.typ=absolutevarsym) then
+                  Internalerror(2021010104);
+                EEDRref.offset := tabsolutevarsym(symbol).addroffset;
+                // And store data in destination register
+                list.concat(taicpu.op_reg_ref(A_LDS,tmpreg,EEDRref));
+                list.concat(taicpu.op_reg_reg(A_MOV,reg,tmpreg));
+              end
+            else
+              begin
+                href:=Ref;
+                href.offset:=Ref.offset or $1400;  // remap to eeprom data space
+                list.concat(taicpu.op_reg_ref(GetLoad(href),reg,href));
+              end;
+          end
+        else
+          list.concat(taicpu.op_reg_ref(GetLoad(Ref),reg,Ref));
+      end;
 
 
     procedure tcgavr.g_proc_entry(list : TAsmList;localsize : longint;nostackframe:boolean);
@@ -2655,10 +2650,7 @@ unit cgcpu;
                       (source.Index=NR_NO) and
                       (source.Offset in [0..64-len])) and
                 not((source.Base=NR_NO) and (source.Index=NR_NO))
-              ) or
-              ((source.sectionName <> '') and
-               ((CompareText(source.sectionName, '.progmem')=0) or
-               (CompareText(source.sectionName, '.eeprom')=0))) then
+              ) or useZregForReferenceLoad(source) then
               begin
                 cg.getcpuregister(list,NR_R30);
                 cg.getcpuregister(list,NR_R31);
