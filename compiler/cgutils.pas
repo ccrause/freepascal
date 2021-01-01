@@ -93,6 +93,7 @@ unit cgutils;
 {$endif aarch64}
 {$ifdef avr}
          addressmode : taddressmode;
+         sectionName: string;
 {$endif avr}
 {$ifdef m68k}
          { indexed increment and decrement mode }

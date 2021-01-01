@@ -114,6 +114,14 @@ unit cgcpu;
 
         procedure gen_multiply(list: TAsmList; op: topcg; size: TCgSize; src2, src1, dst: tregister; check_overflow: boolean; var ovloc: tlocation);
 
+        // Generate access to other memory areas
+        //procedure a_load_reg_ref_eeprom(list : TAsmList; fromsize, tosize: tcgsize; reg : tregister;const ref : treference);override;
+        //procedure a_load_ref_eeprom_reg(list : TAsmList; fromsize, tosize : tcgsize;const Ref : treference;reg : tregister);override;
+
+        // Check which access method should be used to load a ref into a reg
+        procedure checkLoadRefReg(list: TAsmList; const Ref: treference; reg: tregister
+          );
+
       private
        procedure a_op_const_reg_reg_internal(list: TAsmList; op: TOpCg; size: tcgsize; a: tcgint; src, srchi, dst, dsthi: tregister);
       protected
@@ -142,7 +150,8 @@ unit cgcpu;
        symconst,symsym,symtable,
        tgobj,rgobj,
        procinfo,cpupi,
-       paramgr;
+       paramgr,
+       symbase;
 
 
     procedure tcgavr.init_register_allocators;
@@ -1205,6 +1214,11 @@ unit cgcpu;
          i : integer;
          QuickRef,ungetcpuregister_z: Boolean;
        begin
+         // Writing to flash requires page erase & page write semantics.
+         // General random access writes are therefore undesired and not allowed.
+         if (CompareText(ref.sectionName, '.progmem')=0) then
+           Internalerror(2020123101);
+
          QuickRef:=false;
          ungetcpuregister_z:=false;
 
@@ -1217,7 +1231,8 @@ unit cgcpu;
            end;
 
          { try to use std/sts }
-         if not((href.Base=NR_NO) and (href.Index=NR_NO)) then
+         if not((href.Base=NR_NO) and (href.Index=NR_NO)) or
+           (CompareText(href.sectionName, '.eeprom')=0) then
            begin
              if not((href.addressmode=AM_UNCHANGED) and
                     (href.symbol=nil) and
@@ -1438,7 +1453,9 @@ unit cgcpu;
            end;
 
          { try to use ldd/lds }
-         if not((href.Base=NR_NO) and (href.Index=NR_NO)) then
+         if not((href.Base=NR_NO) and (href.Index=NR_NO)) or
+            ((CompareText(href.sectionName, '.progmem')=0) or
+            (CompareText(href.sectionName, '.eeprom')=0)) then
            begin
              if not((href.addressmode=AM_UNCHANGED) and
                     (href.symbol=nil) and
@@ -1937,7 +1954,12 @@ unit cgcpu;
         else if (ref.base<>NR_NO) and (ref.offset<>0) then
           result:=A_LDD
         else
-          result:=A_LD;
+          begin
+            if not(CompareText(ref.sectionName, '.progmem')=0) or not(CPUAVR_HAS_LPMX in cpu_capabilities[current_settings.cputype]) then
+              result:=A_LD
+            else
+              result:=A_LPM;
+          end;
       end;
 
 
@@ -2192,6 +2214,71 @@ unit cgcpu;
         else
           internalerror(2011022002);
       end;
+
+    // Read ref into register
+    procedure tcgavr.checkLoadRefReg(list: TAsmList; const Ref: treference; reg: tregister);
+    var
+      l1: TAsmLabel;
+      ai : taicpu;
+      tmpreg: TRegister;
+      tmpref: treference;
+      absSymbol: tabsolutevarsym;
+      symentry: TSymEntry;
+    begin
+      // TODO: check eeprom access for avrxmega
+      if (CompareText('.eeprom', Ref.sectionName) = 0) then
+           begin
+             // from atmega328p datasheet:
+             // wait for EEPE bit in EEDR to clear before starting new read request
+             // lbl:
+             // sbic	0x1f, 1	; 31   // seems like the status register is always in reach of SBIx
+             // rjmp	lbl
+             // Now move address of reference to address register (EEARH & EEARL)
+             // out	0x22, r25	; 34
+             // out	0x21, r24	; 33
+             // Set bit 0 of EEDR
+             // sbi	0x1f, 0	; 31
+             // Data is now available in EEDR
+             // in	r24, 0x20	; 32
+
+             // Wait if eeprom write is in progress
+             current_asmdata.getjumplabel(l1);
+             cg.a_label(list,l1);
+
+             //tmpreg:=getintregister(list, OS_8);
+
+             symentry := current_module.globalsymtable.Find('EECR');
+             //symentry.typ := ;
+             //reference_reset(tmpref, 1, []);
+             //absSymbol := cabsolutevarsym.create('tmpEECR', nil);
+             //absSymbol.abstyp:=toaddr;
+             //tmpref.symbol := current_asmdata.RefAsmSymbol('EECR',AT_ADDR);
+             //list.concat(taicpu.op_reg_ref(A_LDS,tmpreg,tmpref)); // hard coded EECR!
+             //list.concat(taicpu.op_reg_const(A_ANDI,tmpreg,2)); // hard coded EEPE bit
+
+             ai:=Taicpu.Op_Sym(A_BRxx,l1);
+             ai.SetCondition(C_NE);
+             ai.is_jmp:=true;
+             list.concat(ai);
+
+             // Need to get generic register addresses for EEARH/L (which are device dependent)
+             // Ensure ref is stored in Z register earlier
+             //list.concat(taicpu.op_reg_const(A_STS,GetNextReg(ref.base),$42)); // hard coded EEARH!
+             //list.concat(taicpu.op_reg_const(A_STS,ref.base,$41));             // hard coded EEARL!
+
+             // Set EERE bit in EECR register
+             //list.concat(taicpu.op_reg_const(A_LDS,GetDefaultTmpReg,$3F));     // hard coded EECR!
+             //list.concat(taicpu.op_reg_const(A_OR,GetDefaultTmpReg,1));        // hard coded EERE bit
+
+             // Now read data in EEDR register
+             // dummy instruction for now
+             list.concat(taicpu.op_reg_reg(A_MOV,reg,GetDefaultZeroReg));                  // hard coded EEDR!
+           end
+      // flash access follow same semantics for classic AVRs as LD
+      // TODO: check flash access for avrxmega
+      else
+        list.concat(taicpu.op_reg_ref(GetLoad(Ref),reg,Ref));
+    end;
 
 
     procedure tcgavr.g_proc_entry(list : TAsmList;localsize : longint;nostackframe:boolean);
@@ -2539,7 +2626,9 @@ unit cgcpu;
                       (source.Index=NR_NO) and
                       (source.Offset in [0..64-len])) and
                 not((source.Base=NR_NO) and (source.Index=NR_NO))
-              ) then
+              ) or
+              ((CompareText(source.sectionName, '.progmem')=0) or
+               (CompareText(source.sectionName, '.eeprom')=0)) then
               begin
                 cg.getcpuregister(list,NR_R30);
                 cg.getcpuregister(list,NR_R31);
@@ -2671,7 +2760,8 @@ unit cgcpu;
                     dstref.addressmode:=AM_UNCHANGED;
 
                   cg.getcpuregister(list,GetDefaultTmpReg);
-                  list.concat(taicpu.op_reg_ref(GetLoad(srcref),GetDefaultTmpReg,srcref));
+                  //list.concat(taicpu.op_reg_ref(GetLoad(srcref),GetDefaultTmpReg,srcref));
+                  checkLoadRefReg(list, srcref, GetDefaultTmpReg);
                   list.concat(taicpu.op_ref_reg(GetStore(dstref),dstref,GetDefaultTmpReg));
                   cg.ungetcpuregister(list,GetDefaultTmpReg);
 

@@ -486,7 +486,13 @@ implementation
                      begin
                        { static data is currently always volatile }
                        if not(vo_is_weak_external in gvs.varoptions) then
-                         reference_reset_symbol(location.reference,current_asmdata.RefAsmSymbol(gvs.mangledname,AT_DATA,use_indirect_symbol(gvs)),0,location.reference.alignment,[])
+                         begin
+                           reference_reset_symbol(location.reference,current_asmdata.RefAsmSymbol(gvs.mangledname,AT_DATA,use_indirect_symbol(gvs)),0,location.reference.alignment,[]);
+                           {$ifdef avr}
+                           if (target_info.system in systems_allow_section) and (gvs.section <> '') then
+                             location.reference.sectionName := gvs.section;
+                           {$endif avr}
+                         end
                        else
                          reference_reset_symbol(location.reference,current_asmdata.WeakRefAsmSymbol(gvs.mangledname,AT_DATA),0,location.reference.alignment,[])
                      end
