@@ -2229,9 +2229,8 @@ unit cgcpu;
       l1: TAsmLabel;
       ai : taicpu;
       tmpreg: TRegister;
-      tmpref: treference;
-      absSymbol: tabsolutevarsym;
-      sym: tsym;
+      EECRref, EEARHref, EEARLref, EEDRref: treference;
+      symbol: tsym;
       symtab: TSymtable;
     begin
       // TODO: check eeprom access for avrxmega
@@ -2245,7 +2244,7 @@ unit cgcpu;
              // Now move address of reference to address register (EEARH & EEARL)
              // out	0x22, r25	; 34
              // out	0x21, r24	; 33
-             // Set bit 0 of EEDR
+             // Set bit 0 of EECR
              // sbi	0x1f, 0	; 31
              // Data is now available in EEDR
              // in	r24, 0x20	; 32
@@ -2253,36 +2252,55 @@ unit cgcpu;
              // Wait if eeprom write is in progress
              current_asmdata.getjumplabel(l1);
              cg.a_label(list,l1);
-
-             reference_reset(tmpref, 1, []);
-
+             reference_reset(EECRref, 1, []);
              // If no symbol EECR is defined, or not an absolute symbol - through error
-             if not symtable.searchsym_in_module(current_module, 'EECR', sym, symtab) or
-                not(sym.typ=absolutevarsym) then
+             if not symtable.searchsym('EECR', symbol, symtab) or
+                not(symbol.typ=absolutevarsym) then
                Internalerror(2021010101);
-
-             //tmpref.symbol := sym;
-             tmpref.offset := tabsolutevarsym(sym).addroffset;
-             //list.concat(taicpu.op_reg_ref(A_LDS,tmpreg,tmpref)); // hard coded EECR!
-             //list.concat(taicpu.op_reg_const(A_ANDI,tmpreg,2)); // hard coded EEPE bit
+             EECRref.offset := tabsolutevarsym(symbol).addroffset;
+             tmpreg:=getaddressregister(list);
+             list.concat(taicpu.op_reg_ref(A_LDS,tmpreg,EECRref));
+             list.concat(taicpu.op_reg_const(A_ANDI,tmpreg,2));
 
              ai:=Taicpu.Op_Sym(A_BRxx,l1);
              ai.SetCondition(C_NE);
              ai.is_jmp:=true;
              list.concat(ai);
 
-             // Need to get generic register addresses for EEARH/L (which are device dependent)
-             // Ensure ref is stored in Z register earlier
-             //list.concat(taicpu.op_reg_const(A_STS,GetNextReg(ref.base),$42)); // hard coded EEARH!
-             //list.concat(taicpu.op_reg_const(A_STS,ref.base,$41));             // hard coded EEARL!
+             // TODO: Ensure ref is stored in Z register earlier
+             reference_reset(EEARLref, 1, []);
+             // If no symbol EECR is defined, or not an absolute symbol - through error
+             if not symtable.searchsym('EEARL', symbol, symtab) or
+                not(symbol.typ=absolutevarsym) then
+               Internalerror(2021010102);
+             EEARLref.offset := tabsolutevarsym(symbol).addroffset;
+             if cpuinfo.embedded_controllers[current_settings.controllertype].eepromsize > 256 then
+               begin
+                 reference_reset(EEARHref, 1, []);
+                 // If no symbol EECR is defined, or not an absolute symbol - through error
+                 if not symtable.searchsym('EEARH', symbol, symtab) or
+                    not(symbol.typ=absolutevarsym) then
+                   Internalerror(2021010103);
+                 EEARHref.offset := tabsolutevarsym(symbol).addroffset;
+                 list.concat(taicpu.op_ref_reg(A_STS,EEARHref, GetNextReg(ref.base)));
+               end;
+             list.concat(taicpu.op_ref_reg(A_STS,EEARLref, ref.base));
 
              // Set EERE bit in EECR register
-             //list.concat(taicpu.op_reg_const(A_LDS,GetDefaultTmpReg,$3F));     // hard coded EECR!
-             //list.concat(taicpu.op_reg_const(A_OR,GetDefaultTmpReg,1));        // hard coded EERE bit
+             //tmpreg:=getaddressregister(list);
+             list.concat(taicpu.op_reg_ref(A_LDS,tmpreg,EECRref));
+             list.concat(taicpu.op_reg_const(A_ORI,tmpreg,1));        // hard coded EERE bit, TODO: check if the bits are always the same
+             list.concat(taicpu.op_ref_reg(A_STS,EECRref,tmpreg));
 
              // Now read data in EEDR register
-             // dummy instruction for now
-             list.concat(taicpu.op_reg_reg(A_MOV,reg,GetDefaultZeroReg));                  // hard coded EEDR!
+             reference_reset(EEDRref, 1, []);
+             if not symtable.searchsym('EEDR', symbol, symtab) or
+                not(symbol.typ=absolutevarsym) then
+               Internalerror(2021010104);
+             EEDRref.offset := tabsolutevarsym(symbol).addroffset;
+
+             list.concat(taicpu.op_reg_ref(A_LDS,tmpreg,EEDRref));
+             list.concat(taicpu.op_reg_reg(A_MOV,reg,tmpreg));
            end
       // flash access follow same semantics for classic AVRs as LD
       // TODO: check flash access for avrxmega
