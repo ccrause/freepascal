@@ -1216,7 +1216,7 @@ unit cgcpu;
        begin
          // Writing to flash requires page erase & page write semantics.
          // General random access writes are therefore undesired and not allowed.
-         if (CompareText(ref.sectionName, '.progmem')=0) then
+         if (ref.sectionName <> '') and (CompareText(ref.sectionName, '.progmem')=0) then
            Internalerror(2020123101);
 
          QuickRef:=false;
@@ -1232,7 +1232,7 @@ unit cgcpu;
 
          { try to use std/sts }
          if not((href.Base=NR_NO) and (href.Index=NR_NO)) or
-           (CompareText(href.sectionName, '.eeprom')=0) then
+           ((href.sectionName <> '') and (CompareText(href.sectionName, '.eeprom')=0)) then
            begin
              if not((href.addressmode=AM_UNCHANGED) and
                     (href.symbol=nil) and
@@ -1454,8 +1454,8 @@ unit cgcpu;
 
          { try to use ldd/lds }
          if not((href.Base=NR_NO) and (href.Index=NR_NO)) or
-            ((CompareText(href.sectionName, '.progmem')=0) or
-            (CompareText(href.sectionName, '.eeprom')=0)) then
+            ((href.sectionName <> '') and ((CompareText(href.sectionName, '.progmem')=0) or
+            (CompareText(href.sectionName, '.eeprom')=0))) then
            begin
              if not((href.addressmode=AM_UNCHANGED) and
                     (href.symbol=nil) and
@@ -1497,7 +1497,8 @@ unit cgcpu;
              case fromsize of
                OS_8:
                  begin
-                   list.concat(taicpu.op_reg_ref(GetLoad(href),reg,href));
+                   //list.concat(taicpu.op_reg_ref(GetLoad(href),reg,href));
+                   checkLoadRefReg(list, href, reg);
                    for i:=2 to tcgsize2size[tosize] do
                      begin
                        reg:=GetNextReg(reg);
@@ -1506,7 +1507,8 @@ unit cgcpu;
                  end;
                OS_S8:
                  begin
-                   list.concat(taicpu.op_reg_ref(GetLoad(href),reg,href));
+                   //list.concat(taicpu.op_reg_ref(GetLoad(href),reg,href));
+                   checkLoadRefReg(list, href, reg);
                    tmpreg:=reg;
 
                    if tcgsize2size[tosize]>1 then
@@ -1527,14 +1529,16 @@ unit cgcpu;
                  begin
                    if not(QuickRef) then
                      href.addressmode:=AM_POSTINCREMENT;
-                   list.concat(taicpu.op_reg_ref(GetLoad(href),reg,href));
+                   //list.concat(taicpu.op_reg_ref(GetLoad(href),reg,href));
+                   checkLoadRefReg(list, href, reg);
 
                    if QuickRef then
                      inc(href.offset);
                    href.addressmode:=AM_UNCHANGED;
 
                    reg:=GetNextReg(reg);
-                   list.concat(taicpu.op_reg_ref(GetLoad(href),reg,href));
+                   //list.concat(taicpu.op_reg_ref(GetLoad(href),reg,href));
+                   checkLoadRefReg(list, href, reg);
 
                    for i:=3 to tcgsize2size[tosize] do
                      begin
@@ -1546,13 +1550,15 @@ unit cgcpu;
                  begin
                    if not(QuickRef) then
                      href.addressmode:=AM_POSTINCREMENT;
-                   list.concat(taicpu.op_reg_ref(GetLoad(href),reg,href));
+                   //list.concat(taicpu.op_reg_ref(GetLoad(href),reg,href));
+                   checkLoadRefReg(list, href, reg);
                    if QuickRef then
                      inc(href.offset);
                    href.addressmode:=AM_UNCHANGED;
 
                    reg:=GetNextReg(reg);
-                   list.concat(taicpu.op_reg_ref(GetLoad(href),reg,href));
+                   //list.concat(taicpu.op_reg_ref(GetLoad(href),reg,href));
+                   checkLoadRefReg(list, href, reg);
                    tmpreg:=reg;
 
                    reg:=GetNextReg(reg);
@@ -1579,7 +1585,8 @@ unit cgcpu;
                  else
                    href.addressmode:=AM_UNCHANGED;
 
-                 list.concat(taicpu.op_reg_ref(GetLoad(href),reg,href));
+                 //list.concat(taicpu.op_reg_ref(GetLoad(href),reg,href));
+                 checkLoadRefReg(list, href, reg);
 
                  if QuickRef then
                    inc(href.offset);
@@ -1955,7 +1962,8 @@ unit cgcpu;
           result:=A_LDD
         else
           begin
-            if not(CompareText(ref.sectionName, '.progmem')=0) or not(CPUAVR_HAS_LPMX in cpu_capabilities[current_settings.cputype]) then
+            if (ref.sectionName = '') or not(CompareText(ref.sectionName, '.progmem')=0) or
+               not(CPUAVR_HAS_LPMX in cpu_capabilities[current_settings.cputype]) then
               result:=A_LD
             else
               result:=A_LPM;
@@ -2223,10 +2231,11 @@ unit cgcpu;
       tmpreg: TRegister;
       tmpref: treference;
       absSymbol: tabsolutevarsym;
-      symentry: TSymEntry;
+      sym: tsym;
+      symtab: TSymtable;
     begin
       // TODO: check eeprom access for avrxmega
-      if (CompareText('.eeprom', Ref.sectionName) = 0) then
+      if (Ref.sectionName <> '') and (CompareText('.eeprom', Ref.sectionName) = 0) then
            begin
              // from atmega328p datasheet:
              // wait for EEPE bit in EEDR to clear before starting new read request
@@ -2245,14 +2254,15 @@ unit cgcpu;
              current_asmdata.getjumplabel(l1);
              cg.a_label(list,l1);
 
-             //tmpreg:=getintregister(list, OS_8);
+             reference_reset(tmpref, 1, []);
 
-             symentry := current_module.globalsymtable.Find('EECR');
-             //symentry.typ := ;
-             //reference_reset(tmpref, 1, []);
-             //absSymbol := cabsolutevarsym.create('tmpEECR', nil);
-             //absSymbol.abstyp:=toaddr;
-             //tmpref.symbol := current_asmdata.RefAsmSymbol('EECR',AT_ADDR);
+             // If no symbol EECR is defined, or not an absolute symbol - through error
+             if not symtable.searchsym_in_module(current_module, 'EECR', sym, symtab) or
+                not(sym.typ=absolutevarsym) then
+               Internalerror(2021010101);
+
+             //tmpref.symbol := sym;
+             tmpref.offset := tabsolutevarsym(sym).addroffset;
              //list.concat(taicpu.op_reg_ref(A_LDS,tmpreg,tmpref)); // hard coded EECR!
              //list.concat(taicpu.op_reg_const(A_ANDI,tmpreg,2)); // hard coded EEPE bit
 
@@ -2593,7 +2603,8 @@ unit cgcpu;
             list.concat(taicpu.op_reg(A_POP,NR_R26));
             cg.a_label(list,l);
             cg.getcpuregister(list,GetDefaultTmpReg);
-            list.concat(taicpu.op_reg_ref(GetLoad(srcref),GetDefaultTmpReg,srcref));
+            //list.concat(taicpu.op_reg_ref(GetLoad(srcref),GetDefaultTmpReg,srcref));
+            checkLoadRefReg(list, srcref, GetDefaultTmpReg);
             list.concat(taicpu.op_ref_reg(GetStore(dstref),dstref,GetDefaultTmpReg));
             cg.ungetcpuregister(list,GetDefaultTmpReg);
             if tcgsize2size[countregsize] = 1 then
@@ -2627,8 +2638,9 @@ unit cgcpu;
                       (source.Offset in [0..64-len])) and
                 not((source.Base=NR_NO) and (source.Index=NR_NO))
               ) or
-              ((CompareText(source.sectionName, '.progmem')=0) or
-               (CompareText(source.sectionName, '.eeprom')=0)) then
+              ((source.sectionName <> '') and
+               ((CompareText(source.sectionName, '.progmem')=0) or
+               (CompareText(source.sectionName, '.eeprom')=0))) then
               begin
                 cg.getcpuregister(list,NR_R30);
                 cg.getcpuregister(list,NR_R31);
@@ -2709,10 +2721,12 @@ unit cgcpu;
                     begin
                       // First read source into temp registers
                       tmpreg:=getintregister(list, OS_16);
-                      list.concat(taicpu.op_reg_ref(GetLoad(srcref),tmpreg,srcref));
+                      //list.concat(taicpu.op_reg_ref(GetLoad(srcref),tmpreg,srcref));
+                      checkLoadRefReg(list, srcref, tmpreg);
                       inc(srcref.offset);
                       tmpreg2:=GetNextReg(tmpreg);
-                      list.concat(taicpu.op_reg_ref(GetLoad(srcref),tmpreg2,srcref));
+                      //list.concat(taicpu.op_reg_ref(GetLoad(srcref),tmpreg2,srcref));
+                      checkLoadRefReg(list, srcref, tmpreg2);
 
                     // then move temp registers to dest in reverse order
                     inc(dstref.offset);
@@ -2728,7 +2742,8 @@ unit cgcpu;
                     inc(dstref.offset);
 
                     cg.getcpuregister(list,GetDefaultTmpReg);
-                    list.concat(taicpu.op_reg_ref(GetLoad(srcref),GetDefaultTmpReg,srcref));
+                    //list.concat(taicpu.op_reg_ref(GetLoad(srcref),GetDefaultTmpReg,srcref));
+                    checkLoadRefReg(list, srcref, GetDefaultTmpReg);
                     list.concat(taicpu.op_ref_reg(GetStore(dstref),dstref,GetDefaultTmpReg));
                     cg.ungetcpuregister(list,GetDefaultTmpReg);
 
@@ -2741,7 +2756,8 @@ unit cgcpu;
                     dec(dstref.offset);
 
                     cg.getcpuregister(list,GetDefaultTmpReg);
-                    list.concat(taicpu.op_reg_ref(GetLoad(srcref),GetDefaultTmpReg,srcref));
+                    //list.concat(taicpu.op_reg_ref(GetLoad(srcref),GetDefaultTmpReg,srcref));
+                    checkLoadRefReg(list, srcref, GetDefaultTmpReg);
                     list.concat(taicpu.op_ref_reg(GetStore(dstref),dstref,GetDefaultTmpReg));
                     cg.ungetcpuregister(list,GetDefaultTmpReg);
                   end;
