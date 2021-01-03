@@ -2246,6 +2246,15 @@ unit cgcpu;
           begin
             if not (CPUAVR_HAS_NVM_DATASPACE in cpu_capabilities[current_settings.cputype]) then
               begin
+                if Ref.addressmode = AM_PREDRECEMENT then
+                  if CPUAVR_HAS_MOVW in cpu_capabilities[current_settings.cputype] then
+                    list.concat(taicpu.op_reg_const(A_SBIW,Ref.base,1))
+                  else
+                    begin
+                      list.concat(taicpu.op_reg_const(A_SUBI,Ref.base,1));
+                      list.concat(taicpu.op_reg_const(A_SBCI,GetNextReg(Ref.base),0));
+                    end;
+
                 // Wait if eeprom write is in progress
                 current_asmdata.getjumplabel(l1);
                 cg.a_label(list,l1);
@@ -2291,6 +2300,18 @@ unit cgcpu;
                 // And store data in destination register
                 list.concat(taicpu.op_reg_ref(A_LDS,tmpreg,EEDRref));
                 list.concat(taicpu.op_reg_reg(A_MOV,reg,tmpreg));
+
+                if Ref.addressmode = AM_POSTINCREMENT then
+                begin
+                  if CPUAVR_HAS_MOVW in cpu_capabilities[current_settings.cputype] then
+                    list.concat(taicpu.op_reg_const(A_ADIW,Ref.base,1))
+                  else
+                    begin
+                      list.concat(taicpu.op_reg_const(A_LDI,GetDefaultTmpReg,1));
+                      list.concat(taicpu.op_reg_reg(A_ADD,Ref.base,GetDefaultTmpReg));
+                      list.concat(taicpu.op_reg_reg(A_ADC,GetNextReg(Ref.base),GetDefaultZeroReg));
+                    end;
+                end;
               end
             else
               begin
