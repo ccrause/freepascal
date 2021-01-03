@@ -115,8 +115,8 @@ unit cgcpu;
         procedure gen_multiply(list: TAsmList; op: topcg; size: TCgSize; src2, src1, dst: tregister; check_overflow: boolean; var ovloc: tlocation);
 
         // Check which access method should be used to load a ref into a reg
-        procedure checkLoadRefReg(list: TAsmList; const Ref: treference; reg: tregister
-          );
+        procedure checkLoadRefReg(list: TAsmList; reg: tregister; const Ref: treference);
+        procedure checkStoreRegRef(list: TAsmList; const Ref: treference; reg: tregister);
 
       private
        procedure a_op_const_reg_reg_internal(list: TAsmList; op: TOpCg; size: tcgsize; a: tcgint; src, srchi, dst, dsthi: tregister);
@@ -1239,9 +1239,9 @@ unit cgcpu;
            end;
 
          { try to use std/sts }
-         if not((href.Base=NR_NO) and (href.Index=NR_NO)) {or
+         if not((href.Base=NR_NO) and (href.Index=NR_NO)) or
          // TODO: implement EEPROM write support
-           ((href.sectionName <> '') and (CompareText(href.sectionName, '.eeprom')=0))} then
+           ((href.sectionName <> '') and (CompareText(href.sectionName, '.eeprom')=0)) then
            begin
              if not((href.addressmode=AM_UNCHANGED) and
                     (href.symbol=nil) and
@@ -1286,7 +1286,8 @@ unit cgcpu;
                    if not(QuickRef) and (tcgsize2size[tosize]>1) then
                      href.addressmode:=AM_POSTINCREMENT;
 
-                   list.concat(taicpu.op_ref_reg(GetStore(href),href,reg));
+                   //list.concat(taicpu.op_ref_reg(GetStore(href),href,reg));
+                   checkStoreRegRef(list,href,reg);
                    for i:=2 to tcgsize2size[tosize] do
                      begin
                        if QuickRef then
@@ -1297,14 +1298,16 @@ unit cgcpu;
                        else
                          href.addressmode:=AM_UNCHANGED;
 
-                       list.concat(taicpu.op_ref_reg(GetStore(href),href,GetDefaultZeroReg));
+                       //list.concat(taicpu.op_ref_reg(GetStore(href),href,GetDefaultZeroReg));
+                       checkStoreRegRef(list,href,GetDefaultZeroReg);
                      end;
                  end;
                OS_S8:
                  begin
                    if not(QuickRef) and (tcgsize2size[tosize]>1) then
                      href.addressmode:=AM_POSTINCREMENT;
-                   list.concat(taicpu.op_ref_reg(GetStore(href),href,reg));
+                   //list.concat(taicpu.op_ref_reg(GetStore(href),href,reg));
+                   checkStoreRegRef(list,href,reg);
 
                    if tcgsize2size[tosize]>1 then
                      begin
@@ -1321,7 +1324,8 @@ unit cgcpu;
                              href.addressmode:=AM_POSTINCREMENT
                            else
                              href.addressmode:=AM_UNCHANGED;
-                           list.concat(taicpu.op_ref_reg(GetStore(href),href,tmpreg));
+                           //list.concat(taicpu.op_ref_reg(GetStore(href),href,tmpreg));
+                           checkStoreRegRef(list,href,reg);
                          end;
                      end;
                  end;
@@ -1330,7 +1334,8 @@ unit cgcpu;
                    if not(QuickRef) and (tcgsize2size[tosize]>1) then
                      href.addressmode:=AM_POSTINCREMENT;
 
-                   list.concat(taicpu.op_ref_reg(GetStore(href),href,reg));
+                   //list.concat(taicpu.op_ref_reg(GetStore(href),href,reg));
+                   checkStoreRegRef(list,href,reg);
                    if QuickRef then
                      inc(href.offset)
                    else if not(QuickRef) and (tcgsize2size[fromsize]>2) then
@@ -1339,7 +1344,8 @@ unit cgcpu;
                      href.addressmode:=AM_UNCHANGED;
 
                    reg:=GetNextReg(reg);
-                   list.concat(taicpu.op_ref_reg(GetStore(href),href,reg));
+                   //list.concat(taicpu.op_ref_reg(GetStore(href),href,reg));
+                   checkStoreRegRef(list,href,reg);
 
                    for i:=3 to tcgsize2size[tosize] do
                      begin
@@ -1351,7 +1357,8 @@ unit cgcpu;
                        else
                          href.addressmode:=AM_UNCHANGED;
 
-                       list.concat(taicpu.op_ref_reg(GetStore(href),href,GetDefaultZeroReg));
+                       //list.concat(taicpu.op_ref_reg(GetStore(href),href,GetDefaultZeroReg));
+                       checkStoreRegRef(list,href,GetDefaultZeroReg);
                      end;
                  end;
                OS_S16:
@@ -1359,7 +1366,8 @@ unit cgcpu;
                    if not(QuickRef) and (tcgsize2size[tosize]>1) then
                      href.addressmode:=AM_POSTINCREMENT;
 
-                   list.concat(taicpu.op_ref_reg(GetStore(href),href,reg));
+                   //list.concat(taicpu.op_ref_reg(GetStore(href),href,reg));
+                   checkStoreRegRef(list,href,reg);
                    if QuickRef then
                      inc(href.offset)
                    else if not(QuickRef) and (tcgsize2size[fromsize]>2) then
@@ -1368,7 +1376,8 @@ unit cgcpu;
                      href.addressmode:=AM_UNCHANGED;
 
                    reg:=GetNextReg(reg);
-                   list.concat(taicpu.op_ref_reg(GetStore(href),href,reg));
+                   //list.concat(taicpu.op_ref_reg(GetStore(href),href,reg));
+                   checkStoreRegRef(list,href,reg);
 
                    if tcgsize2size[tosize]>2 then
                      begin
@@ -1385,7 +1394,8 @@ unit cgcpu;
                              href.addressmode:=AM_POSTINCREMENT
                            else
                              href.addressmode:=AM_UNCHANGED;
-                           list.concat(taicpu.op_ref_reg(GetStore(href),href,tmpreg));
+                           //list.concat(taicpu.op_ref_reg(GetStore(href),href,tmpreg));
+                           checkStoreRegRef(list,href,tmpreg);
                          end;
                      end;
                  end;
@@ -1408,9 +1418,11 @@ unit cgcpu;
                  tmpreg:=GetNextReg(reg);
                  href.addressmode:=AM_UNCHANGED;
                  inc(href.offset);
-                 list.concat(taicpu.op_ref_reg(GetStore(href),href,tmpreg));
+                 //list.concat(taicpu.op_ref_reg(GetStore(href),href,tmpreg));
+                 checkStoreRegRef(list,href,tmpreg);
                  dec(href.offset);
-                 list.concat(taicpu.op_ref_reg(GetStore(href),href,reg));
+                 //list.concat(taicpu.op_ref_reg(GetStore(href),href,reg));
+                 checkStoreRegRef(list,href,reg);
                end
              else
                begin
@@ -1421,8 +1433,8 @@ unit cgcpu;
                        else
                          href.addressmode:=AM_UNCHANGED;
 
-                     list.concat(taicpu.op_ref_reg(GetStore(href),href,reg));
-
+                     //list.concat(taicpu.op_ref_reg(GetStore(href),href,reg));
+                     checkStoreRegRef(list,href,reg);
                      if QuickRef then
                        inc(href.offset);
 
@@ -1506,7 +1518,7 @@ unit cgcpu;
                OS_8:
                  begin
                    //list.concat(taicpu.op_reg_ref(GetLoad(href),reg,href));
-                   checkLoadRefReg(list, href, reg);
+                   checkLoadRefReg(list,reg,href);
                    for i:=2 to tcgsize2size[tosize] do
                      begin
                        reg:=GetNextReg(reg);
@@ -1516,7 +1528,7 @@ unit cgcpu;
                OS_S8:
                  begin
                    //list.concat(taicpu.op_reg_ref(GetLoad(href),reg,href));
-                   checkLoadRefReg(list, href, reg);
+                   checkLoadRefReg(list,reg,href);
                    tmpreg:=reg;
 
                    if tcgsize2size[tosize]>1 then
@@ -1538,7 +1550,7 @@ unit cgcpu;
                    if not(QuickRef) then
                      href.addressmode:=AM_POSTINCREMENT;
                    //list.concat(taicpu.op_reg_ref(GetLoad(href),reg,href));
-                   checkLoadRefReg(list, href, reg);
+                   checkLoadRefReg(list,reg,href);
 
                    if QuickRef then
                      inc(href.offset);
@@ -1546,7 +1558,7 @@ unit cgcpu;
 
                    reg:=GetNextReg(reg);
                    //list.concat(taicpu.op_reg_ref(GetLoad(href),reg,href));
-                   checkLoadRefReg(list, href, reg);
+                   checkLoadRefReg(list,reg,href);
 
                    for i:=3 to tcgsize2size[tosize] do
                      begin
@@ -1559,14 +1571,14 @@ unit cgcpu;
                    if not(QuickRef) then
                      href.addressmode:=AM_POSTINCREMENT;
                    //list.concat(taicpu.op_reg_ref(GetLoad(href),reg,href));
-                   checkLoadRefReg(list, href, reg);
+                   checkLoadRefReg(list,reg,href);
                    if QuickRef then
                      inc(href.offset);
                    href.addressmode:=AM_UNCHANGED;
 
                    reg:=GetNextReg(reg);
                    //list.concat(taicpu.op_reg_ref(GetLoad(href),reg,href));
-                   checkLoadRefReg(list, href, reg);
+                   checkLoadRefReg(list,reg,href);
                    tmpreg:=reg;
 
                    reg:=GetNextReg(reg);
@@ -1594,7 +1606,7 @@ unit cgcpu;
                    href.addressmode:=AM_UNCHANGED;
 
                  //list.concat(taicpu.op_reg_ref(GetLoad(href),reg,href));
-                 checkLoadRefReg(list, href, reg);
+                 checkLoadRefReg(list,reg,href);
 
                  if QuickRef then
                    inc(href.offset);
@@ -2232,7 +2244,8 @@ unit cgcpu;
       end;
 
     // Read ref into register
-    procedure tcgavr.checkLoadRefReg(list: TAsmList; const Ref: treference; reg: tregister);
+    procedure tcgavr.checkLoadRefReg(list: TAsmList; reg: tregister;
+      const Ref: treference);
       var
         l1: TAsmLabel;
         ai: taicpu;
@@ -2322,6 +2335,103 @@ unit cgcpu;
           end
         else
           list.concat(taicpu.op_reg_ref(GetLoad(Ref),reg,Ref));
+      end;
+
+    procedure tcgavr.checkStoreRegRef(list: TAsmList; const Ref: treference; reg: tregister);
+      var
+        l1: TAsmLabel;
+        ai: taicpu;
+        tmpreg: TRegister;
+        EECRref, EEARHref, EEARLref, EEDRref, href: treference;
+        symbol: tsym;
+        symtab: TSymtable;
+      begin
+        // Newer controllers map eeprom into data space
+        if (Ref.sectionName <> '') and (CompareText('.eeprom', Ref.sectionName) = 0) then
+          begin
+            if not (CPUAVR_HAS_NVM_DATASPACE in cpu_capabilities[current_settings.cputype]) then
+              begin
+                if Ref.addressmode = AM_PREDRECEMENT then
+                  if CPUAVR_HAS_MOVW in cpu_capabilities[current_settings.cputype] then
+                    list.concat(taicpu.op_reg_const(A_SBIW,Ref.base,1))
+                  else
+                    begin
+                      list.concat(taicpu.op_reg_const(A_SUBI,Ref.base,1));
+                      list.concat(taicpu.op_reg_const(A_SBCI,GetNextReg(Ref.base),0));
+                    end;
+
+                // Wait if eeprom write is in progress
+                current_asmdata.getjumplabel(l1);
+                cg.a_label(list,l1);
+                reference_reset(EECRref, 1, []);
+                if not symtable.searchsym('EECR', symbol, symtab) or
+                   not(symbol.typ=absolutevarsym) then
+                  Internalerror(2021010101);
+                EECRref.offset := tabsolutevarsym(symbol).addroffset;
+                tmpreg:=getaddressregister(list);
+                list.concat(taicpu.op_reg_ref(A_LDS,tmpreg,EECRref));
+                list.concat(taicpu.op_reg_const(A_ANDI,tmpreg,2));
+                ai:=Taicpu.Op_Sym(A_BRxx,l1);
+                ai.SetCondition(C_NE);
+                ai.is_jmp:=true;
+                list.concat(ai);
+                // Store address of reference in eeprom address register
+                reference_reset(EEARLref, 1, []);
+                if not symtable.searchsym('EEARL', symbol, symtab) or
+                   not(symbol.typ=absolutevarsym) then
+                  Internalerror(2021010102);
+                EEARLref.offset := tabsolutevarsym(symbol).addroffset;
+                list.concat(taicpu.op_ref_reg(A_STS,EEARLref, ref.base));
+                // Only store high byte of reference if eeprom size > 256 bytes
+                if cpuinfo.embedded_controllers[current_settings.controllertype].eepromsize > 256 then
+                  begin
+                    reference_reset(EEARHref, 1, []);
+                    if not symtable.searchsym('EEARH', symbol, symtab) or
+                       not(symbol.typ=absolutevarsym) then
+                      Internalerror(2021010103);
+                    EEARHref.offset := tabsolutevarsym(symbol).addroffset;
+                    list.concat(taicpu.op_ref_reg(A_STS,EEARHref, GetNextReg(ref.base)));
+                  end;
+
+                // Now write data into EEDR register
+                reference_reset(EEDRref, 1, []);
+                if not symtable.searchsym('EEDR', symbol, symtab) or
+                   not(symbol.typ=absolutevarsym) then
+                  Internalerror(2021010104);
+                EEDRref.offset := tabsolutevarsym(symbol).addroffset;
+                list.concat(taicpu.op_ref_reg(A_STS,EEDRref, reg));
+
+                // Start of timing critical sequence, stop interrupts
+                list.concat(taicpu.op_reg_const(A_IN,GetDefaultTmpReg,NIO_SREG));
+                list.concat(taicpu.op_none(A_CLI));
+                // Set EEMPE/EEMWE bit in EECR register
+                list.concat(taicpu.op_const_const(A_SBI,EECRref.offset-$20,2));
+                // Set EEPE bit in EECR register - start eeprom write
+                list.concat(taicpu.op_const_const(A_SBI,EECRref.offset-$20,1));
+                // Restore previous interrupt state
+                list.concat(taicpu.op_const_reg(A_OUT,NIO_SREG,GetDefaultTmpReg));
+
+                if Ref.addressmode = AM_POSTINCREMENT then
+                begin
+                  if CPUAVR_HAS_MOVW in cpu_capabilities[current_settings.cputype] then
+                    list.concat(taicpu.op_reg_const(A_ADIW,Ref.base,1))
+                  else
+                    begin
+                      list.concat(taicpu.op_reg_const(A_LDI,GetDefaultTmpReg,1));
+                      list.concat(taicpu.op_reg_reg(A_ADD,Ref.base,GetDefaultTmpReg));
+                      list.concat(taicpu.op_reg_reg(A_ADC,GetNextReg(Ref.base),GetDefaultZeroReg));
+                    end;
+                end;
+              end
+            else
+              begin
+                href:=Ref;
+                href.offset:=Ref.offset or $1400;  // remap to eeprom data space
+                list.concat(taicpu.op_ref_reg(GetStore(href),href, reg));
+              end;
+          end
+        else
+          list.concat(taicpu.op_ref_reg(GetStore(Ref),Ref,reg));
       end;
 
 
@@ -2638,8 +2748,9 @@ unit cgcpu;
             cg.a_label(list,l);
             cg.getcpuregister(list,GetDefaultTmpReg);
             //list.concat(taicpu.op_reg_ref(GetLoad(srcref),GetDefaultTmpReg,srcref));
-            checkLoadRefReg(list, srcref, GetDefaultTmpReg);
-            list.concat(taicpu.op_ref_reg(GetStore(dstref),dstref,GetDefaultTmpReg));
+            checkLoadRefReg(list,GetDefaultTmpReg,srcref);
+            //list.concat(taicpu.op_ref_reg(GetStore(dstref),dstref,GetDefaultTmpReg));
+            checkStoreRegRef(list,dstref,GetDefaultTmpReg);
             cg.ungetcpuregister(list,GetDefaultTmpReg);
             if tcgsize2size[countregsize] = 1 then
               list.concat(taicpu.op_reg(A_DEC,countreg))
@@ -2753,17 +2864,19 @@ unit cgcpu;
                       // First read source into temp registers
                       tmpreg:=getintregister(list, OS_16);
                       //list.concat(taicpu.op_reg_ref(GetLoad(srcref),tmpreg,srcref));
-                      checkLoadRefReg(list, srcref, tmpreg);
+                      checkLoadRefReg(list,tmpreg,srcref);
                       inc(srcref.offset);
                       tmpreg2:=GetNextReg(tmpreg);
                       //list.concat(taicpu.op_reg_ref(GetLoad(srcref),tmpreg2,srcref));
-                      checkLoadRefReg(list, srcref, tmpreg2);
+                      checkLoadRefReg(list,tmpreg2,srcref);
 
                     // then move temp registers to dest in reverse order
                     inc(dstref.offset);
-                    list.concat(taicpu.op_ref_reg(GetStore(dstref),dstref,tmpreg2));
+                    //list.concat(taicpu.op_ref_reg(GetStore(dstref),dstref,tmpreg2));
+                    checkStoreRegRef(list,dstref,tmpreg2);
                     dec(dstref.offset);
-                    list.concat(taicpu.op_ref_reg(GetStore(dstref),dstref,tmpreg));
+                    //list.concat(taicpu.op_ref_reg(GetStore(dstref),dstref,tmpreg));
+                    checkStoreRegRef(list,dstref,tmpreg);
                   end
                 else
                   begin
@@ -2774,8 +2887,9 @@ unit cgcpu;
 
                     cg.getcpuregister(list,GetDefaultTmpReg);
                     //list.concat(taicpu.op_reg_ref(GetLoad(srcref),GetDefaultTmpReg,srcref));
-                    checkLoadRefReg(list, srcref, GetDefaultTmpReg);
-                    list.concat(taicpu.op_ref_reg(GetStore(dstref),dstref,GetDefaultTmpReg));
+                    checkLoadRefReg(list,GetDefaultTmpReg,srcref);
+                    //list.concat(taicpu.op_ref_reg(GetStore(dstref),dstref,GetDefaultTmpReg));
+                    checkStoreRegRef(list,dstref,GetDefaultTmpReg);
                     cg.ungetcpuregister(list,GetDefaultTmpReg);
 
                     if not(SrcQuickRef) then
@@ -2788,8 +2902,9 @@ unit cgcpu;
 
                     cg.getcpuregister(list,GetDefaultTmpReg);
                     //list.concat(taicpu.op_reg_ref(GetLoad(srcref),GetDefaultTmpReg,srcref));
-                    checkLoadRefReg(list, srcref, GetDefaultTmpReg);
-                    list.concat(taicpu.op_ref_reg(GetStore(dstref),dstref,GetDefaultTmpReg));
+                    checkLoadRefReg(list,GetDefaultTmpReg,srcref);
+                    //list.concat(taicpu.op_ref_reg(GetStore(dstref),dstref,GetDefaultTmpReg));
+                    checkStoreRegRef(list,dstref,GetDefaultTmpReg);
                     cg.ungetcpuregister(list,GetDefaultTmpReg);
                   end;
               end
@@ -2808,8 +2923,9 @@ unit cgcpu;
 
                   cg.getcpuregister(list,GetDefaultTmpReg);
                   //list.concat(taicpu.op_reg_ref(GetLoad(srcref),GetDefaultTmpReg,srcref));
-                  checkLoadRefReg(list, srcref, GetDefaultTmpReg);
-                  list.concat(taicpu.op_ref_reg(GetStore(dstref),dstref,GetDefaultTmpReg));
+                  checkLoadRefReg(list,GetDefaultTmpReg,srcref);
+                  //list.concat(taicpu.op_ref_reg(GetStore(dstref),dstref,GetDefaultTmpReg));
+                  checkStoreRegRef(list,dstref,GetDefaultTmpReg);
                   cg.ungetcpuregister(list,GetDefaultTmpReg);
 
                   if SrcQuickRef then
