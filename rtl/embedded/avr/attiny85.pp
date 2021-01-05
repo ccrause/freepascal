@@ -223,6 +223,12 @@ const
   PLLE = 1; // PLL Enable
   PLOCK = 0; // PLL Lock detector
 
+// Check if EEPROM access is supported by controller
+{$if declared (NVMCTRL) or declared(EECR)}
+  procedure writeEEPROMbyte(const EEPROMaddress: pointer; const val: byte); public name 'FPC_WRITE_EEPROM_BYTE';
+  function readEEPROMbyte(const EEPROMaddress: pointer): byte; public name 'FPC_READ_EEPROM_BYTE';
+{$endif}
+
 implementation
 
 {$define RELBRANCHES}
@@ -299,5 +305,11 @@ label
    .set USI_START_ISR, Default_IRQ_handler
    .set USI_OVF_ISR, Default_IRQ_handler
  end;
+
+{$if declared (NVMCTRL)}
+  {$include avrxmega3_eeprom.inc}
+{$elseif declared(EECR)}
+  {$include classicavr_eeprom.inc}
+{$endif}
 
 end.

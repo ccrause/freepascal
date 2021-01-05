@@ -2268,51 +2268,25 @@ unit cgcpu;
                       list.concat(taicpu.op_reg_const(A_SBCI,GetNextReg(Ref.base),0));
                     end;
 
-                // Wait if eeprom write is in progress
-                current_asmdata.getjumplabel(l1);
-                cg.a_label(list,l1);
-                reference_reset(EECRref, 1, []);
-                if not symtable.searchsym('EECR', symbol, symtab) or
-                   not(symbol.typ=absolutevarsym) then
-                  Internalerror(2021010101);
-                EECRref.offset := tabsolutevarsym(symbol).addroffset;
-                tmpreg:=getaddressregister(list);
-                list.concat(taicpu.op_reg_ref(A_LDS,tmpreg,EECRref));
-                list.concat(taicpu.op_reg_const(A_ANDI,tmpreg,2));
-                ai:=Taicpu.Op_Sym(A_BRxx,l1);
-                ai.SetCondition(C_NE);
-                ai.is_jmp:=true;
-                list.concat(ai);
-                // Store address of reference in eeprom address register
-                reference_reset(EEARLref, 1, []);
-                if not symtable.searchsym('EEARL', symbol, symtab) or
-                   not(symbol.typ=absolutevarsym) then
-                  Internalerror(2021010102);
-                EEARLref.offset := tabsolutevarsym(symbol).addroffset;
-                list.concat(taicpu.op_ref_reg(A_STS,EEARLref, ref.base));
-                // Only store high byte of reference if eeprom size > 256 bytes
-                if cpuinfo.embedded_controllers[current_settings.controllertype].eepromsize > 256 then
+                // function readEEPROMbyte(const EEPROMaddress: pointer): byte;
+                a_reg_alloc(list,NR_R25);
+                a_reg_alloc(list,NR_R24);
+                if CPUAVR_HAS_MOVW in cpu_capabilities[current_settings.cputype] then
+                  list.concat(taicpu.op_reg_reg(A_MOVW,NR_R24, Ref.base))
+                else
                   begin
-                    reference_reset(EEARHref, 1, []);
-                    if not symtable.searchsym('EEARH', symbol, symtab) or
-                       not(symbol.typ=absolutevarsym) then
-                      Internalerror(2021010103);
-                    EEARHref.offset := tabsolutevarsym(symbol).addroffset;
-                    list.concat(taicpu.op_ref_reg(A_STS,EEARHref, GetNextReg(ref.base)));
+                    list.concat(taicpu.op_reg_reg(A_MOV,NR_R25, Ref.base));
+                    list.concat(taicpu.op_reg_reg(A_MOV,NR_R24, GetNextReg(Ref.base)));
                   end;
-                // Set EERE bit in EECR register
-                list.concat(taicpu.op_reg_ref(A_LDS,tmpreg,EECRref));
-                list.concat(taicpu.op_reg_const(A_ORI,tmpreg,1));        // hard coded EERE bit, TODO: check if the bits are always the same
-                list.concat(taicpu.op_ref_reg(A_STS,EECRref,tmpreg));
-                // Now read data from EEDR register
-                reference_reset(EEDRref, 1, []);
-                if not symtable.searchsym('EEDR', symbol, symtab) or
-                   not(symbol.typ=absolutevarsym) then
-                  Internalerror(2021010104);
-                EEDRref.offset := tabsolutevarsym(symbol).addroffset;
-                // And store data in destination register
-                list.concat(taicpu.op_reg_ref(A_LDS,tmpreg,EEDRref));
-                list.concat(taicpu.op_reg_reg(A_MOV,reg,tmpreg));
+
+                //if not symtable.searchsym('FPC_READ_EEPROM_BYTE', symbol, symtab) or
+                //   not(symbol.typ=procsym) then
+                //  Internalerror(2021010501);
+
+                a_call_name(list,'FPC_READ_EEPROM_BYTE',true);
+                list.concat(taicpu.op_reg_reg(A_MOV,reg,NR_R24));
+                a_reg_dealloc(list,NR_R25);
+                a_reg_dealloc(list,NR_R24);
 
                 if Ref.addressmode = AM_POSTINCREMENT then
                 begin

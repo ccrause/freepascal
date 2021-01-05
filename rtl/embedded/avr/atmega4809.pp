@@ -2007,6 +2007,12 @@ var
   LOCKBIT: TLOCKBIT absolute $128A;
   USERROW: TUSERROW absolute $1300;
 
+// Check if EEPROM access is supported by controller
+{$if declared (NVMCTRL) or declared(EECR)}
+  procedure writeEEPROMbyte(const EEPROMaddress: pointer; const val: byte); public name 'FPC_WRITE_EEPROM_BYTE';
+  function readEEPROMbyte(const EEPROMaddress: pointer): byte; public name 'FPC_READ_EEPROM_BYTE';
+{$endif}
+
 implementation
 
 {$i avrcommon.inc}
@@ -2197,5 +2203,11 @@ asm
   .set USART3_DRE_ISR, Default_IRQ_handler
   .set USART3_TXC_ISR, Default_IRQ_handler
 end;
+
+{$if declared (NVMCTRL)}
+  {$include avrxmega3_eeprom.inc}
+{$elseif declared(EECR)}
+  {$include classicavr_eeprom.inc}
+{$endif}
 
 end.
