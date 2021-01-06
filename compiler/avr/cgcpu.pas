@@ -2272,17 +2272,12 @@ unit cgcpu;
                 a_reg_alloc(list,NR_R25);
                 a_reg_alloc(list,NR_R24);
                 if CPUAVR_HAS_MOVW in cpu_capabilities[current_settings.cputype] then
-                  list.concat(taicpu.op_reg_reg(A_MOVW,NR_R24, Ref.base))
+                  list.concat(taicpu.op_reg_reg(A_MOVW,NR_R24,Ref.base))
                 else
                   begin
-                    list.concat(taicpu.op_reg_reg(A_MOV,NR_R25, Ref.base));
-                    list.concat(taicpu.op_reg_reg(A_MOV,NR_R24, GetNextReg(Ref.base)));
+                    list.concat(taicpu.op_reg_reg(A_MOV,NR_R25,Ref.base));
+                    list.concat(taicpu.op_reg_reg(A_MOV,NR_R24,GetNextReg(Ref.base)));
                   end;
-
-                //if not symtable.searchsym('FPC_READ_EEPROM_BYTE', symbol, symtab) or
-                //   not(symbol.typ=procsym) then
-                //  Internalerror(2021010501);
-
                 a_call_name(list,'FPC_READ_EEPROM_BYTE',true);
                 list.concat(taicpu.op_reg_reg(A_MOV,reg,NR_R24));
                 a_reg_dealloc(list,NR_R25);
@@ -2303,7 +2298,8 @@ unit cgcpu;
             else
               begin
                 href:=Ref;
-                href.offset:=Ref.offset or $1400;  // remap to eeprom data space
+                // remap to eeprom address to data space
+                href.offset:=Ref.offset or embedded_controllers[current_settings.controllertype].eeprombase;
                 list.concat(taicpu.op_reg_ref(GetLoad(href),reg,href));
               end;
           end
@@ -2333,129 +2329,22 @@ unit cgcpu;
                   list.concat(taicpu.op_reg_const(A_SBCI,GetNextReg(Ref.base),0));
                 end;
 
-            // Write sequence for classic AVRs
-            if not (CPUAVR_HAS_NVM_DATASPACE in cpu_capabilities[current_settings.cputype]) then
+            // Call RTL supplied controller specific write procedure
+            a_reg_alloc(list,NR_R25);
+            a_reg_alloc(list,NR_R24);
+            if CPUAVR_HAS_MOVW in cpu_capabilities[current_settings.cputype] then
+              list.concat(taicpu.op_reg_reg(A_MOVW,NR_R24,Ref.base))
+            else
               begin
-                // Wait if eeprom write is in progress
-                current_asmdata.getjumplabel(l1);
-                cg.a_label(list,l1);
-                reference_reset(EECRref, 1, []);
-                if not symtable.searchsym('EECR', symbol, symtab) or
-                   not(symbol.typ=absolutevarsym) then
-                  Internalerror(2021010101);
-                EECRref.offset := tabsolutevarsym(symbol).addroffset;
-                tmpreg:=getaddressregister(list);
-                list.concat(taicpu.op_reg_ref(A_LDS,tmpreg,EECRref));
-                list.concat(taicpu.op_reg_const(A_ANDI,tmpreg,2));
-                ai:=Taicpu.Op_Sym(A_BRxx,l1);
-                ai.SetCondition(C_NE);
-                ai.is_jmp:=true;
-                list.concat(ai);
-                // Store address of reference in eeprom address register
-                reference_reset(EEARLref, 1, []);
-                if not symtable.searchsym('EEARL', symbol, symtab) or
-                   not(symbol.typ=absolutevarsym) then
-                  Internalerror(2021010102);
-                EEARLref.offset := tabsolutevarsym(symbol).addroffset;
-                list.concat(taicpu.op_ref_reg(A_STS,EEARLref, ref.base));
-                // Only store high byte of reference if eeprom size > 256 bytes
-                if cpuinfo.embedded_controllers[current_settings.controllertype].eepromsize > 256 then
-                  begin
-                    reference_reset(EEARHref, 1, []);
-                    if not symtable.searchsym('EEARH', symbol, symtab) or
-                       not(symbol.typ=absolutevarsym) then
-                      Internalerror(2021010103);
-                    EEARHref.offset := tabsolutevarsym(symbol).addroffset;
-                    list.concat(taicpu.op_ref_reg(A_STS,EEARHref, GetNextReg(ref.base)));
-                  end;
-
-                // Now write data into EEDR register
-                reference_reset(EEDRref, 1, []);
-                if not symtable.searchsym('EEDR', symbol, symtab) or
-                   not(symbol.typ=absolutevarsym) then
-                  Internalerror(2021010104);
-                EEDRref.offset := tabsolutevarsym(symbol).addroffset;
-                list.concat(taicpu.op_ref_reg(A_STS,EEDRref, reg));
-
-                // Start of timing critical sequence, stop interrupts
-                list.concat(taicpu.op_reg_const(A_IN,GetDefaultTmpReg,NIO_SREG));
-                list.concat(taicpu.op_none(A_CLI));
-                // Set EEMPE/EEMWE bit in EECR register
-                list.concat(taicpu.op_const_const(A_SBI,EECRref.offset-$20,2));
-                // Set EEPE bit in EECR register - start eeprom write
-                list.concat(taicpu.op_const_const(A_SBI,EECRref.offset-$20,1));
-                // Restore previous interrupt state
-                list.concat(taicpu.op_const_reg(A_OUT,NIO_SREG,GetDefaultTmpReg));
-              end
-            else  // Write sequence for avrxmega3 using NVM controller
-              begin
-                // Get definition of NVMCTRL object
-                if not symtable.searchsym('NVMCTRL', symbol, symtab) or
-                   not(symbol.typ=absolutevarsym) then
-                  Internalerror(2021010401);
-
-                // TODO: from inspecting a small selection of avrxmega controller datasheets it appears that at least
-                // the CPU and NVMCTRL peripherals are located at fixed addresses.
-                // Doing compile time symbol lookup may be overkill.
-                reference_reset(NVMCTRLref, 1, []);
-                // Set offset to NVMCTRL object address
-                NVMCTRLref.offset := tabsolutevarsym(symbol).addroffset;
-
-                // Now get field definitions for later use
-                def := tabsolutevarsym(symbol).vardef;
-                reference_reset(CTRLAref, 1, []);
-                if searchsym_in_class(tobjectdef(def), tabstractrecorddef(def), 'CTRLA', symbol, symtab, [ssf_search_helper]) then
-                  CTRLAref.offset := NVMCTRLref.offset + asizeint(tfieldvarsym(symbol).fieldoffset)
-                else
-                  Internalerror(2021010402);
-
-                reference_reset(STATUSref, 1, []);
-                if searchsym_in_class(tobjectdef(def), tabstractrecorddef(def), 'STATUS', symbol, symtab, [ssf_search_helper]) then
-                  STATUSref.offset := NVMCTRLref.offset + asizeint(tfieldvarsym(symbol).fieldoffset)
-                else
-                  Internalerror(2021010403);
-
-                // CPU.CCP register
-                if not symtable.searchsym('CPU', symbol, symtab) or
-                   not(symbol.typ=absolutevarsym) then
-                  Internalerror(2021010404);
-
-                reference_reset(CCPref, 1, []);
-                // Set offset to NVMCTRL object address
-                CCPref.offset := tabsolutevarsym(symbol).addroffset;
-
-                // Now get CCP field definition
-                def := tabsolutevarsym(symbol).vardef;
-                if searchsym_in_class(tobjectdef(def), tabstractrecorddef(def), 'CCP', symbol, symtab, [ssf_search_helper]) then
-                  CCPref.offset := CCPref.offset + asizeint(tfieldvarsym(symbol).fieldoffset)
-                else
-                  Internalerror(2021010405);
-
-                // Loop until EEBUSY and FBUSY flags are cleared in STATUS register
-                current_asmdata.getjumplabel(l1);
-                cg.a_label(list,l1);
-                tmpreg:=getaddressregister(list);
-                list.concat(taicpu.op_reg_ref(A_LDS,tmpreg,STATUSref));
-                list.concat(taicpu.op_reg_const(A_ANDI,tmpreg,2));
-                ai:=Taicpu.Op_Sym(A_BRxx,l1);
-                ai.SetCondition(C_NE);
-                ai.is_jmp:=true;
-                list.concat(ai);
-
-                // Store value in reg to ref, offset register high pointer to eeprom space
-                // subtract $EC, or add $14 - but carry flag may be set.
-                // TODO: Could either clear carry flag afterwards, or use ldi + add
-                list.concat(taicpu.op_reg_const(A_SUBI,GetNextReg(Ref.base),$EC));
-                list.concat(taicpu.op_ref_reg(GetStore(Ref),Ref,reg));
-
-                // CPU.CCP := $9D allow self programming (to enable next command in NVMCTRL.CTRLA)
-                list.concat(taicpu.op_reg_const(A_LDI,tmpreg,$9D));  // Allow self programming
-                list.concat(taicpu.op_const_reg(A_OUT,CCPref.offset,tmpreg));
-
-                // Set erase & write page (ERWP) command in NVMCTRL.CTRLA
-                list.concat(taicpu.op_reg_const(A_LDI,tmpreg,3));
-                list.concat(taicpu.op_ref_reg(A_STS,CTRLAref,tmpreg));
+                list.concat(taicpu.op_reg_reg(A_MOV,NR_R25, Ref.base));
+                list.concat(taicpu.op_reg_reg(A_MOV,NR_R24, GetNextReg(Ref.base)));
               end;
+            a_reg_alloc(list,NR_R22);
+            list.concat(taicpu.op_reg_reg(A_MOV,NR_R22,reg));
+            a_call_name(list,'FPC_WRITE_EEPROM_BYTE',true);
+            a_reg_dealloc(list,NR_R25);
+            a_reg_dealloc(list,NR_R24);
+            a_reg_dealloc(list,NR_R22);
 
             if Ref.addressmode = AM_POSTINCREMENT then
             begin
@@ -2843,7 +2732,7 @@ unit cgcpu;
                     (dest.Index=NR_No) and
                     (dest.Offset in [0..64-len])) and
                 not((dest.Base=NR_NO) and (dest.Index=NR_NO))
-              ) then
+              ) or useZregForReferenceLoad(dest) then
               begin
                 if not(SrcQuickRef) then
                   begin
