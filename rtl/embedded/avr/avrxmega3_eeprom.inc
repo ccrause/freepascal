@@ -9,6 +9,8 @@ begin
   NVMCTRL.CTRLA := 3;
 end;
 
+// Not required by compiler to read EEPROM
+// Provided for compatibilty of user code with classic AVRs
 function readEEPROMbyte(const EEPROMaddress: pointer): byte;
 begin
   readEEPROMbyte := PByte(EEPROMaddress + $1400)^;
