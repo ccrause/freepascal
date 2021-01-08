@@ -2300,6 +2300,7 @@ unit cgcpu;
                 // Add eeprom offset to index register high byte
                 list.concat(taicpu.op_reg_const(A_SUBI,GetNextReg(Ref.base),$EC));
                 list.concat(taicpu.op_reg_ref(GetLoad(Ref),reg,Ref));
+                list.concat(taicpu.op_reg_const(A_SUBI,GetNextReg(Ref.base),$14));
               end;
           end
         else
