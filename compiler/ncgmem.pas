@@ -260,6 +260,7 @@ implementation
            end;
 
          secondpass(left);
+         {$ifdef avr} location.reference.sectionName := left.location.reference.sectionName;{$endif}
 
          if not(left.location.loc in [LOC_CREGISTER,LOC_REGISTER,LOC_CREFERENCE,LOC_REFERENCE,LOC_CONSTANT]) then
            hlcg.location_force_reg(current_asmdata.CurrAsmList,left.location,left.resultdef,left.resultdef,true);
