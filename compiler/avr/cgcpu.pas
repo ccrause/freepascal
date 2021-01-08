@@ -2297,10 +2297,9 @@ unit cgcpu;
               end
             else
               begin
-                href:=Ref;
-                // remap to eeprom address to data space
-                href.offset:=Ref.offset or embedded_controllers[current_settings.controllertype].eeprombase;
-                list.concat(taicpu.op_reg_ref(GetLoad(href),reg,href));
+                // Add eeprom offset to index register high byte
+                list.concat(taicpu.op_reg_const(A_SUBI,GetNextReg(Ref.base),$EC));
+                list.concat(taicpu.op_reg_ref(GetLoad(Ref),reg,Ref));
               end;
           end
         else
