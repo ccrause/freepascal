@@ -71,6 +71,9 @@ interface
          dbg_state   : tdefdbgstatus;
          defoptions  : tdefoptions;
          defstates   : tdefstates;
+         {$ifdef avr}
+         section_def: ansistring;
+         {$endif avr}
          constructor create(dt:tdeftyp);
          procedure buildderef;virtual;abstract;
          procedure buildderefimpl;virtual;abstract;

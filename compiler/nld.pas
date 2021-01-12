@@ -835,6 +835,13 @@ implementation
         { check if local proc/func is assigned to procvar }
         if right.resultdef.typ=procvardef then
           test_local_to_procvar(tprocvardef(right.resultdef),left.resultdef);
+
+        {$ifdef avr}
+        { Pointers across memory sections not allowed }
+        if (right.resultdef.typ = pointerdef) and (left.resultdef.typ = pointerdef) then
+          if UpCase(right.resultdef.section_def) <> UpCase(left.resultdef.section_def) then
+            Comment(V_Error,'Pointers in different sections are not allowed');
+        {$endif avr}
       end;
 
 

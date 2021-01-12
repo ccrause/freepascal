@@ -1526,6 +1526,14 @@ implementation
                  try_consume_sectiondirective(sectionname);
                  if sectionname<>'' then
                    begin
+                     {$ifdef avr}
+                     { If type already refers to a section, check that new section directive does not contradict this }
+                     if (hdef.section_def <> '') and
+                       (UpCase(hdef.section_def) <> UpCase(sectionname)) then
+                       begin
+                         Comment(V_Error, 'Type and variable refers to incompatible section names');
+                       end;
+                     {$endif avr}
                      for i:=0 to sc.count-1 do
                        begin
                          vs:=tabstractvarsym(sc[i]);
@@ -1549,6 +1557,13 @@ implementation
                    cnodeutils.insertbssdata(tstaticvarsym(vs));
                  if vo_is_public in vs.varoptions then
                    current_module.add_public_asmsym(vs.mangledname,AB_GLOBAL,AT_DATA);
+
+                 {$ifdef avr}
+                 { Copy section directive from type to variable }
+                 { By now a mismatch between section names of type and variable should have raised an error }
+                 if (vs.typ=staticvarsym) and (tstaticvarsym(vs).section = '') and (hdef.section_def <> '') then
+                   tstaticvarsym(vs).section := hdef.section_def;
+                 {$endif avr}
                end;
 
              first:=false;

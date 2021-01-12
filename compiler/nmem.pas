@@ -648,6 +648,14 @@ implementation
 
         if not(assigned(result)) then
           result:=simplify(false);
+
+        {$ifdef avr}
+        { check if base symbol is located in a section.
+          If so, copy section name to result definition }
+        if (left.nodetype = loadn) and
+           (tloadnode(left).symtableentry.typ = staticvarsym) then
+          resultdef.section_def := tstaticvarsym(tloadnode(left).symtableentry).section;
+        {$endif avr}
       end;
 
 
@@ -745,6 +753,14 @@ implementation
 
          { is this right for object of methods ?? }
          expectloc:=LOC_REGISTER;
+
+         {$ifdef avr}
+         { check if base symbol is located in a section.
+           If so, copy section name to result definition }
+         if (left.nodetype = loadn) and
+            (tloadnode(left).symtableentry.typ = staticvarsym) then
+           resultdef.section_def := tstaticvarsym(tloadnode(left).symtableentry).section;
+         {$endif avr}
       end;
 
 

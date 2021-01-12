@@ -2922,6 +2922,12 @@ implementation
             if upper(s1)=upper(s2) then
               s1:=def.owner.realname^+'.'+s1;
           end;
+        {$ifdef avr}
+        { Check if section names are dissimilar }
+        if (def.section_def <> '') then
+          FullTypeName:=s1+'['+def.section_def+']'
+        else
+        {$endif avr}
         FullTypeName:=s1;
       end;
 

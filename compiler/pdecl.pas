@@ -1062,6 +1062,17 @@ implementation
                        consume(_SEMICOLON);
                      end;
 {$endif x86}
+{$ifdef avr}
+                    { Try to read section directive and associate with this pointer type }
+                    if try_to_consume(_SECTION) then
+                     begin
+                       // Need more error checking?
+                       s:=get_stringconst;
+                       consume(_SEMICOLON);
+                       if s <> '' then
+                        hdef.section_def := s;
+                     end;
+{$endif avr}
                   end;
                 procvardef :
                   begin
