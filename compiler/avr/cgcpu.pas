@@ -550,8 +550,7 @@ unit cgcpu;
        begin
          result := (source.sectionName <> '') and
                    ((CompareText(source.sectionName, '.progmem')=0) or
-                    ((CompareText(source.sectionName, '.eeprom')=0) and
-                     not(CPUAVR_HAS_NVM_DATASPACE in cpu_capabilities[current_settings.cputype])))
+                    ((CompareText(source.sectionName, '.eeprom')=0)));
        end;
 
 
@@ -1222,11 +1221,6 @@ unit cgcpu;
          i : integer;
          QuickRef,ungetcpuregister_z: Boolean;
        begin
-         // Writing to flash requires page erase & page write semantics.
-         // General random access writes are therefore undesired and not allowed.
-         if (ref.sectionName <> '') and (CompareText(ref.sectionName, '.progmem')=0) then
-           Internalerror(2020123101);
-
          QuickRef:=false;
          ungetcpuregister_z:=false;
 
@@ -2318,6 +2312,12 @@ unit cgcpu;
         symtab: TSymtable;
         def: tdef;
       begin
+        // Writing to flash requires page erase & page write semantics.
+        // General random access writes are therefore undesired and not allowed.
+        // Could probably move this to somewhere in first pass for earlier check
+        if (ref.sectionName <> '') and (CompareText(ref.sectionName, '.progmem')=0) then
+          Comment(V_Error,'Writing to program memory not supported');
+
         if (Ref.sectionName <> '') and (CompareText('.eeprom', Ref.sectionName) = 0) then
           begin
             if Ref.addressmode = AM_PREDRECEMENT then
