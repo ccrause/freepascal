@@ -1557,13 +1557,6 @@ implementation
                    cnodeutils.insertbssdata(tstaticvarsym(vs));
                  if vo_is_public in vs.varoptions then
                    current_module.add_public_asmsym(vs.mangledname,AB_GLOBAL,AT_DATA);
-
-                 {$ifdef avr}
-                 { Copy section directive from type to variable }
-                 { By now a mismatch between section names of type and variable should have raised an error }
-                 if (vs.typ=staticvarsym) and (tstaticvarsym(vs).section = '') and (hdef.section_def <> '') then
-                   tstaticvarsym(vs).section := hdef.section_def;
-                 {$endif avr}
                end;
 
              first:=false;
