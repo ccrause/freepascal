@@ -786,7 +786,13 @@ implementation
          maybe_call_procvar(left,true);
 
          if left.resultdef.typ=pointerdef then
-           resultdef:=tpointerdef(left.resultdef).pointeddef
+          begin
+           resultdef:=tpointerdef(left.resultdef).pointeddef;
+           {$ifdef avr}
+           { Copy section across from pointer type so that correct access is generated }
+           resultdef.section_def := tpointerdef(left.resultdef).section_def;
+           {$endif avr}
+          end
          else if left.resultdef.typ=undefineddef then
            resultdef:=cundefineddef.create(true)
          else
