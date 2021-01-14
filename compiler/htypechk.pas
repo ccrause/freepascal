@@ -1556,6 +1556,16 @@ implementation
                end;
              derefn :
                begin
+                 {$ifdef avr}
+                 { Assignment to a dereferenced reference to a read-only section not allowed }
+                 if (tderefnode(p).resultdef.section_def <> '') and
+                    (CompareText(tderefnode(p).resultdef.section_def, '.progmem') = 0) then
+                   begin
+                     valid_for_assign:=false;
+                     if report_errors then
+                       Comment(V_Error,'Write access to section .progmem not supported');
+                   end;
+                 {$endif avr}
                  { dereference -> always valid }
                  valid_for_assign:=true;
                  mayberesettypeconvs;
