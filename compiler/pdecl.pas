@@ -1067,10 +1067,11 @@ implementation
                     if try_to_consume(_SECTION) then
                      begin
                        // Need more error checking?
+                       if not isunique then
+                          Comment(V_Error,'Section directive only allowed for unique types');
                        s:=get_stringconst;
                        consume(_SEMICOLON);
-                       if s <> '' then
-                        hdef.section_def := s;
+                       tcpupointerdef(hdef).symsection:=sectionNameToSymSection(s);
                      end;
 {$endif avr}
                   end;

@@ -167,6 +167,9 @@ implementation
       cpuinfo,
 {$endif i8086}
       htypechk,pass_1,ncal,nld,ncon,ncnv,cgbase,procinfo
+{$ifdef avr}
+      ,symcpu
+{$endif avr}
       ;
 
 {*****************************************************************************
@@ -654,7 +657,10 @@ implementation
           If so, copy section name to result definition }
         if (left.nodetype = loadn) and
            (tloadnode(left).symtableentry.typ = staticvarsym) then
-          resultdef.section_def := tstaticvarsym(tloadnode(left).symtableentry).section;
+          if CompareText('.PROGMEM', tstaticvarsym(tloadnode(left).symtableentry).section) = 0 then
+            tcpupointerdef(resultdef).symsection := ss_progmem
+          else if CompareText('.EEPROM', tstaticvarsym(tloadnode(left).symtableentry).section) = 0 then
+            tcpupointerdef(resultdef).symsection := ss_eeprom;
         {$endif avr}
       end;
 
@@ -759,7 +765,7 @@ implementation
            If so, copy section name to result definition }
          if (left.nodetype = loadn) and
             (tloadnode(left).symtableentry.typ = staticvarsym) then
-           resultdef.section_def := tstaticvarsym(tloadnode(left).symtableentry).section;
+           tcpupointerdef(resultdef).symsection := sectionNameToSymSection(tstaticvarsym(tloadnode(left).symtableentry).section);
          {$endif avr}
       end;
 
@@ -790,7 +796,7 @@ implementation
            resultdef:=tpointerdef(left.resultdef).pointeddef;
            {$ifdef avr}
            { Copy section across from pointer type so that correct access is generated }
-           resultdef.section_def := tpointerdef(left.resultdef).section_def;
+           tcpupointerdef(resultdef).symsection := tcpupointerdef(left.resultdef).symsection;
            {$endif avr}
           end
          else if left.resultdef.typ=undefineddef then

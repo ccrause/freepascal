@@ -503,6 +503,11 @@ interface
 
     function same_constvalue(consttyp:tconsttyp;const value1,value2:tconstvalue):boolean;
 
+{$ifdef avr}
+    function sectionNameToSymSection(sectionname: ansistring): tsymsection;
+    function symSectionToSectionName(ss: tsymsection): ansistring;
+{$endif avr}
+
 implementation
 
     uses
@@ -588,6 +593,28 @@ implementation
         if sp_hint_unimplemented in symoptions then
           MessagePos1(filepos,sym_w_non_implemented_symbol,srsym.realname);
       end;
+
+{$ifdef avr}
+    function sectionNameToSymSection(sectionname: ansistring): tsymsection;
+      begin
+        if CompareText('.PROGMEM', sectionname) = 0 then
+          result := ss_progmem
+        else if CompareText('.EEPROM', sectionname) = 0 then
+          result := ss_eeprom
+        else
+          result := ss_none;
+      end;
+
+    function symSectionToSectionName(ss: tsymsection): ansistring;
+      begin
+        case ss of
+          ss_progmem: result:='.progmem';
+          ss_eeprom:  result:='.eeprom';
+        else
+          result := '';
+        end;
+      end;
+{$endif avr}
 
 {****************************************************************************
                           TSYM (base for all symtypes)

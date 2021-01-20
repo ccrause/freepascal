@@ -182,24 +182,6 @@ implementation
       symtable,symsym,symcpu,
       defutil,symutil;
 
-    {$ifdef avr}
-    // Cannot convert between definitions in different addres spaces.
-    // Only check if progmem or eeprom sections are referenced
-    // Other sections are not considered for now
-    // TODO: create a lookup list of section names according to the linker script
-    //       and check which section names are reachable in the same address space.
-    //       A user may still pass command line options to the linker to map user sections.
-    //       This will obviously be missed, unless the linker parameters are also parsed.
-    function sameSections(fromSection, toSection: AnsiString): boolean;
-      begin
-        fromSection := UpCase(fromSection);
-        toSection := UpCase(toSection);
-        sameSections := not((fromSection <> toSection) and
-           ((toSection = '.EEPROM') or (toSection = '.PROGMEM') or
-            (fromSection = '.EEPROM') or (fromSection = '.PROGMEM')));
-      end;
-    {$endif avr}
-
 
     function compare_defs_ext(def_from,def_to : tdef;
                               fromtreetype : tnodetype;
@@ -518,10 +500,11 @@ implementation
                  procvardef,
                  pointerdef :
                    begin
-                     {$ifdef avr}
-                     if not sameSections(def_from.section_def, def_to.section_def) then
-                       exit;
-                     {$endif avr}
+                     // Doesnt seem necessary?
+                     //{$ifdef avr}
+                     //if not (def_from.section = def_to.section) then
+                     //  exit;
+                     //{$endif avr}
                      if cdo_explicit in cdoptions then
                       begin
                         eq:=te_convert_l1;
@@ -1560,7 +1543,7 @@ implementation
                       { all pointers can be assigned from void-pointer or formaldef pointer, check
                         tw3777.pp if you change this }
                         (tpointerdef(def_from).pointeddef.typ=formaldef))
-                         {$ifdef avr} and sameSections(tpointerdef(def_from).section_def,tpointerdef(def_to).section_def){$endif avr} then
+                         {$ifdef avr} and (tcpupointerdef(def_from).symsection = tcpupointerdef(def_to).symsection){$endif avr} then
                        begin
                          doconv:=tc_equal;
                          { give pwidechar a penalty so it prefers
