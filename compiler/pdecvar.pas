@@ -1526,14 +1526,6 @@ implementation
                  try_consume_sectiondirective(sectionname);
                  if sectionname<>'' then
                    begin
-                     {$ifdef avr}
-                     { If type already refers to a section, check that new section directive does not contradict this }
-                     if (hdef.section_def <> '') and
-                       (UpCase(hdef.section_def) <> UpCase(sectionname)) then
-                       begin
-                         Comment(V_Error, 'Type and variable refers to incompatible section names');
-                       end;
-                     {$endif avr}
                      for i:=0 to sc.count-1 do
                        begin
                          vs:=tabstractvarsym(sc[i]);
