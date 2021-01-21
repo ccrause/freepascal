@@ -58,7 +58,7 @@ unit navrmem;
              location_reset(location,LOC_CREGISTER,int_cgsize(resultdef.size));
              {$ifdef avr}
                // Propagate section identifier for potential load/store operations at higher node level
-               location.reference.sectionName:=left.location.reference.sectionName;
+               location.reference.symsection:=left.location.reference.symsection;
              {$endif};
              if href.base<>NR_NO then
                location.register:=href.base
@@ -72,7 +72,7 @@ unit navrmem;
              location_reset(location,LOC_REGISTER,int_cgsize(resultdef.size));
              {$ifdef avr}
                // Propagate section identifier for potential load/store operations at higher node level
-               location.reference.sectionName:=left.location.reference.sectionName;
+               location.reference.symsection:=left.location.reference.symsection;
              {$endif};
              location.register:=hlcg.getaddressregister(current_asmdata.CurrAsmList,resultdef);
              if not(left.location.loc in [LOC_REFERENCE,LOC_CREFERENCE]) then

@@ -1071,7 +1071,8 @@ implementation
                           Comment(V_Error,'Section directive only allowed for unique types');
                        s:=get_stringconst;
                        consume(_SEMICOLON);
-                       tcpupointerdef(hdef).symsection:=sectionNameToSymSection(s);
+                       if s <> '' then
+                         hdef.symsection := sectionNameToSymSection(s);
                      end;
 {$endif avr}
                   end;

@@ -197,9 +197,6 @@ implementation
       cpuinfo,
       htypechk,pass_1,procinfo,paramgr,
       nbas,ncon,nflw,ninl,ncnv,nmem,ncal,nutils,
-{$ifdef avr}
-      symcpu,
-{$endif avr}
       cgbase
       ;
 
@@ -842,7 +839,7 @@ implementation
         {$ifdef avr}
         { Pointers across memory sections not allowed }
         if (right.resultdef.typ = pointerdef) and (left.resultdef.typ = pointerdef) then
-          if tcpupointerdef(right.resultdef).symsection <> tcpupointerdef(left.resultdef).symsection then
+          if right.resultdef.symsection <> left.resultdef.symsection then
             Comment(V_Error,'Pointers in different sections are not allowed');
         {$endif avr}
       end;

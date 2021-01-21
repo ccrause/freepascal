@@ -302,6 +302,10 @@ interface
 {$endif symansistr}
       public
           section : ansistring;
+{$ifdef avr}
+          { Unlike the section string this only store supported sections }
+          symsection: tsymsection;
+{$endif avr}
           { if a text buffer has been defined as being initialized from command line
             parameters as it is done by iso pascal with the program symbols,
             isoindex contains the parameter number }
@@ -2081,6 +2085,9 @@ implementation
 {$else symansistr}
          _mangledname:=nil;
 {$endif symansistr}
+{$ifdef avr}
+        symsection := ss_none;
+{$endif avr}
       end;
 
 

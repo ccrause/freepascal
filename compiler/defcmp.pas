@@ -500,11 +500,10 @@ implementation
                  procvardef,
                  pointerdef :
                    begin
-                     // Doesnt seem necessary?
-                     //{$ifdef avr}
-                     //if not (def_from.section = def_to.section) then
-                     //  exit;
-                     //{$endif avr}
+                     {$ifdef avr}
+                     if def_from.symsection <> def_to.symsection then
+                       exit;
+                     {$endif avr}
                      if cdo_explicit in cdoptions then
                       begin
                         eq:=te_convert_l1;
@@ -1543,7 +1542,7 @@ implementation
                       { all pointers can be assigned from void-pointer or formaldef pointer, check
                         tw3777.pp if you change this }
                         (tpointerdef(def_from).pointeddef.typ=formaldef))
-                         {$ifdef avr} and (tcpupointerdef(def_from).symsection = tcpupointerdef(def_to).symsection){$endif avr} then
+                         {$ifdef avr} and (tpointerdef(def_from).symsection=tpointerdef(def_to).symsection){$endif avr} then
                        begin
                          doconv:=tc_equal;
                          { give pwidechar a penalty so it prefers

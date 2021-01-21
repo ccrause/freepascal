@@ -548,9 +548,7 @@ unit cgcpu;
 
      function tcgavr.useZregForReferenceLoad(source: treference): boolean;
        begin
-         result := (source.sectionName <> '') and
-                   ((CompareText(source.sectionName, '.progmem')=0) or
-                    ((CompareText(source.sectionName, '.eeprom')=0)));
+         result := source.symsection in [ss_eeprom,ss_progmem];
        end;
 
 
@@ -1234,8 +1232,7 @@ unit cgcpu;
 
          { try to use std/sts }
          if not((href.Base=NR_NO) and (href.Index=NR_NO)) or
-         // TODO: implement EEPROM write support
-           ((href.sectionName <> '') and (CompareText(href.sectionName, '.eeprom')=0)) then
+           (href.symsection=ss_eeprom) then
            begin
              if not((href.addressmode=AM_UNCHANGED) and
                     (href.symbol=nil) and
@@ -1976,7 +1973,7 @@ unit cgcpu;
           result:=A_LDD
         else
           begin
-            if (ref.sectionName = '') or not(CompareText(ref.sectionName, '.progmem')=0) or
+            if (ref.symsection = ss_none) or
                not(CPUAVR_HAS_LPMX in cpu_capabilities[current_settings.cputype]) then
               result:=A_LD
             else
@@ -2249,7 +2246,7 @@ unit cgcpu;
         symtab: TSymtable;
       begin
         // Newer controllers map eeprom into data space
-        if (Ref.sectionName <> '') and (CompareText('.eeprom', Ref.sectionName) = 0) then
+        if Ref.symsection=ss_eeprom then
           begin
             if not (CPUAVR_HAS_NVM_DATASPACE in cpu_capabilities[current_settings.cputype]) then
               begin
@@ -2315,10 +2312,10 @@ unit cgcpu;
         // Writing to flash requires page erase & page write semantics.
         // General random access writes are therefore undesired and not allowed.
         // Could probably move this to somewhere in first pass for earlier check
-        if (ref.sectionName <> '') and (CompareText(ref.sectionName, '.progmem')=0) then
+        if ref.symsection=ss_progmem then
           Comment(V_Error,'Writing to program memory not supported');
 
-        if (Ref.sectionName <> '') and (CompareText('.eeprom', Ref.sectionName) = 0) then
+        if Ref.symsection=ss_eeprom then
           begin
             if Ref.addressmode = AM_PREDRECEMENT then
               if CPUAVR_HAS_MOVW in cpu_capabilities[current_settings.cputype] then

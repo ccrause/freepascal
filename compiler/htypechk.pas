@@ -222,9 +222,6 @@ implementation
        symtable,symutil,
        defutil,defcmp,
        nbas,ncnv,nld,nmem,ncal,nmat,ninl,nutils,procinfo,
-{$ifdef avr}
-       symcpu,
-{$endif avr}
        pgenutil
        ;
 
@@ -1561,7 +1558,7 @@ implementation
                begin
                  {$ifdef avr}
                  { Assignment to a dereferenced reference to a read-only section not allowed }
-                 if tcpupointerdef(tderefnode(p).resultdef).symsection = ss_progmem then
+                 if tderefnode(p).resultdef.symsection=ss_progmem then
                    begin
                      valid_for_assign:=false;
                      if report_errors then

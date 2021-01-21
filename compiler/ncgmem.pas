@@ -88,9 +88,6 @@ implementation
       procinfo,pass_2,parabase,
       ncon,nadd,nutils,
       cgobj,hlcgobj,
-{$ifdef avr}
-      symcpu,
-{$endif}
       objcgutl;
 
 
@@ -264,10 +261,7 @@ implementation
 
          secondpass(left);
          { Copy section name from referenced type to dereferenced instance }
-         {$ifdef avr}
-         location.reference.sectionName:=
-           symSectionToSectionName(tcpupointerdef(left.resultdef).symsection);
-         {$endif}
+         {$ifdef avr} location.reference.symsection := left.resultdef.symsection;{$endif}
 
          if not(left.location.loc in [LOC_CREGISTER,LOC_REGISTER,LOC_CREFERENCE,LOC_REFERENCE,LOC_CONSTANT]) then
            hlcg.location_force_reg(current_asmdata.CurrAsmList,left.location,left.resultdef,left.resultdef,true);

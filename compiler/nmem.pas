@@ -166,10 +166,10 @@ implementation
 {$ifdef i8086}
       cpuinfo,
 {$endif i8086}
-      htypechk,pass_1,ncal,nld,ncon,ncnv,cgbase,procinfo
 {$ifdef avr}
-      ,symcpu
+      symcpu,
 {$endif avr}
+      htypechk,pass_1,ncal,nld,ncon,ncnv,cgbase,procinfo
       ;
 
 {*****************************************************************************
@@ -657,10 +657,8 @@ implementation
           If so, copy section name to result definition }
         if (left.nodetype = loadn) and
            (tloadnode(left).symtableentry.typ = staticvarsym) then
-          if CompareText('.PROGMEM', tstaticvarsym(tloadnode(left).symtableentry).section) = 0 then
-            tcpupointerdef(resultdef).symsection := ss_progmem
-          else if CompareText('.EEPROM', tstaticvarsym(tloadnode(left).symtableentry).section) = 0 then
-            tcpupointerdef(resultdef).symsection := ss_eeprom;
+          tcpupointerdef(resultdef).symsection :=
+            sectionNameToSymSection(tstaticvarsym(tloadnode(left).symtableentry).section);
         {$endif avr}
       end;
 
@@ -765,7 +763,8 @@ implementation
            If so, copy section name to result definition }
          if (left.nodetype = loadn) and
             (tloadnode(left).symtableentry.typ = staticvarsym) then
-           tcpupointerdef(resultdef).symsection := sectionNameToSymSection(tstaticvarsym(tloadnode(left).symtableentry).section);
+           tcpupointerdef(resultdef).symsection :=
+             sectionNameToSymSection(tstaticvarsym(tloadnode(left).symtableentry).section);
          {$endif avr}
       end;
 
@@ -796,7 +795,7 @@ implementation
            resultdef:=tpointerdef(left.resultdef).pointeddef;
            {$ifdef avr}
            { Copy section across from pointer type so that correct access is generated }
-           tcpupointerdef(resultdef).symsection := tcpupointerdef(left.resultdef).symsection;
+           resultdef.symsection := left.resultdef.symsection;
            {$endif avr}
           end
          else if left.resultdef.typ=undefineddef then

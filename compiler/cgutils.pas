@@ -30,6 +30,9 @@ unit cgutils;
       globtype,
       cclasses,
       aasmbase,
+{$ifdef avr}
+      symconst,
+{$endif avr}
       cpubase,cgbase;
 
     const
@@ -93,7 +96,7 @@ unit cgutils;
 {$endif aarch64}
 {$ifdef avr}
          addressmode : taddressmode;
-         sectionName: string;
+         symsection: tsymsection;
 {$endif avr}
 {$ifdef m68k}
          { indexed increment and decrement mode }
