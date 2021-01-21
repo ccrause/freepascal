@@ -59,8 +59,9 @@ type
   tcpupointerdef = class(tpointerdef)
   protected
     procedure ppuload_platform(ppufile: tcompilerppufile); override;
-    procedure ppuwrite_platform(ppufile: tcompilerppufile); override;    constructor create(def: tdef); override;
+    procedure ppuwrite_platform(ppufile: tcompilerppufile); override;
   public
+    constructor create(def: tdef); override;
     function compatible_with_pointerdef_size(ptr: tpointerdef): boolean; override;
     function getcopy: tstoreddef; override;
     function GetTypeName: string; override;
