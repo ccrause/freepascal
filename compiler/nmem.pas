@@ -655,9 +655,9 @@ implementation
         {$ifdef avr}
         { check if base symbol is located in a section.
           If so, copy section name to result definition }
-        if (left.nodetype = loadn) and
-           (tloadnode(left).symtableentry.typ = staticvarsym) then
-          tcpupointerdef(resultdef).symsection :=
+        if (left.nodetype=loadn) and
+           (tloadnode(left).symtableentry.typ=staticvarsym) then
+          tcpupointerdef(resultdef).symsection:=
             sectionNameToSymSection(tstaticvarsym(tloadnode(left).symtableentry).section);
         {$endif avr}
       end;
@@ -761,9 +761,9 @@ implementation
          {$ifdef avr}
          { check if base symbol is located in a section.
            If so, copy section name to result definition }
-         if (left.nodetype = loadn) and
-            (tloadnode(left).symtableentry.typ = staticvarsym) then
-           tcpupointerdef(resultdef).symsection :=
+         if (left.nodetype=loadn) and
+            (tloadnode(left).symtableentry.typ=staticvarsym) then
+           tcpupointerdef(resultdef).symsection:=
              sectionNameToSymSection(tstaticvarsym(tloadnode(left).symtableentry).section);
          {$endif avr}
       end;
@@ -795,7 +795,7 @@ implementation
            resultdef:=tpointerdef(left.resultdef).pointeddef;
            {$ifdef avr}
            { Copy section across from pointer type so that correct access is generated }
-           resultdef.symsection := left.resultdef.symsection;
+           resultdef.symsection:=left.resultdef.symsection;
            {$endif avr}
           end
          else if left.resultdef.typ=undefineddef then
