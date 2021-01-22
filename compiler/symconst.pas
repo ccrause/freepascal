@@ -1104,11 +1104,7 @@ inherited_objectoptions : tobjectoptions = [oo_has_virtual,oo_has_private,oo_has
 
 {$ifdef avr}
 type
-  tsymsection = (
-    ss_none = 0,
-    ss_progmem = 1,
-    ss_eeprom = 2
-  );
+  tsymsection = (ss_none,ss_progmem,ss_eeprom);
 {$endif avr}
 
 implementation
