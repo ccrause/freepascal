@@ -1612,6 +1612,7 @@ type
     procedure AddClassType(El: TPasClassType; TypeParams: TFPList); virtual;
     procedure AddVariable(El: TPasVariable); virtual;
     procedure AddResourceString(El: TPasResString); virtual;
+    procedure AddExportSymbol(El: TPasExportSymbol); virtual;
     procedure AddEnumType(El: TPasEnumType); virtual;
     procedure AddEnumValue(El: TPasEnumValue); virtual;
     procedure AddProperty(El: TPasProperty); virtual;
@@ -1698,6 +1699,7 @@ type
     procedure FinishAncestors(aClass: TPasClassType); virtual;
     procedure FinishMethodResolution(El: TPasMethodResolution); virtual;
     procedure FinishAttributes(El: TPasAttributes); virtual;
+    procedure FinishExportSymbol(El: TPasExportSymbol); virtual;
     procedure FinishProcParamAccess(ProcType: TPasProcedureType; Params: TParamsExpr); virtual;
     procedure FinishPropertyParamAccess(Params: TParamsExpr;
       Prop: TPasProperty); virtual;
@@ -3935,10 +3937,16 @@ end;
 { EPasResolve }
 
 procedure EPasResolve.SetPasElement(AValue: TPasElement);
+var
+  Old: TPasElement;
 begin
   if FPasElement=AValue then Exit;
-  if PasElement<>nil then
+  Old:=FPasElement;
+  if Old<>nil then
+    begin
+    Old:=nil;
     PasElement.Release{$IFDEF CheckPasTreeRefCount}('EPasResolve.SetPasElement'){$ENDIF};
+    end;
   FPasElement:=AValue;
   if PasElement<>nil then
     PasElement.AddRef{$IFDEF CheckPasTreeRefCount}('EPasResolve.SetPasElement'){$ENDIF};
@@ -5826,6 +5834,7 @@ begin
     FinishSection(TPasLibrary(CurModule).LibrarySection);
     // resolve begin..end block
     ResolveImplBlock(CurModule.InitializationSection);
+    ResolveImplBlock(CurModule.FinalizationSection);
     end
   else if (CurModuleClass=TPasModule) then
     begin
@@ -7523,11 +7532,13 @@ procedure TPasResolver.FinishExceptOnExpr;
 var
   El: TPasImplExceptOn;
   ResolvedType: TPasResolverResult;
+  TypeEl: TPasType;
 begin
   CheckTopScope(TPasExceptOnScope);
   El:=TPasImplExceptOn(FTopScope.Element);
-  ComputeElement(El.TypeEl,ResolvedType,[rcType]);
-  CheckIsClass(El.TypeEl,ResolvedType);
+  TypeEl:=El.TypeEl;
+  ComputeElement(TypeEl,ResolvedType,[rcType]);
+  CheckIsClass(TypeEl,ResolvedType);
 end;
 
 procedure TPasResolver.FinishExceptOnStatement;
@@ -7776,6 +7787,8 @@ begin
     FinishMethodResolution(TPasMethodResolution(El))
   else if C=TPasAttributes then
     FinishAttributes(TPasAttributes(El))
+  else if C=TPasExportSymbol then
+    FinishExportSymbol(TPasExportSymbol(El))
   else
     begin
     {$IFDEF VerbosePasResolver}
@@ -9044,7 +9057,7 @@ begin
     CurEl:=nil;
     if not SameText(RightStr(AttrName,length('Attribute')),'Attribute') then
       begin
-      // first search AttrName+'Attibute'
+      // first search AttrName+'Attribute'
       CurEl:=FindFirstEl(AttrName+'Attribute',Data,NameExpr);
       end;
     // then search the name
@@ -9131,6 +9144,76 @@ begin
     TResolvedRefCtxAttrProc(AttrRef.Context).Proc:=aConstructor;
     PopScope;
     end;
+end;
+
+procedure TPasResolver.FinishExportSymbol(El: TPasExportSymbol);
+
+  procedure CheckConstExpr(Expr: TPasExpr; Kinds: TREVKinds; const Expected: string);
+  var
+    Value: TResEvalValue;
+    ResolvedEl: TPasResolverResult;
+  begin
+    if Expr=nil then exit;
+    ResolveExpr(Expr,rraRead);
+    Value:=Eval(Expr,[refConst]);
+    if (Value<>nil) and (Value.Kind in Kinds) then
+      begin
+      ReleaseEvalValue(Value);
+      exit;
+      end;
+    ReleaseEvalValue(Value);
+    ComputeElement(Expr,ResolvedEl,[rcConstant]);
+    RaiseXExpectedButYFound(20210101194628,Expected,GetTypeDescription(ResolvedEl),Expr);
+  end;
+
+var
+  Expr: TPasExpr;
+  DeclEl: TPasElement;
+  FindData: TPRFindData;
+  Ref: TResolvedReference;
+  ResolvedEl: TPasResolverResult;
+  Section: TPasSection;
+  Scope: TPasIdentifierScope;
+  ScopeIdent: TPasIdentifier;
+begin
+  Expr:=El.NameExpr;
+  if Expr<>nil then
+    begin
+    ResolveExpr(Expr,rraRead);
+    ComputeElement(Expr,ResolvedEl,[rcConstant]);
+    DeclEl:=ResolvedEl.IdentEl;
+    if DeclEl=nil then
+      RaiseMsg(20210103012907,nXExpectedButYFound,sXExpectedButYFound,['symbol',GetTypeDescription(ResolvedEl)],Expr);
+    if not (DeclEl.Parent is TPasSection) then
+      RaiseMsg(20210103012908,nXExpectedButYFound,sXExpectedButYFound,['global symbol',GetElementTypeName(DeclEl)],Expr);
+    end
+  else
+    begin
+    FindFirstEl(El.Name,FindData,El);
+    DeclEl:=FindData.Found;
+    if DeclEl=nil then
+      RaiseMsg(20210103002747,nIdentifierNotFound,sIdentifierNotFound,[El.Name],El);
+    if not (DeclEl.Parent is TPasSection) then
+      RaiseMsg(20210103003244,nXExpectedButYFound,sXExpectedButYFound,['global symbol',GetObjPath(DeclEl)],El);
+    Ref:=CreateReference(DeclEl,El,rraRead,@FindData);
+    CheckFoundElement(FindData,Ref);
+    end;
+
+  if DeclEl is TPasProcedure then
+    begin
+    Section:=DeclEl.Parent as TPasSection;
+    Scope:=Section.CustomData as TPasIdentifierScope;
+    ScopeIdent:=Scope.FindLocalIdentifier(DeclEl.Name);
+    if (ScopeIdent=nil) then
+      RaiseNotYetImplemented(20210106103001,El,GetObjPath(DeclEl));
+    if ScopeIdent.NextSameIdentifier<>nil then
+      RaiseMsg(20210106103320,nCantDetermineWhichOverloadedFunctionToCall,
+        sCantDetermineWhichOverloadedFunctionToCall,[],El);
+    end;
+
+  // check index and name
+  CheckConstExpr(El.ExportIndex,[revkInt,revkUInt],'integer');
+  CheckConstExpr(El.ExportName,revkAllStrings,'string');
 end;
 
 procedure TPasResolver.FinishProcParamAccess(ProcType: TPasProcedureType;
@@ -10247,7 +10330,7 @@ begin
       if ProcNeedsParams(Proc.ProcType) and not ExprIsAddrTarget(El) then
         begin
         {$IFDEF VerbosePasResolver}
-        writeln('TPasResolver.ResolveNameExpr ',GetObjName(El));
+        writeln('TPasResolver.ResolveNameExpr ',GetObjPath(El));
         {$ENDIF}
         RaiseMsg(20170216152138,nWrongNumberOfParametersForCallTo,
           sWrongNumberOfParametersForCallTo,[Proc.Name],El);
@@ -12174,6 +12257,15 @@ begin
   if not C.InheritsFrom(TPasSection) then
     RaiseNotYetImplemented(20171004092518,El);
   AddIdentifier(TPasIdentifierScope(TopScope),El.Name,El,pikSimple);
+end;
+
+procedure TPasResolver.AddExportSymbol(El: TPasExportSymbol);
+begin
+  {$IFDEF VerbosePasResolver}
+  writeln('TPasResolver.AddExportSymbol ',GetObjName(El));
+  {$ENDIF}
+  // Note: export symbol is not added to scope
+  if El=nil then ;
 end;
 
 procedure TPasResolver.AddEnumType(El: TPasEnumType);
@@ -17423,6 +17515,8 @@ begin
     AddProcedureType(TPasProcedureType(SpecEl),nil);
     SpecializeProcedureType(TPasProcedureType(GenEl),TPasProcedureType(SpecEl),nil);
     end
+  else if C=TPasExportSymbol then
+    RaiseMsg(20210101234958,nSymbolCannotExportedFromALibrary,sSymbolCannotExportedFromALibrary,[],GenEl)
   else
     RaiseNotYetImplemented(20190728151215,GenEl);
 end;
@@ -19042,19 +19136,19 @@ begin
     exit(cIncompatible);
   Params:=TParamsExpr(Expr);
 
-  // first param: bool, enum or char
+  // first param: bool, integer, enum or char
   Param:=Params.Params[0];
   ComputeElement(Param,ParamResolved,[]);
   Result:=cIncompatible;
   if rrfReadable in ParamResolved.Flags then
     begin
-    if ParamResolved.BaseType in (btAllBooleans+btAllChars) then
+    if ParamResolved.BaseType in btArrayRangeTypes then
       Result:=cExact
     else if (ParamResolved.BaseType=btContext) and (ParamResolved.LoTypeEl is TPasEnumType) then
       Result:=cExact
     else if ParamResolved.BaseType=btRange then
       begin
-      if ParamResolved.SubType in btAllBooleans+btAllChars then
+      if ParamResolved.SubType in btArrayRangeTypes then
         Result:=cExact
       else if ParamResolved.SubType=btContext then
         begin
@@ -20836,6 +20930,8 @@ begin
     else if AClass.InheritsFrom(TPasImplBlock) then
       // resolved when finished
     else if AClass=TPasAttributes then
+    else if AClass=TPasExportSymbol then
+      AddExportSymbol(TPasExportSymbol(El))
     else if AClass=TPasUnresolvedUnitRef then
       RaiseMsg(20171018121900,nCantFindUnitX,sCantFindUnitX,[AName],El)
     else
@@ -21245,7 +21341,7 @@ procedure TPasResolver.CheckFoundElement(
 // Call this method after finding an element by searching the scopes.
 
   function IsFieldInheritingConst(aRef: TResolvedReference): boolean;
-  // returns true of aRef is a TPasVariable that inherits its const from parent.
+  // returns true if aRef is a TPasVariable that inherits its const from parent.
   // For example
   //  type TRecord = record
   //    a: word; // inherits const
@@ -27491,6 +27587,21 @@ procedure TPasResolver.ComputeElement(El: TPasElement; out
       end;
   end;
 
+  procedure ComputeExportSymbol(ExpSymbol: TPasExportSymbol);
+  var
+    Ref: TResolvedReference;
+  begin
+    if ExpSymbol.CustomData is TResolvedReference then
+      begin
+      Ref:=TResolvedReference(El.CustomData);
+      ComputeElement(Ref.Declaration,ResolvedEl,Flags+[rcNoImplicitProc],StartEl);
+      end
+    else if ExpSymbol.NameExpr<>nil then
+      ComputeElement(ExpSymbol.NameExpr,ResolvedEl,Flags,StartEl)
+    else
+      RaiseNotYetImplemented(20210106225512,ExpSymbol);
+  end;
+
 var
   DeclEl: TPasElement;
   ElClass: TClass;
@@ -27873,6 +27984,8 @@ begin
     ComputeSpecializeType(TPasSpecializeType(El))
   else if ElClass=TInlineSpecializeExpr then
     ComputeElement(TInlineSpecializeExpr(El).NameExpr,ResolvedEl,Flags,StartEl)
+  else if ElClass=TPasExportSymbol then
+    ComputeExportSymbol(TPasExportSymbol(El))
   else
     RaiseNotYetImplemented(20160922163705,El);
   {$IF defined(nodejs) and defined(VerbosePasResolver)}
@@ -28179,10 +28292,12 @@ function TPasResolver.ExprIsAddrTarget(El: TPasExpr): boolean;
   e.g. '@p().o[].El' or '@El[]'
   b) mode delphi: the last element of a right side of an assignment
   c) an accessor function, e.g. property P read El;
+  d) an export
 }
 var
   Parent: TPasElement;
   Prop: TPasProperty;
+  C: TClass;
 begin
   Result:=false;
   if El=nil then exit;
@@ -28191,31 +28306,34 @@ begin
   repeat
     Parent:=El.Parent;
     //writeln('TPasResolver.ExprIsAddrTarget El=',GetObjName(El),' Parent=',GetObjName(Parent));
-    if Parent.ClassType=TUnaryExpr then
+    C:=Parent.ClassType;
+    if C=TUnaryExpr then
       begin
       if TUnaryExpr(Parent).OpCode=eopAddress then exit(true);
       end
-    else if Parent.ClassType=TBinaryExpr then
+    else if C=TBinaryExpr then
       begin
       if TBinaryExpr(Parent).right<>El then exit;
       if TBinaryExpr(Parent).OpCode<>eopSubIdent then exit;
       end
-    else if Parent.ClassType=TParamsExpr then
+    else if C=TParamsExpr then
       begin
       if TParamsExpr(Parent).Value<>El then exit;
       end
-    else if Parent.ClassType=TPasProperty then
+    else if C=TPasProperty then
       begin
       Prop:=TPasProperty(Parent);
       Result:=(Prop.ReadAccessor=El) or (Prop.WriteAccessor=El) or (Prop.StoredAccessor=El);
       exit;
       end
-    else if Parent.ClassType=TPasImplAssign then
+    else if C=TPasImplAssign then
       begin
       if TPasImplAssign(Parent).right<>El then exit;
       if (msDelphi in CurrentParser.CurrentModeswitches) then exit(true);
       exit;
       end
+    else if C=TPasExportSymbol then
+      exit(true)
     else
       exit;
     El:=TPasExpr(Parent);

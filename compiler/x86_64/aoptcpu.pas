@@ -71,6 +71,8 @@ uses
           ait_instruction:
             begin
               case taicpu(p).opcode of
+                A_ADD:
+                  Result:=OptPass1ADD(p);
                 A_AND:
                   Result:=OptPass1AND(p);
                 A_IMUL:
@@ -163,6 +165,8 @@ uses
               case taicpu(p).opcode of
                 A_MOV:
                   Result:=OptPass2MOV(p);
+                A_MOVZX:
+                  Result:=OptPass2Movx(p);
                 A_IMUL:
                   Result:=OptPass2Imul(p);
                 A_JMP:
@@ -213,6 +217,8 @@ uses
                   Result:=PostPeepholeOptLea(p);
                 A_PUSH:
                   Result:=PostPeepholeOptPush(p);
+                A_SHR:
+                  Result:=PostPeepholeOptShr(p);
                 else
                   ;
               end;

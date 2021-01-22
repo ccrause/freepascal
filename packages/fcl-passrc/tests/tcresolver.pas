@@ -142,7 +142,9 @@ type
     Procedure TearDown; override;
     procedure CreateEngine(var TheEngine: TPasTreeContainer); override;
     procedure ParseModule; override;
+    procedure ParseMain(ExpectedModuleClass: TPasModuleClass); virtual;
     procedure ParseProgram; virtual;
+    procedure ParseLibrary; virtual;
     procedure ParseUnit; virtual;
     procedure CheckReferenceDirectives; virtual;
     procedure CheckResolverHint(MsgType: TMessageType; MsgNumber: integer;
@@ -172,6 +174,7 @@ type
       ImplementationSrc: string): TTestEnginePasResolver;
     procedure AddSystemUnit(Parts: TSystemUnitParts = []);
     procedure StartProgram(NeedSystemUnit: boolean; SystemUnitParts: TSystemUnitParts = []);
+    procedure StartLibrary(NeedSystemUnit: boolean; SystemUnitParts: TSystemUnitParts = []);
     procedure StartUnit(NeedSystemUnit: boolean);
     property Modules[Index: integer]: TTestEnginePasResolver read GetModules;
     property ModuleCount: integer read GetModuleCount;
@@ -342,6 +345,7 @@ type
     Procedure TestTryStatement;
     Procedure TestTryExceptOnNonTypeFail;
     Procedure TestTryExceptOnNonClassFail;
+    Procedure TestTryStatementMissingOnFail;
     Procedure TestRaiseNonVarFail;
     Procedure TestRaiseNonClassFail;
     Procedure TestRaiseDescendant;
@@ -975,6 +979,16 @@ type
     Procedure TestAttributes_NonConstParam_Fail;
     Procedure TestAttributes_UnknownAttrWarning;
     Procedure TestAttributes_Members;
+
+    // library
+    Procedure TestLibrary_Empty;
+    Procedure TestLibrary_ExportFunc;
+    Procedure TestLibrary_ExportFunc_NameIntFail;
+    Procedure TestLibrary_ExportFunc_IndexStringFail;
+    Procedure TestLibrary_ExportVar; // ToDo
+    Procedure TestLibrary_Initialization_Finalization;
+    Procedure TestLibrary_ExportFuncOverloadFail;
+    Procedure TestLibrary_UnitExports;
   end;
 
 function LinesToStr(Args: array of const): string;
@@ -1193,7 +1207,7 @@ begin
     end;
 end;
 
-procedure TCustomTestResolver.ParseProgram;
+procedure TCustomTestResolver.ParseMain(ExpectedModuleClass: TPasModuleClass);
 var
   aFilename: String;
   aRow, aCol: Integer;
@@ -1208,7 +1222,7 @@ begin
       aRow:=E.Row;
       aCol:=E.Column;
       WriteSources(aFilename,aRow,aCol);
-      writeln('ERROR: TTestResolver.ParseProgram Parser: '+E.ClassName+':'+E.Message,
+      writeln('ERROR: TTestResolver.ParseMain ',ExpectedModuleClass.ClassName,' Parser: '+E.ClassName+':'+E.Message,
         ' Scanner at'
         +' '+aFilename+'('+IntToStr(aRow)+','+IntToStr(aCol)+')'
         +' Line="'+Scanner.CurLine+'"');
@@ -1225,17 +1239,22 @@ begin
         ResolverEngine.UnmangleSourceLineNumber(E.PasElement.SourceLinenumber,aRow,aCol);
         end;
       WriteSources(aFilename,aRow,aCol);
-      writeln('ERROR: TTestResolver.ParseProgram PasResolver: '+E.ClassName+':'+E.Message
+      writeln('ERROR: TTestResolver.ParseMain ',ExpectedModuleClass.ClassName,' PasResolver: '+E.ClassName+':'+E.Message
         +' at '+aFilename+'('+IntToStr(aRow)+','+IntToStr(aCol)+')');
       Fail(E.Message);
       end;
     on E: Exception do
       begin
-      writeln('ERROR: TTestResolver.ParseProgram Exception: '+E.ClassName+':'+E.Message);
+      writeln('ERROR: TTestResolver.ParseMain ',ExpectedModuleClass.ClassName,' Exception: '+E.ClassName+':'+E.Message);
       Fail(E.Message);
       end;
   end;
   TAssert.AssertSame('Has resolver',ResolverEngine,Parser.Engine);
+end;
+
+procedure TCustomTestResolver.ParseProgram;
+begin
+  ParseMain(TPasProgram);
   AssertEquals('Has program',TPasProgram,Module.ClassType);
   AssertNotNull('Has program section',PasProgram.ProgramSection);
   AssertNotNull('Has initialization section',PasProgram.InitializationSection);
@@ -1245,39 +1264,18 @@ begin
   CheckReferenceDirectives;
 end;
 
+procedure TCustomTestResolver.ParseLibrary;
+begin
+  ParseMain(TPasLibrary);
+  AssertEquals('Has library',TPasLibrary,Module.ClassType);
+  AssertNotNull('Has library section',PasLibrary.LibrarySection);
+  AssertNotNull('Has initialization section',PasLibrary.InitializationSection);
+  CheckReferenceDirectives;
+end;
+
 procedure TCustomTestResolver.ParseUnit;
 begin
-  FFirstStatement:=nil;
-  try
-    ParseModule;
-  except
-    on E: EParserError do
-      begin
-      writeln('ERROR: TTestResolver.ParseUnit Parser: '+E.ClassName+':'+E.Message
-        +' File='+Scanner.CurFilename
-        +' LineNo='+IntToStr(Scanner.CurRow)
-        +' Col='+IntToStr(Scanner.CurColumn)
-        +' Line="'+Scanner.CurLine+'"'
-        );
-      Fail(E.Message);
-      end;
-    on E: EPasResolve do
-      begin
-      writeln('ERROR: TTestResolver.ParseUnit PasResolver: '+E.ClassName+':'+E.Message
-        +' File='+Scanner.CurFilename
-        +' LineNo='+IntToStr(Scanner.CurRow)
-        +' Col='+IntToStr(Scanner.CurColumn)
-        +' Line="'+Scanner.CurLine+'"'
-        );
-      Fail(E.Message);
-      end;
-    on E: Exception do
-      begin
-      writeln('ERROR: TTestResolver.ParseUnit Exception: '+E.ClassName+':'+E.Message);
-      Fail(E.Message);
-      end;
-  end;
-  TAssert.AssertSame('Has resolver',ResolverEngine,Parser.Engine);
+  ParseMain(TPasModule);
   AssertEquals('Has unit',TPasModule,Module.ClassType);
   AssertNotNull('Has interface section',Module.InterfaceSection);
   AssertNotNull('Has implementation section',Module.ImplementationSection);
@@ -1739,6 +1737,8 @@ begin
         end;
       ok:=true;
       end;
+    on E: Exception do
+      Fail('Expected EPasResolve but got '+E.ClassName);
   end;
   AssertEquals('Missing resolver error {'+Msg+'} ('+IntToStr(MsgNumber)+')',true,ok);
 end;
@@ -1759,6 +1759,8 @@ begin
         MsgNumber,Parser.LastMsgNumber);
       ok:=true;
       end;
+    on E: Exception do
+      Fail('Expected EParserError but got '+E.ClassName);
   end;
   AssertEquals('Missing parser error '+Msg+' ('+IntToStr(MsgNumber)+')',true,ok);
 end;
@@ -2331,6 +2333,16 @@ begin
   else
     Parser.ImplicitUses.Clear;
   Add('program '+ExtractFileUnitName(MainFilename)+';');
+end;
+
+procedure TCustomTestResolver.StartLibrary(NeedSystemUnit: boolean;
+  SystemUnitParts: TSystemUnitParts);
+begin
+  if NeedSystemUnit then
+    AddSystemUnit(SystemUnitParts)
+  else
+    Parser.ImplicitUses.Clear;
+  Add('library '+ExtractFileUnitName(MainFilename)+';');
 end;
 
 procedure TCustomTestResolver.StartUnit(NeedSystemUnit: boolean);
@@ -3347,8 +3359,10 @@ begin
   '  i2: TInt2;',
   'begin',
   '  i:=i2;',
-  '  if i=i2 then ;']);
+  '  if i=i2 then ;',
+  '  i:=ord(i);']);
   ParseProgram;
+  CheckResolverUnexpectedHints;
 end;
 
 procedure TTestResolver.TestIntegerRangeHighLowerLowFail;
@@ -3623,7 +3637,7 @@ begin
   '  m=low(char)+high(char);',
   '  n = string(''A'');',
   '  o = UnicodeString(''A'');',
-  //'  p = ^C''bird'';',
+  '  p = ^C''bird'';',
   'begin']);
   ParseProgram;
   CheckResolverUnexpectedHints;
@@ -5405,6 +5419,23 @@ begin
   Add('    on longint do ;');
   Add('  end;');
   CheckResolverException('class expected, but Longint found',nXExpectedButYFound);
+end;
+
+procedure TTestResolver.TestTryStatementMissingOnFail;
+begin
+  StartProgram(true,[supTObject]);
+  Add([
+  'procedure Run;',
+  'begin',
+  '  try',
+  '  except',
+  '    on TObject do ;',
+  '    Run;',
+  '  end;',
+  'end;',
+  'begin',
+  '']);
+  CheckParserException('Expected "end" or "on"',nParserExpectToken2Error);
 end;
 
 procedure TTestResolver.TestRaiseNonVarFail;
@@ -18736,6 +18767,129 @@ begin
   '']);
   ParseProgram;
   CheckAttributeMarkers;
+end;
+
+procedure TTestResolver.TestLibrary_Empty;
+begin
+  StartLibrary(false);
+  Add(['begin']);
+  ParseLibrary;
+end;
+
+procedure TTestResolver.TestLibrary_ExportFunc;
+begin
+  StartLibrary(false);
+  Add([
+  'procedure Run;',
+  'begin',
+  'end;',
+  'procedure Fly;',
+  'begin',
+  'end;',
+  'exports',
+  '  Run,',
+  '  Fly name ''FlyHi'';',
+  'exports',
+  '  Run index 3+4;',
+  'begin',
+  '']);
+  ParseLibrary;
+end;
+
+procedure TTestResolver.TestLibrary_ExportFunc_NameIntFail;
+begin
+  StartLibrary(false);
+  Add([
+  'procedure Run;',
+  'begin',
+  'end;',
+  'exports',
+  '  Run name 4;',
+  'begin',
+  '']);
+  CheckResolverException('string expected, but Longint found',nXExpectedButYFound);
+end;
+
+procedure TTestResolver.TestLibrary_ExportFunc_IndexStringFail;
+begin
+  StartLibrary(false);
+  Add([
+  'procedure Run;',
+  'begin',
+  'end;',
+  'exports',
+  '  Run index ''abc'';',
+  'begin',
+  '']);
+  CheckResolverException('integer expected, but String found',nXExpectedButYFound);
+end;
+
+procedure TTestResolver.TestLibrary_ExportVar;
+begin
+  exit;
+
+  StartLibrary(false);
+  Add([
+  'var',
+  '  Size: word; export name ''size'';',
+  'exports',
+  '  Size,',
+  '  Fly as ''FlyHi'',',
+  '  Run index 3+4;',
+  'begin',
+  '']);
+  ParseLibrary;
+end;
+
+procedure TTestResolver.TestLibrary_Initialization_Finalization;
+begin
+  StartLibrary(false);
+  Add([
+  'procedure Run(w: word);',
+  'begin',
+  'end;',
+  'exports',
+  '  Run;',
+  'initialization',
+  '  Run(3);',
+  'finalization',
+  '  Run(4);',
+  '']);
+  ParseLibrary;
+end;
+
+procedure TTestResolver.TestLibrary_ExportFuncOverloadFail;
+begin
+  StartLibrary(false);
+  Add([
+  'procedure Run(w: word); overload;',
+  'begin',
+  'end;',
+  'procedure Run(d: double); overload;',
+  'begin',
+  'end;',
+  'exports',
+  '  Run,',
+  '  afile.run;',
+  'begin']);
+  CheckResolverException(sCantDetermineWhichOverloadedFunctionToCall,
+    nCantDetermineWhichOverloadedFunctionToCall);
+end;
+
+procedure TTestResolver.TestLibrary_UnitExports;
+begin
+  StartUnit(false);
+  Add([
+  'interface' ,
+  'procedure Run;',
+  'implementation',
+  'procedure Run;',
+  'begin',
+  'end;',
+  'exports',
+  '  Run;',
+  '']);
+  ParseUnit;
 end;
 
 initialization
