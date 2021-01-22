@@ -548,7 +548,7 @@ unit cgcpu;
 
      function tcgavr.useZregForReferenceLoad(source: treference): boolean;
        begin
-         result := source.symsection in [ss_eeprom,ss_progmem];
+         result:=source.symsection in [ss_eeprom,ss_progmem];
        end;
 
 
@@ -1973,7 +1973,7 @@ unit cgcpu;
           result:=A_LDD
         else
           begin
-            if (ref.symsection = ss_none) or
+            if (ref.symsection=ss_none) or
                not(CPUAVR_HAS_LPMX in cpu_capabilities[current_settings.cputype]) then
               result:=A_LD
             else
@@ -2250,7 +2250,7 @@ unit cgcpu;
           begin
             if not (CPUAVR_HAS_NVM_DATASPACE in cpu_capabilities[current_settings.cputype]) then
               begin
-                if Ref.addressmode = AM_PREDRECEMENT then
+                if Ref.addressmode=AM_PREDRECEMENT then
                   if CPUAVR_HAS_MOVW in cpu_capabilities[current_settings.cputype] then
                     list.concat(taicpu.op_reg_const(A_SBIW,Ref.base,1))
                   else
@@ -2259,7 +2259,6 @@ unit cgcpu;
                       list.concat(taicpu.op_reg_const(A_SBCI,GetNextReg(Ref.base),0));
                     end;
 
-                // function readEEPROMbyte(const EEPROMaddress: pointer): byte;
                 a_reg_alloc(list,NR_R25);
                 a_reg_alloc(list,NR_R24);
                 if CPUAVR_HAS_MOVW in cpu_capabilities[current_settings.cputype] then
@@ -2274,7 +2273,7 @@ unit cgcpu;
                 a_reg_dealloc(list,NR_R25);
                 a_reg_dealloc(list,NR_R24);
 
-                if Ref.addressmode = AM_POSTINCREMENT then
+                if Ref.addressmode=AM_POSTINCREMENT then
                 begin
                   if CPUAVR_HAS_MOVW in cpu_capabilities[current_settings.cputype] then
                     list.concat(taicpu.op_reg_const(A_ADIW,Ref.base,1))
@@ -2317,7 +2316,7 @@ unit cgcpu;
 
         if Ref.symsection=ss_eeprom then
           begin
-            if Ref.addressmode = AM_PREDRECEMENT then
+            if Ref.addressmode=AM_PREDRECEMENT then
               if CPUAVR_HAS_MOVW in cpu_capabilities[current_settings.cputype] then
                 list.concat(taicpu.op_reg_const(A_SBIW,Ref.base,1))
               else
@@ -2343,7 +2342,7 @@ unit cgcpu;
             a_reg_dealloc(list,NR_R24);
             a_reg_dealloc(list,NR_R22);
 
-            if Ref.addressmode = AM_POSTINCREMENT then
+            if Ref.addressmode=AM_POSTINCREMENT then
             begin
               if CPUAVR_HAS_MOVW in cpu_capabilities[current_settings.cputype] then
                 list.concat(taicpu.op_reg_const(A_ADIW,Ref.base,1))
