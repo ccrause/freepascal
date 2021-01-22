@@ -304,7 +304,7 @@ interface
           section : ansistring;
 {$ifdef avr}
           { Unlike the section string this only store supported sections }
-          symsection: tsymsection;
+          symsection : tsymsection;
 {$endif avr}
           { if a text buffer has been defined as being initialized from command line
             parameters as it is done by iso pascal with the program symbols,
@@ -508,8 +508,8 @@ interface
     function same_constvalue(consttyp:tconsttyp;const value1,value2:tconstvalue):boolean;
 
 {$ifdef avr}
-    function sectionNameToSymSection(sectionname: ansistring): tsymsection;
-    function symSectionToSectionName(ss: tsymsection): ansistring;
+    function sectionNameToSymSection(sectionname:ansistring):tsymsection;
+    function symSectionToSectionName(ss:tsymsection):ansistring;
 {$endif avr}
 
 implementation
@@ -599,23 +599,23 @@ implementation
       end;
 
 {$ifdef avr}
-    function sectionNameToSymSection(sectionname: ansistring): tsymsection;
+    function sectionNameToSymSection(sectionname:ansistring):tsymsection;
       begin
-        if CompareText('.PROGMEM', sectionname) = 0 then
-          result := ss_progmem
-        else if CompareText('.EEPROM', sectionname) = 0 then
-          result := ss_eeprom
+        if CompareText('.PROGMEM',sectionname)=0 then
+          result:=ss_progmem
+        else if CompareText('.EEPROM',sectionname)=0 then
+          result:=ss_eeprom
         else
-          result := ss_none;
+          result:=ss_none;
       end;
 
-    function symSectionToSectionName(ss: tsymsection): ansistring;
+    function symSectionToSectionName(ss:tsymsection):ansistring;
       begin
         case ss of
-          ss_progmem: result:='.progmem';
-          ss_eeprom:  result:='.eeprom';
+          ss_progmem:result:='.progmem';
+          ss_eeprom:result:='.eeprom';
         else
-          result := '';
+          result:='';
         end;
       end;
 {$endif avr}
@@ -2086,7 +2086,7 @@ implementation
          _mangledname:=nil;
 {$endif symansistr}
 {$ifdef avr}
-        symsection := ss_none;
+        symsection:=ss_none;
 {$endif avr}
       end;
 
