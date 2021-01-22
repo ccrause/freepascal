@@ -72,7 +72,7 @@ interface
          defoptions  : tdefoptions;
          defstates   : tdefstates;
 {$ifdef avr}
-         symsection: tsymsection;
+         symsection  : tsymsection;
 {$endif avr}
          constructor create(dt:tdeftyp);
          procedure buildderef;virtual;abstract;
