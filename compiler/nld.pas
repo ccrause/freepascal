@@ -838,8 +838,8 @@ implementation
 
         {$ifdef avr}
         { Pointers across memory sections not allowed }
-        if (right.resultdef.typ = pointerdef) and (left.resultdef.typ = pointerdef) then
-          if right.resultdef.symsection <> left.resultdef.symsection then
+        if (right.resultdef.typ=pointerdef) and (left.resultdef.typ=pointerdef) then
+          if right.resultdef.symsection<>left.resultdef.symsection then
             Comment(V_Error,'Pointers in different sections are not allowed');
         {$endif avr}
       end;
