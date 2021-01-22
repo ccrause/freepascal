@@ -230,9 +230,6 @@ implementation
          i : longint;
          diff : boolean;
          symfrom,symto : tsym;
-         {$ifdef avr}
-         from_sect,to_sect: AnsiString;
-         {$endif avr}
       begin
          eq:=te_incompatible;
          doconv:=tc_not_possible;
@@ -501,7 +498,7 @@ implementation
                  pointerdef :
                    begin
                      {$ifdef avr}
-                     if def_from.symsection <> def_to.symsection then
+                     if def_from.symsection<>def_to.symsection then
                        exit;
                      {$endif avr}
                      if cdo_explicit in cdoptions then
