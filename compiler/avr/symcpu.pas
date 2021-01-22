@@ -58,13 +58,13 @@ type
 
   tcpupointerdef = class(tpointerdef)
   protected
-    procedure ppuload_platform(ppufile: tcompilerppufile); override;
-    procedure ppuwrite_platform(ppufile: tcompilerppufile); override;
+    procedure ppuload_platform(ppufile:tcompilerppufile); override;
+    procedure ppuwrite_platform(ppufile:tcompilerppufile); override;
   public
-    constructor create(def: tdef); override;
-    function compatible_with_pointerdef_size(ptr: tpointerdef): boolean; override;
-    function getcopy: tstoreddef; override;
-    function GetTypeName: string; override;
+    constructor create(def:tdef); override;
+    function compatible_with_pointerdef_size(ptr:tpointerdef): boolean; override;
+    function getcopy:tstoreddef; override;
+    function GetTypeName:string; override;
   end;
   tcpupointerdefclass = class of tcpupointerdef;
 
@@ -186,43 +186,43 @@ implementation
 
 { tcpupointerdef }
 
-procedure tcpupointerdef.ppuload_platform(ppufile: tcompilerppufile);
+procedure tcpupointerdef.ppuload_platform(ppufile:tcompilerppufile);
 begin
   inherited ppuload_platform(ppufile);
   symsection:=tsymsection(ppufile.getbyte);
 end;
 
-procedure tcpupointerdef.ppuwrite_platform(ppufile: tcompilerppufile);
+procedure tcpupointerdef.ppuwrite_platform(ppufile:tcompilerppufile);
 begin
   inherited ppuwrite_platform(ppufile);
   ppufile.putbyte(byte(symsection));
 end;
 
-constructor tcpupointerdef.create(def: tdef);
+constructor tcpupointerdef.create(def:tdef);
 begin
   inherited create(def);
-  symsection := ss_none;
+  symsection:=ss_none;
 end;
 
-function tcpupointerdef.compatible_with_pointerdef_size(ptr: tpointerdef
+function tcpupointerdef.compatible_with_pointerdef_size(ptr:tpointerdef
   ): boolean;
 begin
-  result := inherited and
-    (tcpupointerdef(ptr).symsection = symsection);
+  result:=inherited and
+    (tcpupointerdef(ptr).symsection=symsection);
 end;
 
-function tcpupointerdef.getcopy: tstoreddef;
+function tcpupointerdef.getcopy:tstoreddef;
 begin
-  result := inherited getcopy;
-  tcpupointerdef(result).symsection := symsection;
+  result:=inherited getcopy;
+  tcpupointerdef(result).symsection:=symsection;
 end;
 
-function tcpupointerdef.GetTypeName: string;
+function tcpupointerdef.GetTypeName:string;
 begin
-  Result := inherited GetTypeName;
+  result:=inherited GetTypeName;
   case symsection of
-    ss_eeprom: result := result + ';section .EEPROM';
-    ss_progmem: result := result + ';section .PROGMEM';
+    ss_eeprom: result:=result+';section .EEPROM';
+    ss_progmem: result:=result+';section .PROGMEM';
   else
     ;
   end;
