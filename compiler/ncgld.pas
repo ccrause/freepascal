@@ -489,8 +489,8 @@ implementation
                          begin
                            reference_reset_symbol(location.reference,current_asmdata.RefAsmSymbol(gvs.mangledname,AT_DATA,use_indirect_symbol(gvs)),0,location.reference.alignment,[]);
                            {$ifdef avr}
-                           if (target_info.system in systems_allow_section) and (gvs.section <> '') then
-                             location.reference.symsection := gvs.symsection;
+                           if (target_info.system in systems_allow_section) and (gvs.section<>'') then
+                             location.reference.symsection:=gvs.symsection;
                            {$endif avr}
                          end
                        else
