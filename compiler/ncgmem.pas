@@ -261,7 +261,7 @@ implementation
 
          secondpass(left);
          { Copy section name from referenced type to dereferenced instance }
-         {$ifdef avr} location.reference.symsection := left.resultdef.symsection;{$endif}
+         {$ifdef avr} location.reference.symsection:=left.resultdef.symsection;{$endif}
 
          if not(left.location.loc in [LOC_CREGISTER,LOC_REGISTER,LOC_CREFERENCE,LOC_REFERENCE,LOC_CONSTANT]) then
            hlcg.location_force_reg(current_asmdata.CurrAsmList,left.location,left.resultdef,left.resultdef,true);
