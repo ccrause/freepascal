@@ -96,7 +96,7 @@ unit cgutils;
 {$endif aarch64}
 {$ifdef avr}
          addressmode : taddressmode;
-         symsection: tsymsection;
+         symsection  : tsymsection;
 {$endif avr}
 {$ifdef m68k}
          { indexed increment and decrement mode }
