@@ -574,7 +574,13 @@ implementation
                       if (tstringdef(def_from).stringtype=tstringdef(def_to).stringtype) and
                         { for shortstrings also the length must match }
                          ((tstringdef(def_from).stringtype<>st_shortstring) or
-                          (tstringdef(def_from).len=tstringdef(def_to).len)) and
+                          (
+                           (tstringdef(def_from).len=tstringdef(def_to).len)
+{$ifdef avr}
+                           and (tstringdef(def_from).symsection=tstringdef(def_to).symsection)
+{$endif avr}
+                           )
+                         ) and
                          { for ansi- and unicodestrings also the encoding must match }
                          (not(tstringdef(def_from).stringtype in [st_ansistring,st_unicodestring]) or
                           (tstringdef(def_from).encoding=tstringdef(def_to).encoding)) then
