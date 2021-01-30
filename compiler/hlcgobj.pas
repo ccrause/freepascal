@@ -3400,6 +3400,10 @@ implementation
       paramanager.getcgtempparaloc(list,pd,1,cgpara1);
       paramanager.getcgtempparaloc(list,pd,2,cgpara2);
       paramanager.getcgtempparaloc(list,pd,3,cgpara3);
+{$ifdef avr}
+      if strdef.symsection<>dest.symsection then
+        Comment(V_Error,'ShortString located in incompatible section');
+{$endif avr}
       if pd.is_pushleftright then
         begin
           a_loadaddr_ref_cgpara(list,strdef,dest,cgpara1);

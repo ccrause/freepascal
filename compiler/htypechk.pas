@@ -2098,6 +2098,14 @@ implementation
         tmpeq: tequaltype;
       begin
         { Note: eq must be already valid, it will only be updated! }
+{$ifdef avr}
+        { Only accept parameters from the same sections }
+        if def_to.symsection<>p.resultdef.symsection then
+          begin
+            eq:=te_incompatible;
+            exit;
+          end;
+{$endif avr}
         case def_to.typ of
           stringdef :
             begin
@@ -2106,7 +2114,11 @@ implementation
               { when searching the correct overloaded procedure   }
               if (p.resultdef.typ=stringdef) and
                  (tstringdef(def_to).stringtype=tstringdef(p.resultdef).stringtype) and
-                 (tstringdef(def_to).encoding=tstringdef(p.resultdef).encoding) then
+                 (tstringdef(def_to).encoding=tstringdef(p.resultdef).encoding)
+{$ifdef avr}
+                 and (tstringdef(def_to).symsection=tstringdef(p.resultdef).symsection)
+{$endif avr}
+                 then
                 eq:=te_equal
             end;
           formaldef,
