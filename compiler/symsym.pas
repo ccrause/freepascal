@@ -510,6 +510,7 @@ interface
 {$ifdef avr}
     function sectionNameToSymSection(sectionname:ansistring):tsymsection;
     function symSectionToSectionName(ss:tsymsection):ansistring;
+    procedure maybeRegisterNewTypeWithSection(var sym:tabstractvarsym);
 {$endif avr}
 
 implementation
@@ -618,6 +619,47 @@ implementation
           result:='';
         end;
       end;
+
+    procedure maybeRegisterNewTypeWithSection(var sym:tabstractvarsym);
+      var
+        s:TIDString;
+        newtype:ttypesym;
+        srsym:tsym;
+        symt:TSymtable;
+        hdef:tdef;
+      begin
+        if (sym.vardef.typ<>pointerdef) then
+          if (sym.vardef.symsection<>ss_none) then
+            begin
+              if (sym.vardef.symsection<>sym.symsection) then
+                Comment(V_Error,'Incompatible sections specified for type and symbol');
+            end
+          else
+            begin
+              if sym.symsection<>ss_none then
+                begin
+                  s := sym.vardef.typename + symSectionToSectionName(sym.symsection);
+                  // Check if type for this section is already registered
+                  if not searchsym_type(s,srsym,symt) then
+                    begin
+                      // register new type symbol
+                      hdef:=tstoreddef(sym.vardef).getcopy;
+                      hdef.symsection := sym.symsection;
+                      include(hdef.defoptions,df_unique);
+
+                      newtype:=ctypesym.create(s,hdef);
+                      newtype.visibility:=symtablestack.top.currentvisibility;
+                      include(newtype.symoptions,sp_explicitrename);
+                      symtablestack.top.insert(newtype);
+                      hdef.register_def;
+                    end;
+                end;
+            end;
+
+        // Register new type with section name appended
+        sym.vardef:=hdef;
+      end;
+
 {$endif avr}
 
 {****************************************************************************

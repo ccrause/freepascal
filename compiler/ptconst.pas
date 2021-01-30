@@ -39,6 +39,9 @@ implementation
        scanner,pbase,pdecvar,
        node,ngtcon,
        symconst,symbase,symdef
+{$ifdef avr}
+       ,symtable
+{$endif avr}
        ;
 
     procedure read_typed_const(list:tasmlist;sym:tstaticvarsym;in_structure:boolean);
@@ -120,6 +123,10 @@ implementation
                   Message(parser_e_section_no_locals);
                 tstaticvarsym(sym).section:=section;
                 include(sym.varoptions, vo_has_section);
+{$ifdef avr}
+                sym.symsection:=sectionNameToSymSection(section);
+                maybeRegisterNewTypeWithSection(tabstractvarsym(sym));
+{$endif avr}
               end;
           end;
 

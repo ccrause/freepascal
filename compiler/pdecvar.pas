@@ -1545,8 +1545,11 @@ implementation
                          if vs.typ<>staticvarsym then
                            Message(parser_e_section_no_locals);
                          tstaticvarsym(vs).section:=sectionname;
-                         tstaticvarsym(vs).symsection:=sectionNameToSymSection(sectionname);
                          include(vs.varoptions, vo_has_section);
+{$ifdef avr}
+                         vs.symsection:=sectionNameToSymSection(sectionname);
+                         maybeRegisterNewTypeWithSection(vs);
+{$endif avr}
                        end;
                    end;
                end;
