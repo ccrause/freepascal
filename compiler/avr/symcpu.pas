@@ -68,7 +68,10 @@ type
   end;
   tcpupointerdefclass = class of tcpupointerdef;
 
+  { tcpurecorddef }
+
   tcpurecorddef = class(trecorddef)
+    function GetTypeName:string; override;
   end;
   tcpurecorddefclass = class of tcpurecorddef;
 
@@ -84,15 +87,24 @@ type
   end;
   tcpuclassrefdefclass = class of tcpuclassrefdef;
 
+  { tcpuarraydef }
+
   tcpuarraydef = class(tarraydef)
+    function GetTypeName:string; override;
   end;
   tcpuarraydefclass = class of tcpuarraydef;
 
+  { tcpuorddef }
+
   tcpuorddef = class(torddef)
+    function GetTypeName:string; override;
   end;
   tcpuorddefclass = class of tcpuorddef;
 
+  { tcpufloatdef }
+
   tcpufloatdef = class(tfloatdef)
+    function GetTypeName:string; override;
   end;
   tcpufloatdefclass = class of tcpufloatdef;
 
@@ -104,7 +116,10 @@ type
   end;
   tcpuprocdefclass = class of tcpuprocdef;
 
+  { tcpustringdef }
+
   tcpustringdef = class(tstringdef)
+    function GetTypeName:string; override;
   end;
   tcpustringdefclass = class of tcpustringdef;
 
@@ -184,6 +199,71 @@ const
 
 implementation
 
+{ tcpustringdef }
+
+function tcpustringdef.GetTypeName: string;
+begin
+  result := inherited GetTypeName;
+  case symsection of
+    ss_eeprom: result:=result+'.EEPROM';
+    ss_progmem: result:=result+'.PROGMEM';
+  else
+    ;
+  end;
+end;
+
+{ tcpuorddef }
+
+function tcpuorddef.GetTypeName: string;
+begin
+  result := inherited GetTypeName;
+  case symsection of
+    ss_eeprom: result:=result+'.EEPROM';
+    ss_progmem: result:=result+'.PROGMEM';
+  else
+    ;
+  end;
+end;
+
+{ tcpuarraydef }
+
+function tcpuarraydef.GetTypeName: string;
+begin
+  result := inherited GetTypeName;
+  case symsection of
+    ss_eeprom: result:=result+'.EEPROM';
+    ss_progmem: result:=result+'.PROGMEM';
+  else
+    ;
+  end;
+end;
+
+{ tcpufloatdef }
+
+function tcpufloatdef.GetTypeName: string;
+begin
+  result := inherited GetTypeName;
+  case symsection of
+    ss_eeprom: result:=result+'.EEPROM';
+    ss_progmem: result:=result+'.PROGMEM';
+  else
+    ;
+  end;
+end;
+
+{ tcpurecorddef }
+
+function tcpurecorddef.GetTypeName: string;
+begin
+  result := inherited GetTypeName;
+  case symsection of
+    ss_eeprom: result:=result+'.EEPROM';
+    ss_progmem: result:=result+'.PROGMEM';
+  else
+    ;
+  end;
+end;
+
 { tcpupointerdef }
 
 procedure tcpupointerdef.ppuload_platform(ppufile:tcompilerppufile);
@@ -221,8 +301,8 @@ function tcpupointerdef.GetTypeName:string;
 begin
   result:=inherited GetTypeName;
   case symsection of
-    ss_eeprom: result:=result+';section .EEPROM';
-    ss_progmem: result:=result+';section .PROGMEM';
+    ss_eeprom: result:=result+'.EEPROM';
+    ss_progmem: result:=result+'.PROGMEM';
   else
     ;
   end;
