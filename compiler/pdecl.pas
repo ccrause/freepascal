@@ -1062,19 +1062,6 @@ implementation
                        consume(_SEMICOLON);
                      end;
 {$endif x86}
-{$ifdef avr}
-                    { Try to read section directive and associate with this pointer type }
-                    if try_to_consume(_SECTION) then
-                     begin
-                       // Need more error checking?
-                       if not isunique then
-                          Comment(V_Error,'Section directive only allowed for unique types');
-                       s:=get_stringconst;
-                       consume(_SEMICOLON);
-                       if s<>'' then
-                         hdef.symsection:=sectionNameToSymSection(s);
-                     end;
-{$endif avr}
                   end;
                 procvardef :
                   begin
@@ -1165,6 +1152,23 @@ implementation
                     consume(_SEMICOLON);
                   end;
               end;
+
+{$ifdef avr}
+              if hdef.typ in [arraydef,recorddef,pointerdef,orddef,
+                              stringdef,objectdef,floatdef] then
+                { Try to read section directive and associate with this pointer type }
+                if try_to_consume(_SECTION) then
+                 begin
+                   // Need more error checking?
+                   if not isunique then
+                      Comment(V_Error,'Section directive only allowed for unique types');
+                   s:=get_stringconst;
+                   consume(_SEMICOLON);
+                   if s<>'' then
+                     hdef.symsection:=sectionNameToSymSection(s);
+                 end;
+{$endif avr}
+
 
               { if we have a real type definition or a unique type we may bind
                 attributes to this def }

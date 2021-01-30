@@ -182,6 +182,10 @@ interface
           {could also be part of tabstractnormalvarsym, but there's
            one byte left here till the next 4 byte alignment        }
           varsymaccess  : tvarsymaccessflags;
+{$ifdef avr}
+          { Unlike the section string this only store supported sections }
+          symsection : tsymsection;
+{$endif avr}
           constructor create(st:tsymtyp;const n : TSymStr;vsp:tvarspez;def:tdef;vopts:tvaroptions);
           constructor ppuload(st:tsymtyp;ppufile:tcompilerppufile);
           procedure ppuwrite(ppufile:tcompilerppufile);override;
@@ -302,10 +306,6 @@ interface
 {$endif symansistr}
       public
           section : ansistring;
-{$ifdef avr}
-          { Unlike the section string this only store supported sections }
-          symsection : tsymsection;
-{$endif avr}
           { if a text buffer has been defined as being initialized from command line
             parameters as it is done by iso pascal with the program symbols,
             isoindex contains the parameter number }
