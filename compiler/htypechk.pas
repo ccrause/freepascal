@@ -3013,7 +3013,7 @@ implementation
               else
               { for value and const parameters check if a integer is constant or
                 included in other integer -> equal and calc ordinal_distance }
-               if not(currpara.varspez in [vs_var,vs_out]) and
+               if (currpara.varspez in [vs_const,vs_value]) and  // the inverse check left out constref...
                   is_integer(def_from) and
                   is_integer(def_to) and
                   is_in_limit(def_from,def_to) then
@@ -3036,7 +3036,7 @@ implementation
               else
               { for value and const parameters check precision of real, give
                 penalty for loosing of precision. var and out parameters must match exactly }
-               if not(currpara.varspez in [vs_var,vs_out]) and
+               if (currpara.varspez in [vs_value,vs_const]) and
                   is_real_or_cextended(def_from) and
                   is_real_or_cextended(def_to) then
                  begin
@@ -3065,7 +3065,7 @@ implementation
               else
               { related object parameters also need to determine the distance between the current
                 object and the object we are comparing with. var and out parameters must match exactly }
-               if not(currpara.varspez in [vs_var,vs_out]) and
+               if not(currpara.varspez in [vs_var,vs_out,vs_constref]) and   { also constref }
                   (def_from.typ=objectdef) and
                   (def_to.typ=objectdef) and
                   (tobjectdef(def_from).objecttype=tobjectdef(def_to).objecttype) and

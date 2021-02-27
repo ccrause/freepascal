@@ -281,7 +281,7 @@ end;
 constructor tcpupointerdef.create(def:tdef);
 begin
   inherited create(def);
-  symsection:=ss_none;
+  symsection:=def.symsection;
 end;
 
 function tcpupointerdef.compatible_with_pointerdef_size(ptr:tpointerdef

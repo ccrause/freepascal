@@ -354,6 +354,9 @@ implementation
           still expects the resultdef of the node to be a stringdef) }
         if equal_defs(p.resultdef,def) and
            (p.resultdef.typ=def.typ) and
+{$ifdef avr}
+           (p.resultdef.symsection=def.symsection) and
+{$endif avr}
            not is_bitpacked_access(p) and
            ((p.blocktype=bt_const) or
             not ctypeconvnode.target_specific_need_equal_typeconv(p.resultdef,def)) then
@@ -361,6 +364,7 @@ implementation
             { don't replace encoded string constants to rawbytestring encoding.
               preserve the codepage }
             if not (is_rawbytestring(def) and (p.nodetype=stringconstn)) then
+              { this now destroys the section information... }
               p.resultdef:=def
           end
         else

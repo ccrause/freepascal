@@ -1102,10 +1102,8 @@ inherited_objectoptions : tobjectoptions = [oo_has_virtual,oo_has_private,oo_has
       'objc-related-result-type' {po_objc_related_result_type}
     );
 
-{$ifdef avr}
 type
   tsymsection = (ss_none,ss_progmem,ss_eeprom);
-{$endif avr}
 
 implementation
 

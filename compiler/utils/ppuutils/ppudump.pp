@@ -3997,7 +3997,7 @@ begin
              write  ([space,'     Pointed Type : ']);
              readderef('',TPpuPointerDef(def).Ptr);
              writeln([space,' Has Pointer Math : ',(getbyte<>0)]);
-             if target_info.system=system_avr_embedded then
+             if tsystemcpu(ppufile.header.common.cpu) in [cpu_avr] then
                begin
                  b:=getbyte;
                  if b>0 then
@@ -4009,6 +4009,7 @@ begin
                      else
                        WriteWarning('Invalid AVR section type: ' + IntToStr(b));
                      end;
+                   end;
                end;
              if tsystemcpu(ppufile.header.common.cpu) in [cpu_i8086,cpu_i386,cpu_x86_64] then
                begin

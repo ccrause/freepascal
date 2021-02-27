@@ -657,8 +657,11 @@ implementation
           If so, copy section name to result definition }
         if (left.nodetype=loadn) and
            (tloadnode(left).symtableentry.typ=staticvarsym) then
-          tcpupointerdef(resultdef).symsection:=
+          begin
+            tcpupointerdef(resultdef).symsection:=
             sectionNameToSymSection(tstaticvarsym(tloadnode(left).symtableentry).section);
+            maybeRegisterNewTypeWithSection(resultdef);
+          end;
         {$endif avr}
       end;
 
