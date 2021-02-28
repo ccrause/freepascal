@@ -540,6 +540,11 @@ implementation
                     else
                       location_reset_ref(location,LOC_REFERENCE,newsize,1,[]);
                     hlcg.reference_reset_base(location.reference,voidpointertype,hregister,0,ctempposinvalid,location.reference.alignment,[]);
+{$ifdef avr}
+                    { ensure location points to the correct section according to the pointer information }
+                    { so that code generator can generate section specific code }
+                    location.reference.symsection := vd.symsection;
+{$endif avr}
                   end;
 
                 { make const a LOC_CREFERENCE }
