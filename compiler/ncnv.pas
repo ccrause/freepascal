@@ -2552,6 +2552,12 @@ implementation
                   if assigned(result) then
                     exit;
 
+{$ifdef avr}
+                  { Cannot eliminate a loadn if left and result are in different sections }
+                  if (left.nodetype = loadn) and (resultdef.symsection <> left.resultdef.symsection) then
+                    exit;
+{$endif avr}
+
                   { in case of bitpacked accesses, the original type must
                     remain so that not too many/few bits are laoded }
                   if is_bitpacked_access(left) then
