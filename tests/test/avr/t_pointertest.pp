@@ -1,7 +1,7 @@
 { %cpu=avr }
 { %target=embedded }
 
-program t_paramtest;
+program t_pointertest;
 
 type
   PByte_eeprom = type PByte; section '.eeprom';

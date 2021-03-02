@@ -37,7 +37,6 @@ end;
 var
   b: byte = $12; section '.eeprom';
   b_: Byte_eeprom = $34;
-  pb: PByte_eeprom;
 
 begin
   expectedResult := b;
@@ -50,7 +49,4 @@ begin
   proc_def(b_);
   proc_constref(b_);
   proc_ptr(@b_);
-
-{  pb := PByte_eeprom(0);
-  proc_ptr(pb);}
 end.
