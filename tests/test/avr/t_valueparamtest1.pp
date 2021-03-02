@@ -5,7 +5,6 @@ program t_valueparamtest1;
 
 type
   Byte_eeprom = type byte; section '.eeprom';
-  PByte_eeprom = type PByte; section '.eeprom';
 
 var
   expectedResult: byte;
