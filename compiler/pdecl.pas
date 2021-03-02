@@ -694,7 +694,11 @@ implementation
 {$ifdef x86}
          segment_register: string;
 {$endif x86}
-      begin
+{$ifdef avr}
+         symsect: tsymsection;
+         hash:THashedIDString;
+{$endif avr}
+begin
          old_block_type:=block_type;
          { save unit container of forward declarations -
            we can be inside nested class type block }
@@ -1165,7 +1169,22 @@ implementation
                    s:=get_stringconst;
                    consume(_SEMICOLON);
                    if s<>'' then
-                     hdef.symsection:=sectionNameToSymSection(s);
+                     begin
+                       symsect := sectionNameToSymSection(s);
+                       { Need to create new tdef, else changes will be reflected in original tdef }
+                       if hdef.symsection<>symsect then
+                         begin
+                           if hdef.symsection <> symsect then
+                             begin
+                               hdef:=tstoreddef(hdef).getcopy;
+                               hdef.symsection:=symsect;
+                               newtype.typedef:=hdef;
+                               include(hdef.defoptions,df_unique);
+                               hdef.typesym:=newtype;
+                               hdef.register_def;
+                             end;
+                         end;
+                     end;
                  end;
 {$endif avr}
 

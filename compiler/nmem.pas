@@ -654,13 +654,12 @@ implementation
 
         {$ifdef avr}
         { check if base symbol is located in a section.
-          If so, copy section name to result definition }
+          If so, use or register a new def containing a reference to the section }
         if (left.nodetype=loadn) and
            (tloadnode(left).symtableentry.typ=staticvarsym) then
           begin
-            tcpupointerdef(resultdef).symsection:=
-            sectionNameToSymSection(tstaticvarsym(tloadnode(left).symtableentry).section);
-            maybeRegisterNewTypeWithSection(resultdef);
+            maybeRegisterNewTypeWithSection(resultdef,
+              sectionNameToSymSection(tstaticvarsym(tloadnode(left).symtableentry).section));
           end;
         {$endif avr}
       end;

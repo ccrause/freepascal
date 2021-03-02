@@ -511,7 +511,7 @@ interface
     function sectionNameToSymSection(sectionname:ansistring):tsymsection;
     function symSectionToSectionName(ss:tsymsection):ansistring;
     procedure maybeRegisterNewTypeWithSection(var sym:tabstractvarsym); overload;
-    procedure maybeRegisterNewTypeWithSection(var def:tdef); overload;
+    procedure maybeRegisterNewTypeWithSection(var def:tdef; const symsection: tsymsection); overload;
 {$endif avr}
 
 implementation
@@ -657,36 +657,46 @@ implementation
                         newtype.visibility:=symtablestack.top.currentvisibility;
                         include(newtype.symoptions,sp_explicitrename);
                         symtablestack.top.insert(newtype);
+                        hdef.typesym:=newtype;
                         hdef.register_def;
-                        // Register new type with section name appended
                         sym.vardef:=hdef;
+                        { Add reference since this is called when amending a type's section info in a declaration }
+                        newtype.IncRefCount;
                       end;
                   end;
               end;
           end;
       end;
 
-    procedure maybeRegisterNewTypeWithSection(var def: tdef);
+        procedure maybeRegisterNewTypeWithSection(var def: tdef;
+      const symsection: tsymsection);
       var
         s:TIDString;
         newtype:ttypesym;
         srsym:tsym;
         symt:TSymtable;
         hash:THashedIDString;
+        hadTypeSym:boolean;
       begin
-        if def.symsection<>ss_none then
+        if def.symsection<>symsection then
           begin
-            s := def.typename + symSectionToSectionName(def.symsection);
+            newtype:=ttypesym(def.typesym);
+            s:=def.typesym.RealName + symSectionToSectionName(symsection);
             hash.Id:=upper(s);
             if symtablestack.top.FindWithHash(hash)=nil then
               begin
                 // register new type symbol
                 def:=tstoreddef(def).getcopy;
+                def.symsection:=symsection;
                 include(def.defoptions,df_unique);
-                newtype:=ctypesym.create(s,def);
-                newtype.visibility:=symtablestack.top.currentvisibility;
-                include(newtype.symoptions,sp_explicitrename);
-                symtablestack.top.insert(newtype);
+                if not Assigned(newtype) then
+                  begin
+                    newtype:=ctypesym.create(s,def);
+                    newtype.visibility:=symtablestack.top.currentvisibility;
+                    include(newtype.symoptions,sp_explicitrename);
+                    symtablestack.top.insert(newtype);
+                  end;
+                def.typesym:=newtype;
                 def.register_def;
               end;
           end;
