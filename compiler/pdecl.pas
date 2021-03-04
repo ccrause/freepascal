@@ -1188,7 +1188,6 @@ begin
                          begin
                            if hdef.symsection <> symsect then
                              begin
-                               hdef:=tstoreddef(hdef).getcopy;
                                hdef.symsection:=symsect;
                                newtype.typedef:=hdef;
                                include(hdef.defoptions,df_unique);
