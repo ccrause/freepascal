@@ -125,7 +125,10 @@ implementation
                 include(sym.varoptions, vo_has_section);
 {$ifdef avr}
                 sym.symsection:=sectionNameToSymSection(section);
-                maybeRegisterNewTypeWithSection(tabstractvarsym(sym));
+                if sym.vardef.symsection=ss_none then
+                  maybeRegisterNewTypeWithSection(tabstractvarsym(sym))
+                else if sym.vardef.symsection<>sym.symsection then
+                  Comment(V_Error, 'Cannot override section value of type');
 {$endif avr}
               end;
           end;
