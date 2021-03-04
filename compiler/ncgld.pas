@@ -543,7 +543,7 @@ implementation
 {$ifdef avr}
                     { ensure location points to the correct section according to the pointer information }
                     { so that code generator can generate section specific code }
-                    location.reference.symsection := vd.symsection;
+                      location.reference.symsection := resultdef.symsection;
 {$endif avr}
                   end;
 
