@@ -314,6 +314,18 @@ implementation
                        symtablestack.top.insert(sym);
                      end;
                    sym.register_sym;
+{$ifdef avr}
+                   if sym.typ=staticvarsym then
+                   begin
+                     if (hdef.symsection<>ss_none) then
+                      begin
+                        tstaticvarsym(sym).symsection:=hdef.symsection;
+                        tstaticvarsym(sym).section:=symSectionToSectionName(hdef.symsection);
+                        include(tstaticvarsym(sym).varoptions, vo_has_section);
+                      end
+                   end;
+{$endif avr}
+
                    current_tokenpos:=storetokenpos;
                    { procvar can have proc directives, but not type references }
                    if (hdef.typ=procvardef) and
