@@ -16,6 +16,7 @@ var
   w_eep: word = $1234; section '.eeprom';
   
 begin
+    // Incompatible sections between w_eep and w
   test(w_eep);
 end.
 

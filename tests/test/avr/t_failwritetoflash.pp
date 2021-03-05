@@ -13,6 +13,7 @@ var
   b: byte;
 
 begin
+  // Write to flash not supported
   wp1 := 1;
 end.
 
