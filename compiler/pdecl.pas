@@ -1183,18 +1183,8 @@ begin
                    if s<>'' then
                      begin
                        symsect := sectionNameToSymSection(s);
-                       { Need to create new tdef, else changes will be reflected in original tdef }
                        if hdef.symsection<>symsect then
-                         begin
-                           if hdef.symsection <> symsect then
-                             begin
-                               hdef.symsection:=symsect;
-                               newtype.typedef:=hdef;
-                               include(hdef.defoptions,df_unique);
-                               hdef.typesym:=newtype;
-                               hdef.register_def;
-                             end;
-                         end;
+                         hdef.symsection:=symsect;
                      end;
                  end;
 {$endif avr}
