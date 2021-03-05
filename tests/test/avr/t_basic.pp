@@ -1,7 +1,7 @@
 { %cpu=avr }
 { %target=embedded }
 
-program t_vartest;
+program t_basictest;
 
 type
   myword_eeprom = type word; section '.eeprom';
