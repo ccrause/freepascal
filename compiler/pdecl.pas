@@ -1236,7 +1236,7 @@ begin
                   (idtoken=_FINAL))));
          { resolve type block forward declarations and restore a unit
            container for them }
-         resolve_forward_types;
+         resolve_forward_types{$ifdef avr}(isunique){$endif avr};
          current_module.checkforwarddefs.free;
          current_module.checkforwarddefs:=old_checkforwarddefs;
          block_type:=old_block_type;

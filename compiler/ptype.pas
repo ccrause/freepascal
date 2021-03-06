@@ -38,7 +38,7 @@ interface
       );
       TSingleTypeOptions=set of TSingleTypeOption;
 
-    procedure resolve_forward_types;
+    procedure resolve_forward_types{$ifdef avr}(const isunique: boolean){$endif avr};
 
     { reads a string, file type or a type identifier }
     procedure single_type(out def:tdef;options:TSingleTypeOptions);
@@ -119,7 +119,7 @@ implementation
       end;
 
 
-    procedure resolve_forward_types;
+    procedure resolve_forward_types{$ifdef avr}(const isunique: boolean){$endif avr};
       var
         i: longint;
         tmp,
@@ -169,6 +169,13 @@ implementation
                               srsym:=tstoreddef(tmp).typesym;
                           end;
                         tabstractpointerdef(def).pointeddef:=ttypesym(srsym).typedef;
+{$ifdef avr}
+                        if (tabstractpointerdef(def).pointeddef.symsection<>ss_none) then
+                          if isunique then
+                            def.symsection:=tabstractpointerdef(def).pointeddef.symsection
+                          else
+                            Comment(V_Error,'Section directive only allowed for unique types');
+{$endif avr}
                         { correctly set the generic/specialization flags and the genericdef }
                         if df_generic in tstoreddef(tabstractpointerdef(def).pointeddef).defoptions then
                           include(tstoreddef(def).defoptions,df_generic);
