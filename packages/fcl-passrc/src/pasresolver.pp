@@ -6229,16 +6229,43 @@ begin
 end;
 
 procedure TPasResolver.FinishSubElementType(Parent: TPasElement; El: TPasType);
+
+  procedure InsertInFront(NewParent: TPasElement; List: TFPList
+    {$IFDEF CheckPasTreeRefCount};const aId: string{$ENDIF});
+  var
+    i: Integer;
+    p: TPasElement;
+  begin
+    p:=El.Parent;
+    if NewParent=p.Parent then
+      begin
+      // e.g. a:array of longint; -> insert a$a in front of a
+      i:=List.Count-1;
+      while (i>=0) and (List[i]<>Pointer(p)) do
+        dec(i);
+      if i<0 then
+        List.Add(El)
+      else
+        List.Insert(i,El);
+      end
+    else
+      begin
+      List.Add(El);
+      end;
+    El.AddRef{$IFDEF CheckPasTreeRefCount}(aID){$ENDIF};
+    El.Parent:=NewParent;
+  end;
+
 var
   Decl: TPasDeclarations;
   EnumScope: TPasEnumTypeScope;
+  p: TPasElement;
+  MembersType: TPasMembersType;
 begin
   EmitTypeHints(Parent,El);
   if (El.Name<>'') or (AnonymousElTypePostfix='') then exit;
   if Parent.Name='' then
     RaiseMsg(20170415165455,nCannotNestAnonymousX,sCannotNestAnonymousX,[GetElementTypeName(El)],El);
-  if not (Parent.Parent is TPasDeclarations) then
-    RaiseMsg(20170416094735,nCannotNestAnonymousX,sCannotNestAnonymousX,[GetElementTypeName(El)],El);
   if El.Parent<>Parent then
     RaiseNotYetImplemented(20190215085011,Parent);
   // give anonymous sub type a name
@@ -6246,11 +6273,27 @@ begin
   {$IFDEF VerbosePasResolver}
   writeln('TPasResolver.FinishSubElementType parent="',GetObjName(Parent),'" named anonymous type "',GetObjName(El),'"');
   {$ENDIF}
-  Decl:=TPasDeclarations(Parent.Parent);
-  Decl.Declarations.Add(El);
-  El.AddRef{$IFDEF CheckPasTreeRefCount}('TPasDeclarations.Declarations'){$ENDIF};
-  El.Parent:=Decl;
-  Decl.Types.Add(El);
+
+  p:=Parent.Parent;
+  repeat
+    if p is TPasDeclarations then
+      begin
+      Decl:=TPasDeclarations(p);
+      InsertInFront(Decl,Decl.Declarations{$IFDEF CheckPasTreeRefCount},'TPasDeclarations.Declarations'{$ENDIF});
+      Decl.Types.Add(El);
+      break;
+      end
+    else if p is TPasMembersType then
+      begin
+      MembersType:=TPasMembersType(p);
+      InsertInFront(MembersType,MembersType.Members{$IFDEF CheckPasTreeRefCount},'TPasMembersType.Members'{$ENDIF});
+      break;
+      end
+    else
+      p:=p.Parent;
+    if p=nil then
+      RaiseMsg(20170416094735,nCannotNestAnonymousX,sCannotNestAnonymousX,[GetElementTypeName(El)],El);
+  until false;
   if (El.ClassType=TPasEnumType) and (Parent.ClassType=TPasSetType) then
     begin
     // anonymous enumtype
@@ -7819,6 +7862,8 @@ begin
     CheckUseAsType(El.VarType,20190123095916,El);
     if El.Expr<>nil then
       CheckAssignCompatibility(El,El.Expr,true);
+    if El.VarType.Parent=El then
+      FinishSubElementType(El,El.VarType);
     end
   else if El.Expr<>nil then
     begin
@@ -12278,12 +12323,17 @@ begin
   {$ENDIF}
   if not (TopScope is TPasIdentifierScope) then
     RaiseInvalidScopeForElement(20160929205732,El);
-  AddIdentifier(TPasIdentifierScope(TopScope),El.Name,El,pikSimple);
+  if El.Name<>'' then
+    AddIdentifier(TPasIdentifierScope(TopScope),El.Name,El,pikSimple)
+  else
+    begin
+    // anonymous enumtype
+    end;
   EnumScope:=TPasEnumTypeScope(PushScope(El,TPasEnumTypeScope));
   // add canonical set
   if El.Parent is TPasSetType then
     begin
-    // anonymous enumtype, e.g. "set of ()"
+    // set of anonymous enumtype, e.g. "set of ()"
     CanonicalSet:=TPasSetType(El.Parent);
     CanonicalSet.AddRef{$IFDEF CheckPasTreeRefCount}('TPasEnumTypeScope.CanonicalSet'){$ENDIF};
     end
@@ -18763,52 +18813,65 @@ function TPasResolver.BI_InExclude_OnGetCallCompatibility(
 // check params of built in proc 'include'
 var
   Params: TParamsExpr;
-  Param: TPasExpr;
-  ParamResolved: TPasResolverResult;
+  Param0, Param1: TPasExpr;
+  Param0Resolved, Param1Resolved: TPasResolverResult;
   EnumType: TPasEnumType;
   C: TClass;
+  LoTypeEl: TPasType;
+  RgType: TPasRangeType;
 begin
   if not CheckBuiltInMinParamCount(Proc,Expr,2,RaiseOnError) then
     exit(cIncompatible);
   Params:=TParamsExpr(Expr);
 
-  // first param: set variable
+  // first Param0: set variable
   // todo set of int, set of char, set of bool
-  Param:=Params.Params[0];
-  ComputeElement(Param,ParamResolved,[rcNoImplicitProc]);
+  Param0:=Params.Params[0];
+  ComputeElement(Param0,Param0Resolved,[rcNoImplicitProc]);
+  Param1:=Params.Params[1];
+  ComputeElement(Param1,Param1Resolved,[]);
+
   EnumType:=nil;
-  if ([rrfReadable,rrfWritable]*ParamResolved.Flags=[rrfReadable,rrfWritable])
-      and (ParamResolved.IdentEl<>nil) then
+  RgType:=nil;
+  if ([rrfReadable,rrfWritable]*Param0Resolved.Flags=[rrfReadable,rrfWritable])
+      and (Param0Resolved.IdentEl<>nil) then
     begin
-    C:=ParamResolved.IdentEl.ClassType;
+    C:=Param0Resolved.IdentEl.ClassType;
     if (C.InheritsFrom(TPasVariable)
         or (C=TPasArgument)
         or (C=TPasResultElement)) then
       begin
-      if (ParamResolved.BaseType=btSet)
-          and (ParamResolved.LoTypeEl is TPasEnumType) then
-        EnumType:=TPasEnumType(ParamResolved.LoTypeEl);
+      if Param0Resolved.BaseType=btSet then
+        begin
+        LoTypeEl:=Param0Resolved.LoTypeEl;
+        if LoTypeEl.ClassType=TPasEnumType then
+          begin
+          EnumType:=TPasEnumType(LoTypeEl);
+          if (not (rrfReadable in Param0Resolved.Flags))
+              or (Param0Resolved.LoTypeEl<>EnumType) then
+            begin
+            if RaiseOnError then
+              RaiseIncompatibleType(20210201225926,nIncompatibleTypeArgNo,
+                ['2'],Param0Resolved.LoTypeEl,EnumType,Param0);
+            exit(cIncompatible);
+            end;
+          end
+        else if LoTypeEl.ClassType=TPasRangeType then
+          begin
+          RgType:=TPasRangeType(LoTypeEl);
+          ComputeElement(RgType.RangeExpr.left,Param0Resolved,[]);
+          Result:=CheckAssignResCompatibility(Param0Resolved,Param1Resolved,Param1,RaiseOnError);
+          end;
+        end;
       end;
     end;
-  if EnumType=nil then
+  if (EnumType=nil) and (RgType=nil) then
     begin
     {$IFDEF VerbosePasResolver}
-    writeln('TPasResolver.OnGetCallCompatibility_InExclude ',GetResolverResultDbg(ParamResolved));
+    writeln('TPasResolver.OnGetCallCompatibility_InExclude ',GetResolverResultDbg(Param0Resolved));
     {$ENDIF}
-    exit(CheckRaiseTypeArgNo(20170216152301,1,Param,ParamResolved,
+    exit(CheckRaiseTypeArgNo(20170216152301,1,Param0,Param0Resolved,
       'variable of set of enumtype',RaiseOnError));
-    end;
-
-  // second param: enum
-  Param:=Params.Params[1];
-  ComputeElement(Param,ParamResolved,[]);
-  if (not (rrfReadable in ParamResolved.Flags))
-      or (ParamResolved.LoTypeEl<>EnumType) then
-    begin
-    if RaiseOnError then
-      RaiseIncompatibleType(20170216152302,nIncompatibleTypeArgNo,
-        ['2'],ParamResolved.LoTypeEl,EnumType,Param);
-    exit(cIncompatible);
     end;
 
   Result:=CheckBuiltInMaxParamCount(Proc,Params,2,RaiseOnError);
@@ -21038,8 +21101,8 @@ begin
       writeln('TPasResolver.FindElement searching scope "',CurName,'" RightPath="',RightPath,'" ...');
     {AllowWriteln-}
     {$ENDIF}
-    if not IsValidIdent(CurName) then
-      RaiseNotYetImplemented(20170328000033,ErrorEl,CurName);
+    // Note: CurName can be a non Pascal name, when specializing an autogenerated anonymous type
+    //if not IsValidIdent(CurName) then ;
     if CurScopeEl<>nil then
       begin
       NeedPop:=true;
@@ -29060,20 +29123,23 @@ function TPasResolver.IsTGUID(RecTypeEl: TPasRecordType): boolean;
 var
   Members: TFPList;
   El: TPasElement;
+  i, MemberIndex: Integer;
 begin
   Result:=false;
   if not SameText(RecTypeEl.Name,'TGUID') then exit;
   if SameText(RecTypeEl.GetModule.Name,'system') then exit(true);
   Members:=RecTypeEl.Members;
-  if Members.Count<4 then exit;
-  El:=TPasElement(Members[0]);
-  if not SameText(El.Name,'D1') then exit;
-  El:=TPasElement(Members[1]);
-  if not SameText(El.Name,'D2') then exit;
-  El:=TPasElement(Members[2]);
-  if not SameText(El.Name,'D3') then exit;
-  El:=TPasElement(Members[3]);
-  if not SameText(El.Name,'D4') then exit;
+  i:=1;
+  for MemberIndex:=0 to Members.Count-1 do
+    begin
+    El:=TPasElement(Members[MemberIndex]);
+    if (El.ClassType<>TPasVariable) then continue;
+    if SameText(El.Name,'D'+IntToStr(i)) then
+      begin
+      if i=4 then exit(true);
+      inc(i);
+      end;
+    end;
   Result:=true;
 end;
 

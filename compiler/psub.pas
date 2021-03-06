@@ -466,7 +466,7 @@ implementation
               cifnode.create(caddnode.create(equaln,
                 ccallnode.createintern('fpc_setjmp',
                   ccallparanode.create(cloadnode.create(tlabelsym(p).jumpbuf,tlabelsym(p).jumpbuf.owner),nil)),
-                cordconstnode.create(1,sinttype,true))
+                cordconstnode.create(1,search_system_proc('fpc_setjmp').returndef,true))
               ,cgotonode.create(tlabelsym(p)),nil)
             );
           end;
@@ -1312,7 +1312,7 @@ implementation
         nodeset : THashSet absolute arg;
         entry : ptempinfo_flags_entry;
         i : longint;
-        hashsetitem: PHashSetItem;
+        {hashsetitem: PHashSetItem;}
       begin
         result:=fen_true;
         case n.nodetype of

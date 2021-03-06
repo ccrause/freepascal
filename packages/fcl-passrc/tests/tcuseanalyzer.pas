@@ -85,6 +85,7 @@ type
     procedure TestM_Class_PropertyInherited;
     procedure TestM_Class_MethodOverride;
     procedure TestM_Class_MethodOverride2;
+    procedure TestM_Class_NestedClass;
     procedure TestM_ClassInterface_Corba;
     procedure TestM_ClassInterface_NoHintsForMethod;
     procedure TestM_ClassInterface_NoHintsForImpl;
@@ -114,6 +115,7 @@ type
     procedure TestM_Hint_InterfaceUnitVariableUsed;
     procedure TestM_Hint_ValueParameterIsAssignedButNeverUsed;
     procedure TestM_Hint_LocalVariableIsAssignedButNeverUsed;
+    procedure TestM_Hint_PropertyIsAssignedButNeverUsed;
     procedure TestM_Hint_LocalXYNotUsed;
     procedure TestM_Hint_PrivateFieldIsNeverUsed;
     procedure TestM_Hint_PrivateFieldIsAssignedButNeverUsed;
@@ -1320,6 +1322,36 @@ begin
   AnalyzeProgram;
 end;
 
+procedure TTestUseAnalyzer.TestM_Class_NestedClass;
+begin
+  StartUnit(true,[supTObject]);
+  Add([
+  'interface',
+  'type',
+  '  TBird = class',
+  '  public type',
+  '    TWing = class',
+  '    private',
+  '      function GetCurrent: TBird;',
+  '    public',
+  '      function MoveNext: Boolean; reintroduce;',
+  '      property Current: TBird read GetCurrent;',
+  '    end;',
+  '  end;',
+  'implementation',
+  'function TBird.TWing.GetCurrent: TBird;',
+  'begin',
+  '  Result:=nil;',
+  'end;',
+  'function TBird.TWing.MoveNext: Boolean; reintroduce;',
+  'begin',
+  '  Result:=false;',
+  'end;',
+  '']);
+  AnalyzeUnit;
+  CheckUseAnalyzerUnexpectedHints;
+end;
+
 procedure TTestUseAnalyzer.TestM_ClassInterface_Corba;
 begin
   StartProgram(false);
@@ -1914,6 +1946,26 @@ begin
     'Local variable "b" is assigned but never used');
   CheckUseAnalyzerHint(mtHint,nPALocalVariableIsAssignedButNeverUsed,
     'Local variable "c" is assigned but never used');
+  CheckUseAnalyzerUnexpectedHints;
+end;
+
+procedure TTestUseAnalyzer.TestM_Hint_PropertyIsAssignedButNeverUsed;
+begin
+  StartProgram(true);
+  Add([
+  'type',
+  '  TObject = class',
+  '  private',
+  '    FSize: word;',
+  '  public',
+  '    property ReadSize: word read FSize;',
+  '    property WriteSize: word write FSize;',
+  '  end;',
+  'var o: TObject;',
+  'begin',
+  '  o.WriteSize:=o.ReadSize;',
+  '']);
+  AnalyzeProgram;
   CheckUseAnalyzerUnexpectedHints;
 end;
 

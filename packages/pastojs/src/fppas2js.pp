@@ -2159,7 +2159,6 @@ type
       AContext: TConvertContext): TJSElement; virtual;
     Function CreateRTTIMemberProperty(Members: TFPList; Index: integer;
       AContext: TConvertContext): TJSElement; virtual;
-    Procedure CreateRTTIAnonymous(El: TPasType; AContext: TConvertContext); virtual;
     Function CreateRTTIMembers(El: TPasMembersType; Src: TJSSourceElements;
       FuncContext: TFunctionContext; MembersSrc: TJSSourceElements;
       MembersFuncContext: TFunctionContext; RTTIExpr: TJSElement;
@@ -6878,20 +6877,22 @@ function TPas2JSResolver.IsTGUID(TypeEl: TPasRecordType): boolean;
 var
   Members: TFPList;
   El: TPasElement;
+  MemberIndex, i: Integer;
 begin
   Result:=false;
   if not SameText(TypeEl.Name,'TGUID') then exit;
   Members:=TypeEl.Members;
-  if Members.Count<4 then exit;
-  El:=TPasElement(Members[0]);
-  if not SameText(El.Name,'D1') then exit;
-  El:=TPasElement(Members[1]);
-  if not SameText(El.Name,'D2') then exit;
-  El:=TPasElement(Members[2]);
-  if not SameText(El.Name,'D3') then exit;
-  El:=TPasElement(Members[3]);
-  if not SameText(El.Name,'D4') then exit;
-  Result:=true;
+  i:=1;
+  for MemberIndex:=0 to Members.Count-1 do
+    begin
+    El:=TPasElement(Members[MemberIndex]);
+    if (El.ClassType<>TPasVariable) then continue;
+    if SameText(El.Name,'D'+IntToStr(i)) then
+      begin
+      if i=4 then exit(true);
+      inc(i);
+      end;
+    end;
 end;
 
 function TPas2JSResolver.GetAssignGUIDString(TypeEl: TPasRecordType;
@@ -9790,15 +9791,12 @@ begin
   if RightRefDecl is TPasProcedure then
     begin
     Proc:=TPasProcedure(RightRefDecl);
-    if coShortRefGlobals in Options then
+    if not aResolver.ProcHasSelf(Proc) then
       begin
-      if not aResolver.ProcHasSelf(Proc) then
-        begin
-        // a.StaticProc  ->  $lp(defaultargs)
-        // ToDo: check if left side has only types (no call nor field)
-        Result:=ConvertIdentifierExpr(RightEl,TPrimitiveExpr(RightEl).Value,aContext);
-        exit;
-        end;
+      // a.StaticProc  ->  pas.unit1.aclass.StaticProc(defaultargs)
+      // ToDo: check if left side has only types (no call nor field)
+      Result:=ConvertIdentifierExpr(RightEl,TPrimitiveExpr(RightEl).Value,aContext);
+      exit;
       end;
     end;
 
@@ -19965,23 +19963,6 @@ var
     ObjLit.Expr:=JS;
   end;
 
-  function VarTypeInfoAlreadyCreated(VarType: TPasType): boolean;
-  var
-    i: Integer;
-    PrevMember: TPasElement;
-  begin
-    i:=Index-1;
-    while (i>=0) do
-      begin
-      PrevMember:=TPasElement(Members[i]);
-      if (PrevMember is TPasVariable) and (TPasVariable(PrevMember).VarType=VarType)
-          and IsElementUsed(PrevMember) then
-        exit(true);
-      dec(i);
-      end;
-    Result:=false;
-  end;
-
 var
   JSTypeInfo: TJSElement;
   aName: String;
@@ -19994,10 +19975,7 @@ begin
   V:=TPasVariable(Members[Index]);
   VarType:=V.VarType;
   if (VarType<>nil) and (VarType.Name='') then
-    begin
-    if not VarTypeInfoAlreadyCreated(VarType) then
-      CreateRTTIAnonymous(VarType,AContext);
-    end;
+    RaiseNotSupported(VarType,AContext,20210223022919);
 
   JSTypeInfo:=CreateTypeInfoRef(VarType,AContext,V);
   OptionsEl:=nil;
@@ -20313,37 +20291,6 @@ begin
     if Result=nil then
       Call.Free;
   end;
-end;
-
-procedure TPasToJSConverter.CreateRTTIAnonymous(El: TPasType;
-  AContext: TConvertContext);
-// if El has any anonymous types, create the RTTI
-var
-  C: TClass;
-  JS: TJSElement;
-  GlobalCtx: TFunctionContext;
-  Src: TJSSourceElements;
-begin
-  if El.Name<>'' then
-    RaiseNotSupported(El,AContext,20170905162324,'inconsistency');
-
-  GlobalCtx:=AContext.GetGlobalFunc;
-  if GlobalCtx=nil then
-    RaiseNotSupported(El,AContext,20181229130835);
-  if not (GlobalCtx.JSElement is TJSSourceElements) then
-    begin
-    {$IFDEF VerbosePas2JS}
-    writeln('TPasToJSConverter.CreateRTTIAnonymous GlobalCtx=',GetObjName(GlobalCtx),' JSElement=',GetObjName(GlobalCtx.JSElement));
-    {$ENDIF}
-    RaiseNotSupported(El,AContext,20181229130926);
-    end;
-  Src:=TJSSourceElements(GlobalCtx.JSElement);
-  C:=El.ClassType;
-  if C=TPasArrayType then
-    begin
-    JS:=ConvertArrayType(TPasArrayType(El),AContext);
-    AddToSourceElements(Src,JS);
-    end;
 end;
 
 function TPasToJSConverter.CreateRTTIMembers(El: TPasMembersType;

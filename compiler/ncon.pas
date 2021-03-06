@@ -655,7 +655,7 @@ implementation
         resultdef:=typedef;
         { only do range checking when explicitly asked for it
           and if the type can be range checked, see tests/tbs/tb0539.pp }
-        if (resultdef.typ in [orddef,enumdef]) then
+        if (resultdef.typ in [orddef,enumdef]) and not(nf_generic_para in flags) then
           adaptrange(resultdef,value,nf_internal in flags,not rangecheck,rangecheck)
       end;
 
@@ -948,20 +948,15 @@ implementation
          dogetcopy:=n;
       end;
 
+
     function tstringconstnode.pass_typecheck:tnode;
-      var
-        l : aint;
       begin
         result:=nil;
         case cst_type of
           cst_conststring :
             begin
               { handle and store as array[0..len-1] of char }
-              if len>0 then
-                l:=len-1
-              else
-                l:=0;
-              resultdef:=carraydef.create(0,l,s32inttype);
+              resultdef:=carraydef.create(0,len-1,s32inttype);
               tarraydef(resultdef).elementdef:=cansichartype;
               include(tarraydef(resultdef).arrayoptions,ado_IsConstString);
             end;
@@ -980,6 +975,7 @@ implementation
             resultdef:=clongstringtype;
         end;
       end;
+
 
     function tstringconstnode.pass_1 : tnode;
       begin

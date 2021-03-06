@@ -175,7 +175,7 @@ type
     procedure AddSystemUnit(Parts: TSystemUnitParts = []);
     procedure StartProgram(NeedSystemUnit: boolean; SystemUnitParts: TSystemUnitParts = []);
     procedure StartLibrary(NeedSystemUnit: boolean; SystemUnitParts: TSystemUnitParts = []);
-    procedure StartUnit(NeedSystemUnit: boolean);
+    procedure StartUnit(NeedSystemUnit: boolean; SystemUnitParts: TSystemUnitParts = []);
     property Modules[Index: integer]: TTestEnginePasResolver read GetModules;
     property ModuleCount: integer read GetModuleCount;
     property Hub: TPasResolverHub read FHub;
@@ -2345,10 +2345,11 @@ begin
   Add('library '+ExtractFileUnitName(MainFilename)+';');
 end;
 
-procedure TCustomTestResolver.StartUnit(NeedSystemUnit: boolean);
+procedure TCustomTestResolver.StartUnit(NeedSystemUnit: boolean;
+  SystemUnitParts: TSystemUnitParts);
 begin
   if NeedSystemUnit then
-    AddSystemUnit
+    AddSystemUnit(SystemUnitParts)
   else
     Parser.ImplicitUses.Clear;
   Add('unit '+ExtractFileUnitName(MainFilename)+';');
@@ -3360,7 +3361,8 @@ begin
   'begin',
   '  i:=i2;',
   '  if i=i2 then ;',
-  '  i:=ord(i);']);
+  '  i:=ord(i);',
+  '']);
   ParseProgram;
   CheckResolverUnexpectedHints;
 end;
@@ -4232,7 +4234,9 @@ begin
   '  s:= {#s3_set}[3..4];',
   '  s:= {#s4_set}[Three];',
   '  if 3 in a then ;',
-  '  s:=c;']);
+  '  s:=c;',
+  '  Include(s,3);',
+  '']);
   ParseProgram;
   CheckParamsExpr_pkSet_Markers;
   CheckResolverUnexpectedHints;
