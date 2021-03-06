@@ -2653,6 +2653,32 @@ unit cgcpu;
 
 
     procedure tcgavr.g_concatcopy(list : TAsmList;const source,dest : treference;len : tcgint);
+
+      procedure copy_byte(srcref,dstref: treference);
+        var
+          defaulttmp: tregister;
+        begin
+          { If either checkLoadRefReg or checkStoreRegRef calls an EEPROM helper
+            GetDefaultTmpReg cannot be used because it can get clobbered. }
+          if ((srcref.symsection=ss_eeprom) and
+              not (CPUAVR_HAS_NVM_DATASPACE in cpu_capabilities[current_settings.cputype])) or
+             (dstref.symsection=ss_eeprom) then
+            begin
+              defaulttmp:=getintregister(list,OS_8);
+              a_reg_alloc(list,defaulttmp);
+              checkLoadRefReg(list,defaulttmp,srcref);
+              checkStoreRegRef(list,dstref,defaulttmp);
+              a_reg_dealloc(list,defaulttmp);
+            end
+          else
+            begin
+              cg.getcpuregister(list,GetDefaultTmpReg);
+              checkLoadRefReg(list,GetDefaultTmpReg,srcref);
+              checkStoreRegRef(list,dstref,GetDefaultTmpReg);
+              cg.ungetcpuregister(list,GetDefaultTmpReg);
+            end;
+        end;
+
       var
         countreg,tmpreg,tmpreg2: tregister;
         srcref,dstref : treference;
@@ -2712,12 +2738,8 @@ unit cgcpu;
             cg.getcpuregister(list,NR_R26);
             list.concat(taicpu.op_reg(A_POP,NR_R26));
             cg.a_label(list,l);
-            cg.getcpuregister(list,GetDefaultTmpReg);
-            //list.concat(taicpu.op_reg_ref(GetLoad(srcref),GetDefaultTmpReg,srcref));
-            checkLoadRefReg(list,GetDefaultTmpReg,srcref);
-            //list.concat(taicpu.op_ref_reg(GetStore(dstref),dstref,GetDefaultTmpReg));
-            checkStoreRegRef(list,dstref,GetDefaultTmpReg);
-            cg.ungetcpuregister(list,GetDefaultTmpReg);
+            copy_byte(srcref,dstref);
+
             if tcgsize2size[countregsize] = 1 then
               list.concat(taicpu.op_reg(A_DEC,countreg))
             else
@@ -2829,51 +2851,35 @@ unit cgcpu;
                     begin
                       // First read source into temp registers
                       tmpreg:=getintregister(list, OS_16);
-                      //list.concat(taicpu.op_reg_ref(GetLoad(srcref),tmpreg,srcref));
                       checkLoadRefReg(list,tmpreg,srcref);
                       inc(srcref.offset);
                       tmpreg2:=GetNextReg(tmpreg);
-                      //list.concat(taicpu.op_reg_ref(GetLoad(srcref),tmpreg2,srcref));
                       checkLoadRefReg(list,tmpreg2,srcref);
 
-                    // then move temp registers to dest in reverse order
-                    inc(dstref.offset);
-                    //list.concat(taicpu.op_ref_reg(GetStore(dstref),dstref,tmpreg2));
-                    checkStoreRegRef(list,dstref,tmpreg2);
-                    dec(dstref.offset);
-                    //list.concat(taicpu.op_ref_reg(GetStore(dstref),dstref,tmpreg));
-                    checkStoreRegRef(list,dstref,tmpreg);
-                  end
-                else
-                  begin
-                    srcref.addressmode:=AM_UNCHANGED;
-                    inc(srcref.offset);
-                    dstref.addressmode:=AM_UNCHANGED;
-                    inc(dstref.offset);
-
-                    cg.getcpuregister(list,GetDefaultTmpReg);
-                    //list.concat(taicpu.op_reg_ref(GetLoad(srcref),GetDefaultTmpReg,srcref));
-                    checkLoadRefReg(list,GetDefaultTmpReg,srcref);
-                    //list.concat(taicpu.op_ref_reg(GetStore(dstref),dstref,GetDefaultTmpReg));
-                    checkStoreRegRef(list,dstref,GetDefaultTmpReg);
-                    cg.ungetcpuregister(list,GetDefaultTmpReg);
-
-                    if not(SrcQuickRef) then
-                      srcref.addressmode:=AM_POSTINCREMENT
-                    else
+                      // then move temp registers to dest in reverse order
+                      inc(dstref.offset);
+                      checkStoreRegRef(list,dstref,tmpreg2);
+                      dec(dstref.offset);
+                      checkStoreRegRef(list,dstref,tmpreg);
+                    end
+                  else
+                    begin
                       srcref.addressmode:=AM_UNCHANGED;
+                      inc(srcref.offset);
+                      dstref.addressmode:=AM_UNCHANGED;
+                      inc(dstref.offset);
+                      copy_byte(srcref,dstref);
 
-                    dec(srcref.offset);
-                    dec(dstref.offset);
+                      if not(SrcQuickRef) then
+                        srcref.addressmode:=AM_POSTINCREMENT
+                      else
+                        srcref.addressmode:=AM_UNCHANGED;
 
-                    cg.getcpuregister(list,GetDefaultTmpReg);
-                    //list.concat(taicpu.op_reg_ref(GetLoad(srcref),GetDefaultTmpReg,srcref));
-                    checkLoadRefReg(list,GetDefaultTmpReg,srcref);
-                    //list.concat(taicpu.op_ref_reg(GetStore(dstref),dstref,GetDefaultTmpReg));
-                    checkStoreRegRef(list,dstref,GetDefaultTmpReg);
-                    cg.ungetcpuregister(list,GetDefaultTmpReg);
-                  end;
-              end
+                      dec(srcref.offset);
+                      dec(dstref.offset);
+                      copy_byte(srcref,dstref);
+                    end;
+                end
             else
               for i:=1 to len do
                 begin
@@ -2887,12 +2893,7 @@ unit cgcpu;
                   else
                     dstref.addressmode:=AM_UNCHANGED;
 
-                  cg.getcpuregister(list,GetDefaultTmpReg);
-                  //list.concat(taicpu.op_reg_ref(GetLoad(srcref),GetDefaultTmpReg,srcref));
-                  checkLoadRefReg(list,GetDefaultTmpReg,srcref);
-                  //list.concat(taicpu.op_ref_reg(GetStore(dstref),dstref,GetDefaultTmpReg));
-                  checkStoreRegRef(list,dstref,GetDefaultTmpReg);
-                  cg.ungetcpuregister(list,GetDefaultTmpReg);
+                  copy_byte(srcref,dstref);
 
                   if SrcQuickRef then
                     inc(srcref.offset);
