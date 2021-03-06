@@ -227,17 +227,17 @@ unit i_linux;
                 coalescealign   : 0;
                 coalescealignskipmax: 0;
                 constalignmin   : 0;
-                constalignmax   : 4;
+                constalignmax   : 16;
                 varalignmin     : 0;
-                varalignmax     : 4;
+                varalignmax     : 16;
                 localalignmin   : 4;
-                localalignmax   : 4;
+                localalignmax   : 8;
                 recordalignmin  : 0;
-                recordalignmax  : 4;
+                recordalignmax  : 16;
                 maxCrecordalign : 2;
               );
             first_parm_offset : 8;
-            stacksize    : 32*1024*1024;
+            stacksize    : 8*1024*1024;
             stackalign   : 4;
             abi : abi_default;
             llvmdatalayout : 'todo';
@@ -679,7 +679,7 @@ unit i_linux;
             name         : 'Linux for ARMEL';
             shortname    : 'Linux';
             flags        : [tf_needs_symbol_size,tf_needs_symbol_type,tf_files_case_sensitive,
-                            tf_requires_proper_alignment,tf_safecall_exceptions,
+                            tf_needs_dwarf_cfi,tf_requires_proper_alignment,tf_safecall_exceptions,
 {$ifdef tls_threadvars}
                             tf_section_threadvars,
 {$endif tls_threadvars}

@@ -208,6 +208,7 @@ const
   nClassTypesAreNotRelatedXY = 3142;
   nDirectiveXNotAllowedHere = 3143;
   nAwaitWithoutPromise = 3144;
+  nSymbolCannotExportedFromALibrary = 3145;
 
   // using same IDs as FPC
   nVirtualMethodXHasLowerVisibility = 3250; // was 3050
@@ -363,6 +364,7 @@ resourcestring
   sClassTypesAreNotRelatedXY = 'Class types "%s" and "%s" are not related';
   sDirectiveXNotAllowedHere = 'Directive "%s" not allowed here';
   sAwaitWithoutPromise = 'Await without promise';
+  sSymbolCannotExportedFromALibrary = 'The symbol cannot be exported from a library';
 
 type
   { TResolveData - base class for data stored in TPasElement.CustomData }
@@ -435,6 +437,7 @@ type
     revkSetOfInt,  // set of enum, int, char, widechar, e.g. [1,2..3]
     revkExternal // TResEvalExternal: an external const
     );
+  TREVKinds = set of TREVKind;
 const
   revkAllStrings = [{$ifdef FPC_HAS_CPSTRING}revkString,{$endif}revkUnicodeString];
 type
@@ -447,6 +450,7 @@ type
     function Clone: TResEvalValue; virtual;
     function AsDebugString: string; virtual;
     function AsString: string; virtual;
+    function TypeAsString: string; virtual;
   end;
   TResEvalValueClass = class of TResEvalValue;
 
@@ -459,6 +463,7 @@ type
     constructor CreateValue(const aValue: boolean);
     function Clone: TResEvalValue; override;
     function AsString: string; override;
+    function TypeAsString: string; override;
   end;
 
   TResEvalTypedInt = (
@@ -520,6 +525,7 @@ type
     function Clone: TResEvalValue; override;
     function AsString: string; override;
     function AsDebugString: string; override;
+    function TypeAsString: string; override;
   end;
 
   { TResEvalUInt }
@@ -531,6 +537,7 @@ type
     constructor CreateValue(const aValue: TMaxPrecUInt);
     function Clone: TResEvalValue; override;
     function AsString: string; override;
+    function TypeAsString: string; override;
   end;
 
   { TResEvalFloat }
@@ -543,6 +550,7 @@ type
     function Clone: TResEvalValue; override;
     function AsString: string; override;
     function IsInt(out Int: TMaxPrecInt): boolean;
+    function TypeAsString: string; override;
   end;
 
   { TResEvalCurrency }
@@ -556,6 +564,7 @@ type
     function AsString: string; override;
     function IsInt(out Int: TMaxPrecInt): boolean;
     function AsInt: TMaxPrecInt; // value * 10.000
+    function TypeAsString: string; override;
   end;
 
   {$ifdef FPC_HAS_CPSTRING}
@@ -569,6 +578,7 @@ type
     constructor CreateValue(const aValue: RawByteString);
     function Clone: TResEvalValue; override;
     function AsString: string; override;
+    function TypeAsString: string; override;
   end;
   {$endif}
 
@@ -581,6 +591,7 @@ type
     constructor CreateValue(const aValue: UnicodeString);
     function Clone: TResEvalValue; override;
     function AsString: string; override;
+    function TypeAsString: string; override;
   end;
 
   { TResEvalEnum - Kind=revkEnum, Value.Int }
@@ -596,6 +607,7 @@ type
     function Clone: TResEvalValue; override;
     function AsDebugString: string; override;
     function AsString: string; override;
+    function TypeAsString: string; override;
   end;
 
   TRESetElKind = (
@@ -620,6 +632,7 @@ type
     function AsString: string; override;
     function AsDebugString: string; override;
     function ElementAsString(El: TMaxPrecInt): string; virtual;
+    function TypeAsString: string; override;
   end;
 
   { TResEvalRangeUInt }
@@ -631,6 +644,7 @@ type
     constructor CreateValue(const aRangeStart, aRangeEnd: TMaxPrecUInt);
     function Clone: TResEvalValue; override;
     function AsString: string; override;
+    function TypeAsString: string; override;
   end;
 
   { TResEvalSet - Kind=revkSetOfInt }
@@ -652,6 +666,7 @@ type
       const aRangeStart, aRangeEnd: TMaxPrecInt); override;
     function Clone: TResEvalValue; override;
     function AsString: string; override;
+    function TypeAsString: string; override;
     function Add(aRangeStart, aRangeEnd: TMaxPrecInt): boolean; // false if duplicate ignored
     function IndexOfRange(Index: TMaxPrecInt; FindInsertPos: boolean = false): integer;
     function Intersects(aRangeStart, aRangeEnd: TMaxPrecInt): integer; // returns index of first intersecting range
@@ -665,6 +680,7 @@ type
     constructor Create; override;
     function Clone: TResEvalValue; override;
     function AsString: string; override;
+    function TypeAsString: string; override;
   end;
 
   TResEvalFlag = (
@@ -1188,6 +1204,11 @@ begin
   Result:=inherited AsString;
 end;
 
+function TResEvalExternal.TypeAsString: string;
+begin
+  Result:='external value';
+end;
+
 { TResEvalCurrency }
 
 constructor TResEvalCurrency.Create;
@@ -1231,6 +1252,11 @@ begin
   {$endif};
 end;
 
+function TResEvalCurrency.TypeAsString: string;
+begin
+  Result:='currency';
+end;
+
 { TResEvalBool }
 
 constructor TResEvalBool.Create;
@@ -1259,6 +1285,11 @@ begin
     Result:='false';
 end;
 
+function TResEvalBool.TypeAsString: string;
+begin
+  Result:='boolean';
+end;
+
 { TResEvalRangeUInt }
 
 constructor TResEvalRangeUInt.Create;
@@ -1285,6 +1316,11 @@ end;
 function TResEvalRangeUInt.AsString: string;
 begin
   Result:=IntToStr(RangeStart)+'..'+IntToStr(RangeEnd);
+end;
+
+function TResEvalRangeUInt.TypeAsString: string;
+begin
+  Result:='unsigned integer range';
 end;
 
 { TResExprEvaluator }
@@ -5615,6 +5651,15 @@ begin
   end;
 end;
 
+function TResEvalValue.TypeAsString: string;
+begin
+  case Kind of
+    revkNil: Result:='nil';
+  else
+    Result:='';
+  end;
+end;
+
 { TResEvalUInt }
 
 constructor TResEvalUInt.Create;
@@ -5638,6 +5683,11 @@ end;
 function TResEvalUInt.AsString: string;
 begin
   Result:=IntToStr(UInt);
+end;
+
+function TResEvalUInt.TypeAsString: string;
+begin
+  Result:='unsigned int';
 end;
 
 { TResEvalInt }
@@ -5697,6 +5747,24 @@ begin
     end;
 end;
 
+function TResEvalInt.TypeAsString: string;
+begin
+  case Typed of
+    reitByte: Result:='byte';
+    reitShortInt: Result:='shortint';
+    reitWord: Result:='word';
+    reitSmallInt: Result:='smallint';
+    reitUIntSingle: Result:='unsinged int single';
+    reitIntSingle: Result:='int single';
+    reitLongWord: Result:='longword';
+    reitLongInt: Result:='longint';
+    reitUIntDouble: Result:='unsigned int double';
+    reitIntDouble: Result:='int double';
+  else
+    Result:='int';
+  end;
+end;
+
 { TResEvalFloat }
 
 constructor TResEvalFloat.Create;
@@ -5732,6 +5800,11 @@ begin
   Result:=true;
 end;
 
+function TResEvalFloat.TypeAsString: string;
+begin
+  Result:='float';
+end;
+
 {$ifdef FPC_HAS_CPSTRING}
 { TResEvalString }
 
@@ -5759,6 +5832,15 @@ function TResEvalString.AsString: string;
 begin
   Result:=RawStrToCaption(S,60);
 end;
+
+function TResEvalString.TypeAsString: string;
+begin
+  if OnlyASCII then
+    Result:='string'
+  else
+    Result:='ansistring';
+end;
+
 {$endif}
 
 { TResEvalUTF16 }
@@ -5784,6 +5866,11 @@ end;
 function TResEvalUTF16.AsString: string;
 begin
   Result:=String(UnicodeStrToCaption(S,60));
+end;
+
+function TResEvalUTF16.TypeAsString: string;
+begin
+  Result:='unicodestring';
 end;
 
 { TResEvalEnum }
@@ -5847,6 +5934,13 @@ begin
   Result:=GetEnumName;
   if Result<>'' then exit;
   Result:=ElType.Name+'('+IntToStr(Index)+')';
+end;
+
+function TResEvalEnum.TypeAsString: string;
+begin
+  Result:=ElType.Name;
+  if Result='' then
+    Result:='enum';
 end;
 
 { TResEvalRangeInt }
@@ -5920,6 +6014,18 @@ begin
   end;
 end;
 
+function TResEvalRangeInt.TypeAsString: string;
+begin
+  case ElKind of
+    revskEnum: Result:='enum range';
+    revskInt: Result:='integer range';
+    revskChar: Result:='char range';
+    revskBool: Result:='boolean range';
+  else
+    Result:='integer range';
+  end;
+end;
+
 { TResEvalSet }
 
 constructor TResEvalSet.Create;
@@ -5978,6 +6084,11 @@ begin
       Result:=Result+'..'+ElementAsString(Ranges[i].RangeEnd);
     end;
   Result:=Result+']';
+end;
+
+function TResEvalSet.TypeAsString: string;
+begin
+  Result:='set';
 end;
 
 function TResEvalSet.Add(aRangeStart, aRangeEnd: TMaxPrecInt): boolean;

@@ -1555,7 +1555,7 @@ parser_w_ptr_type_ignored=03338_W_Pointer type "$1" ignored
 % The specified pointer type modifier is ignored, because it is not supported on
 % the current platform. This happens, for example, when a far pointer is
 % declared on a non-x86 platform.
-parser_e_global_generic_references_static=03339_E_Global Generic template references static symtable
+parser_e_global_generic_references_static=03339_E_Generic template in interface section references symbol in implementation section
 % A generic declared in the interface section of a unit must not reference symbols that belong
 % solely to the implementation section of that unit.
 parser_u_already_compiled=03340_UL_Unit $1 has been already compiled meanwhile.
@@ -1622,6 +1622,8 @@ parser_e_location_regpair_only_data=03358_E_Only data registers are supported fo
 % AmigaOS/MorphOS syscall specific: for 64bit register pairs, only data registers are supported
 parser_e_location_regpair_only_consecutive=03359_E_Only consecutive registers are supported for explicit location register pairs
 % MorphOS syscall specific: only consecutive (f.e.: d1-d2) registers are supported for 64bit register pairs
+parser_e_constructurs_cannot_take_type_parameters=03360_E_Constructors cannot take type parameters
+% The use of type parameters in constructors is not allowed.
 %
 % \end{description}
 %
@@ -2077,6 +2079,9 @@ type_e_generic_const_type_not_allowed=04128_E_Type not allowed for generic const
 type_e_cant_read_write_type_in_iso_mode=04129_E_Can't read or write variables of this type in iso mode
 % You are trying to \var{read} or \var{write} a variable from or to a
 % file of type text, which doesn't support that variable's type in the selected language mode (iso mode).
+type_w_array_size_does_not_match_size_of_constant_string=04130_W_The length of the constant string (length is $1) must be equal to the number of array elements ($2 elements)
+% ISO Pascal requires that string constants have the same length as the array to which them they are assigned.
+%
 % \end{description}
 #
 # Symtable
@@ -2577,7 +2582,7 @@ cg_w_interrupt_does_not_save_registers=06062_W_The target CPU does not support p
 #
 # Assembler reader
 #
-# 07144 is the last used one
+# 07145 is the last used one
 #
 asmr_d_start_reading=07000_DL_Starting $1 styled assembler parsing
 % This informs you that an assembler block is being parsed
@@ -2919,6 +2924,8 @@ asmr_w_segment_override_ignored_in_64bit_mode=07141_W_Segment base $1 will be ge
 asmr_e_mismatch_broadcasting_elements=07142_E_Mismatch broadcasting elements (expected: {$1} found: {$2})
 asmr_e_invalid_arrangement=07143_E_Invalid arrangement specifier "$1"
 asmr_e_a64_invalid_regset=07144_E_Registers in a register set must be consecutive.
+asmr_e_unknown_field=07145_E_Unknown field identifier
+% The internal assembler read cannot find the passed field identifier.
 #
 # Assembler/binary writers
 #
@@ -3419,7 +3426,7 @@ unit_u_ppu_llvm_mismatch=10067_U_Skipping unit, PPU and compiler have to be both
 #
 #  Options
 #
-# 11062 is the last used one
+# 11063 is the last used one
 #
 option_usage=11000_O_$1 [options] <inputfile> [options]
 # BeginOfTeX
@@ -3555,7 +3562,7 @@ option_invalid_iphoneos_deployment_target=11051_E_Invalid value for IPHONEOS_DEP
 % XY.Z or XY.Z.AB with X, Y,Z , A and B all digits from 0-9.
 % In case of iOS, it has to be X.Z.A, where X, Z and A can all be either 1 or 2
 % digits from 0-9.
-option_illegal_fpu_eabihf=11052_E_You must use a FPU type of VFPV2, VFPV3 or VFPV3_D16 when using the EABIHF ABI target
+option_illegal_fpu_eabihf=11052_E_You must use one of the VFP FPU types when using the EABIHF ABI target
 % The EABIHF (VFP hardfloat) ABI target can only be used with VFP FPUs.
 option_w_unsupported_debug_format=11053_W_The selected debug format is not supported on the current target, not changing the current setting
 % Not all targets support all debug formats (in particular, Stabs is not supported on 64 bit targets).
@@ -3576,6 +3583,8 @@ option_features_only_for_system_unit=11060_E_Feature switches are only supported
 % system unit through the ppu of the system unit.
 option_debug_info_requires_external_linker=11061_N_The selected debug format is not supported by the internal linker, switching to external linking
 option_valgrind_heaptrc_mismatch=11062_E_You can not use both options ($1) ($2) at same time.
+option_unsupported_fpu=11063_F_The selected FPU type "$1" is not supported by the selected instruction set "$2"
+% Not all instruction sets support all FPU types. For example on ARM, Thumb(-1) supports no FPU/VFP instruction set
 %\end{description}
 # EndOfTeX
 
@@ -3754,7 +3763,7 @@ package_u_ppl_filename=13029_U_PPL filename $1
 #
 option_logo=11023_[
 Free Pascal Compiler version $FPCFULLVERSION [$FPCDATE] for $FPCCPU
-Copyright (c) 1993-2020 by Florian Klaempfl and others
+Copyright (c) 1993-2021 by Florian Klaempfl and others
 ]
 
 #
@@ -4347,6 +4356,7 @@ F*2Xp<x>_First search for the compiler binary in the directory <x>
 **2Xs_Strip all symbols from executable
 **2XS_Try to link units statically (default, defines FPC_LINK_STATIC)
 **2Xt_Link with static libraries (-static is passed to linker)
+**2Xu_Generate executable in UF2 format  (embedded targets only)
 **2Xv_Generate table for Virtual Entry calls
 **2XV_Use VLink as external linker       (default on Amiga, MorphOS)
 **2XX_Try to smartlink units             (defines FPC_LINK_SMART)

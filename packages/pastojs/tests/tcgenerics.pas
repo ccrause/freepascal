@@ -55,6 +55,7 @@ type
     procedure TestGen_ClassInterface_InterfacedObject;
     procedure TestGen_ClassInterface_COM_RTTI;
     procedure TestGen_ClassInterface_Helper;
+    procedure TestGen_ClassInterface_DelayedInitSpec;
 
     // statements
     Procedure TestGen_InlineSpec_Constructor;
@@ -83,6 +84,7 @@ type
     // generic array
     procedure TestGen_Array_OtherUnit;
     procedure TestGen_ArrayOfUnitImplRec;
+    procedure TestGen_Array_TypecastJSValueResultToArg;
 
     // generic procedure type
     procedure TestGen_ProcType_ProcLocal;
@@ -168,8 +170,8 @@ begin
     '']),
     LinesToStr([ // $mod.$main
     '$mod.TPoint$G1.x = $mod.p.x + 10;',
-    '$mod.p.Fly();',
-    '$mod.p.Fly();',
+    '$mod.TPoint$G1.Fly();',
+    '$mod.TPoint$G1.Fly();',
     '']));
 end;
 
@@ -253,6 +255,11 @@ begin
     '    this.$initSpec = function () {',
     '      this.x = $impl.TBird.$new();',
     '      this.a = rtl.arraySetLength(null, $impl.TBird, 2);',
+    '    };',
+    '    this.a$a$clone = function (a) {',
+    '      var r = [];',
+    '      for (var i = 0; i < 2; i++) r.push($impl.TBird.$clone(a[i]));',
+    '      return r;',
     '    };',
     '    this.$eq = function (b) {',
     '      return true;',
@@ -750,7 +757,7 @@ begin
     '    $mod.TPoint$G1.x = this.x + 5;',
     '    $mod.TPoint$G1.x = $mod.TPoint$G1.x + 6;',
     '    this.Fly();',
-    '    $mod.TPoint$G1.Fly();',
+    '    this.Fly();',
     '    this.Run();',
     '    $mod.TPoint$G1.Run();',
     '  };',
@@ -1166,6 +1173,11 @@ begin
     '    this.$initSpec = function () {',
     '      this.x = $impl.TBird.$new();',
     '      this.a = rtl.arraySetLength(null, $impl.TBird, 2);',
+    '    };',
+    '    this.a$a$clone = function (a) {',
+    '      var r = [];',
+    '      for (var i = 0; i < 2; i++) r.push($impl.TBird.$clone(a[i]));',
+    '      return r;',
     '    };',
     '  }, "TAnt<UnitA.TBird>");',
     '  $mod.$implcode = function () {',
@@ -1630,6 +1642,74 @@ begin
     '      rtl.setIntfP(this.p, "Ant", v);',
     '    }',
     '}, 3);',
+    '']));
+end;
+
+procedure TTestGenerics.TestGen_ClassInterface_DelayedInitSpec;
+begin
+  WithTypeInfo:=true;
+  StartProgram(true,[supTObject,supTInterfacedObject]);
+  AddModuleWithIntfImplSrc('UnitA.pas',
+  LinesToStr([
+  '{$mode delphi}',
+  'type',
+  '  TAnt<T> = interface',
+  '    procedure Run(x: T);',
+  '  end;',
+  '']),
+  LinesToStr([
+  '']));
+  Add([
+  '{$mode delphi}',
+  'uses UnitA;',
+  'type',
+  '  TArrWord = array of word;',
+  '  TMyIntf = TAnt<TArrWord>;',
+  '  TBird = class(TInterfacedObject,TMyIntf)',
+  '    procedure Run(a: TArrWord); external name ''Run'';',
+  '  end;',
+  'var',
+  '  i: TMyIntf;',
+  'begin',
+  '  i:=TBird.Create;',
+  '  i.Run([3,4]);',
+  'end.']);
+  ConvertProgram;
+  CheckUnit('UnitA.pas',
+    LinesToStr([ // statements
+    'rtl.module("UnitA", ["system"], function () {',
+    '  var $mod = this;',
+    '  $mod.$rtti.$Interface("TAnt<test1.TArrWord>");',
+    '  rtl.createInterface(',
+    '    this,',
+    '    "TAnt$G1",',
+    '    "{B145F21B-2696-32D5-87A5-F16C037A2D45}",',
+    '    ["Run"],',
+    '    pas.system.IUnknown,',
+    '    function () {',
+    '      this.$initSpec = function () {',
+    '        var $r = this.$rtti;',
+    '        $r.addMethod("Run", 0, [["x", pas.program.$rtti["TArrWord"]]]);',
+    '      };',
+    '    },',
+    '    "TAnt<test1.TArrWord>"',
+    '  );',
+    '});']));
+  CheckSource('TestGen_ClassInterface_DelayedInitSpec',
+    LinesToStr([ // statements
+    'this.$rtti.$DynArray("TArrWord", {',
+    '  eltype: rtl.word',
+    '});',
+    'rtl.createClass(this, "TBird", pas.system.TInterfacedObject, function () {',
+    '  rtl.addIntf(this, pas.UnitA.TAnt$G1);',
+    '  rtl.addIntf(this, pas.system.IUnknown);',
+    '});',
+    'this.i = null;',
+    'pas.UnitA.TAnt$G1.$initSpec();',
+    '']),
+    LinesToStr([ // $mod.$main
+    'rtl.setIntfP($mod, "i", rtl.queryIntfT($mod.TBird.$create("Create"), pas.UnitA.TAnt$G1), true);',
+    '$mod.i.Run([3, 4]);',
     '']));
 end;
 
@@ -2368,6 +2448,51 @@ begin
     'pas.UnitA.$rtti["TDyn<UnitA.TAnt>"].eltype = pas.UnitA.$rtti["TAnt"];',
     'pas.UnitA.$rtti["TDyn<UnitA.TBird>"].eltype = pas.UnitA.$rtti["TBird"];',
     'pas.UnitA.$rtti["TStatic<UnitA.TBird>"].eltype = pas.UnitA.$rtti["TBird"];',
+    '']),
+    LinesToStr([ // $mod.$main
+    '']));
+end;
+
+procedure TTestGenerics.TestGen_Array_TypecastJSValueResultToArg;
+begin
+  StartProgram(false);
+  Add([
+  '{$mode delphi}',
+  'type',
+  '  TArray<T> = array of T;',
+  '  TFunc = function: JSValue of object;',
+  '  TObject = class',
+  '    f: TFunc;',
+  '    function Run: jsvalue; virtual; abstract;',
+  '  end;',
+  'procedure Sit(Arr: TArray<TObject>);',
+  'begin',
+  'end;',
+  'procedure Fly(o: TObject);',
+  'begin',
+  '  Sit(TArray<TObject>(o.f()));',
+  '  Sit(TArray<TObject>(o.Run));',
+  '  Sit(TArray<TObject>(o.Run()));',
+  'end;',
+  'begin']);
+  ConvertProgram;
+  CheckSource('TestGen_Array_TypecastJSValueResultToArg',
+    LinesToStr([ // statements
+    'rtl.createClass(this, "TObject", null, function () {',
+    '  this.$init = function () {',
+    '    this.f = null;',
+    '  };',
+    '  this.$final = function () {',
+    '    this.f = undefined;',
+    '  };',
+    '});',
+    'this.Sit = function (Arr) {',
+    '};',
+    'this.Fly = function (o) {',
+    '  $mod.Sit(o.f());',
+    '  $mod.Sit(o.Run());',
+    '  $mod.Sit(o.Run());',
+    '};',
     '']),
     LinesToStr([ // $mod.$main
     '']));

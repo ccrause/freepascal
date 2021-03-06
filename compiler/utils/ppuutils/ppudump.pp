@@ -1705,8 +1705,12 @@ begin
   if symoptions<>[] then
    begin
      if Def <> nil then
-       if sp_internal in symoptions then
-         Def.Visibility:=dvHidden;
+       begin
+         if sp_internal in symoptions then
+           Def.Visibility:=dvHidden;
+         if sp_generic_dummy in symoptions then
+           Def.GenericDummy:=true;
+       end;
      first:=true;
      for i:=1to symopts do
       if (symopt[i].mask in symoptions) then
@@ -2301,7 +2305,8 @@ const
         'Link using vlink', {cs_link_vlink}
         'Link-Time Optimization disabled for system unit', {cs_lto_nosystem}
         'Assemble on target OS', {cs_asemble_on_target}
-        'Use a memory model to support >2GB static data on 64 Bit target' {cs_large}
+        'Use a memory model to support >2GB static data on 64 Bit target', {cs_large}
+        'Generate UF2 binary' {cs_generate_uf2}
        );
     localswitchname : array[tlocalswitch] of string[50] =
        { Switches which can be changed locally }
@@ -3279,7 +3284,8 @@ const
    { ado_IsConstString      } 'ConstString',
    { ado_IsBitPacked        } 'BitPacked',
    { ado_IsVector           } 'Vector',
-   { ado_IsGeneric          } 'Generic'
+   { ado_IsGeneric          } 'Generic',
+   { ado_OpenArray          } 'OpenArray'
   );
 var
   symoptions: tarraydefoptions;
@@ -3599,6 +3605,16 @@ begin
                 readderef('', def.Ref);
                 _finddef(def);
               end;
+             if def.GenericDummy then
+               begin
+                 len:=ppufile.getword;
+                 for i:=1 to len do
+                   begin
+                     write([space,'     Gen Ovld : ']);
+                     readderef('',def.Ref);
+                     _finddef(def);
+                   end;
+               end;
            end;
 
          ibconstsym :

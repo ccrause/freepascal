@@ -206,7 +206,7 @@ implementation
       begin
          { an integer const. behaves as a memory reference }
          location_reset(location,LOC_CONSTANT,OS_ADDR);
-         location.value:=Pint(value);
+         location.value:=PInt(value);
       end;
 
 

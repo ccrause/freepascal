@@ -447,6 +447,7 @@ type
     PackageName: string;
     Filename   : String;  // the IN filename, only written when not empty.
   end;
+  TPasModuleClass = class of TPasModule;
 
   { TPasUnitModule }
 
@@ -974,6 +975,7 @@ type
 
   TPasExportSymbol = class(TPasElement)
   public
+    NameExpr: TPasExpr; // only if name is not a simple identifier
     ExportName : TPasExpr;
     ExportIndex : TPasExpr;
     Destructor Destroy; override;
@@ -2600,6 +2602,7 @@ end;
 
 destructor TPasExportSymbol.Destroy;
 begin
+  ReleaseAndNil(TPasElement(NameExpr){$IFDEF CheckPasTreeRefCount},'TPasExportSymbol.NameExpr'{$ENDIF});
   ReleaseAndNil(TPasElement(ExportName){$IFDEF CheckPasTreeRefCount},'TPasExportSymbol.ExportName'{$ENDIF});
   ReleaseAndNil(TPasElement(ExportIndex){$IFDEF CheckPasTreeRefCount},'TPasExportSymbol.ExportIndex'{$ENDIF});
   inherited Destroy;
@@ -2623,6 +2626,7 @@ procedure TPasExportSymbol.ForEachCall(const aMethodCall: TOnForEachPasElement;
   const Arg: Pointer);
 begin
   inherited ForEachCall(aMethodCall, Arg);
+  ForEachChildCall(aMethodCall,Arg,NameExpr,false);
   ForEachChildCall(aMethodCall,Arg,ExportName,false);
   ForEachChildCall(aMethodCall,Arg,ExportIndex,false);
 end;
@@ -3096,7 +3100,7 @@ begin
   CN:=CN+' '+IntToStr(FRefCount);
   //If Assigned(Parent) then
   //  CN:=CN+' ('+Parent.ClassName+')';
-  Writeln('TPasElement.Release : ',Cn);
+  Writeln('TPasElement.Release : ',Cn,' at ',aId);
   {AllowWriteln-}
   {$endif}
   {$IFDEF CheckPasTreeRefCount}
@@ -3132,7 +3136,7 @@ begin
     Dec(FGlobalRefCount);
     {$endif}
     end;
-{$if defined(debugrefcount) or defined(VerbosePasTreeMem)}  Writeln('TPasElement.Released : ',Cn); {$endif}
+{$if defined(debugrefcount) or defined(VerbosePasTreeMem)}  Writeln('TPasElement.Released : ',Cn,' at ',aID); {$endif}
 end;
 
 procedure TPasElement.ForEachCall(const aMethodCall: TOnForEachPasElement;

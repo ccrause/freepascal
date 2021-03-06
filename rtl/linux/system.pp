@@ -113,6 +113,8 @@ procedure OsSetupEntryInformation(constref info: TEntryInformation); forward;
 
 {$endif FPC_LOAD_SOFTFPU}
 
+{$define HAS_GETCPUCOUNT}
+
 {$I system.inc}
 
 {$ifdef android}
@@ -122,6 +124,9 @@ procedure OsSetupEntryInformation(constref info: TEntryInformation); forward;
 {*****************************************************************************
                                TLS handling
 *****************************************************************************}
+
+{ TLS initialization is not required if linking against libc }
+{$if not defined(FPC_USE_LIBC)}
 
 {$if defined(CPUARM)}
 {$define INITTLS}
@@ -182,6 +187,8 @@ begin
     end;
 end;
 {$endif defined(CPUX86_64)}
+
+{$endif not FPC_USE_LIBC}
 
 
 {$ifdef INITTLS}
@@ -321,6 +328,8 @@ begin
   info.PascalMain();
 end;
 
+
+{$ifndef FPC_USE_LIBC}
 procedure SysEntry_InitTLS(constref info: TEntryInformation);[public,alias:'FPC_SysEntry_InitTLS'];
 begin
   SetupEntryInformation(info);
@@ -332,6 +341,7 @@ begin
 {$endif cpui386}
   info.PascalMain();
 end;
+{$endif FPC_USE_LIBC}
 
 {$else}
 var
@@ -359,6 +369,7 @@ begin
 end;
 
 
+{$ifdef FPC_USE_LIBC}
 procedure SysEntry_InitTLS(constref info: TEntryInformation);[public,alias:'FPC_SysEntry_InitTLS'];
 begin
   initialstkptr := info.OS.stkptr;
@@ -373,6 +384,7 @@ begin
 {$endif cpui386}
   info.PascalMain();
 end;
+{$endif FPC_USE_LIBC}
 
 {$endif FPC_BOOTSTRAP_INDIRECT_ENTRY}
 
@@ -457,6 +469,24 @@ Procedure Randomize;
 Begin
   randseed:=longint(Fptime(nil));
 End;
+
+function GetCPUCount: LongWord;
+  var
+    cpus : tcpu_set_t;
+    BytesWritten,i : cint;
+  begin
+    Result := 1;
+    { same approach as nproc uses:
+      we return the number of available CPUs }
+    BytesWritten:=FpSchedGetAffinity(0,sizeof(cpus),@cpus);
+    if BytesWritten>0 then
+      begin
+        Result := 0;
+        for i:=0 to BytesWritten-1 do
+          Result:=Result+Popcnt((PByte(@cpus)+i)^);
+      end;
+  end;
+
 
 {*****************************************************************************
                                     cmdline

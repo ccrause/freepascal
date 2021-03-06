@@ -150,7 +150,7 @@ uses
    defutil,defcmp,
    { pass 1 }
    htypechk,procinfo,
-   nmem,ncnv,ninl,ncon,nld,
+   nmem,ncnv,ninl,ncon,nld,nadd,
    { parser specific stuff }
    pbase,pexpr,
    { codegen }
@@ -328,6 +328,25 @@ function get_next_varsym(def: tabstractrecorddef; const SymList:TFPHashObjectLis
 {$push}
 {$r-}
 {$q-}
+    { to work around broken x86 shifting, while generating bitmask }
+    function getbitmask(len: byte): aword;
+      begin
+        if len >= (sizeof(result) * 8) then
+          result:=0
+        else
+          result:=aword(1) shl len;
+        result:=aword(result-1);
+      end;
+
+    { shift left, and always pad the right bits with zeroes }
+    function shiftleft(value: aword; count: byte): aword;
+      begin
+        if count >= (sizeof(result) * 8) then
+          result:=0
+        else
+          result:=(value shl count) and (not getbitmask(count));
+      end;
+
     { (values between quotes below refer to fields of bp; fields not         }
     {  mentioned are unused by this routine)                                 }
     { bitpacks "value" as bitpacked value of bitsize "packedbitsize" into    }
@@ -342,16 +361,15 @@ function get_next_varsym(def: tabstractrecorddef; const SymList:TFPHashObjectLis
         if (target_info.endian=endian_big) then
           begin
             { bitpacked format: left-aligned (i.e., "big endian bitness") }
-            { work around broken x86 shifting }
-            if (AIntBits<>bp.packedbitsize) and
+            if (bp.packedbitsize<AIntBits) and
                (bp.curbitoffset<AIntBits) then
-              bp.curval:=bp.curval or ((value shl (AIntBits-bp.packedbitsize)) shr bp.curbitoffset);
+              bp.curval:=bp.curval or (shiftleft(value,AIntBits-bp.packedbitsize) shr bp.curbitoffset);
             shiftcount:=((AIntBits-bp.packedbitsize)-bp.curbitoffset);
             { carry-over to the next element? }
             if (shiftcount<0) then
               begin
                 if shiftcount>=-AIntBits then
-                  bp.nextval:=(value and ((aword(1) shl (-shiftcount))-1)) shl
+                  bp.nextval:=(value and getbitmask(-shiftcount)) shl
                               (AIntBits+shiftcount)
                 else
                   bp.nextval:=0;
@@ -826,7 +844,7 @@ function get_next_varsym(def: tabstractrecorddef; const SymList:TFPHashObjectLis
         { maybe pchar ? }
         else
           if is_char(def.pointeddef) and
-             (node.nodetype<>addrn) then
+            ((node.nodetype=stringconstn) or is_constcharnode(node)) then
             begin
               { create a tcb for the string data (it's placed in a separate
                 asmlist) }
@@ -875,7 +893,7 @@ function get_next_varsym(def: tabstractrecorddef; const SymList:TFPHashObjectLis
         { maybe pwidechar ? }
         else
           if is_widechar(def.pointeddef) and
-             (node.nodetype<>addrn) then
+            (node.nodetype in [stringconstn,ordconstn]) then
             begin
               if (node.nodetype in [stringconstn,ordconstn]) then
                 begin
@@ -912,13 +930,13 @@ function get_next_varsym(def: tabstractrecorddef; const SymList:TFPHashObjectLis
                 Message(parser_e_illegal_expression);
           end
         else
-          if (node.nodetype=addrn) or
+          if (node.nodetype in [addrn,addn,subn]) or
              is_proc2procvar_load(node,pd) then
             begin
               { insert typeconv }
               inserttypeconv(node,def);
               hp:=node;
-              while assigned(hp) and (hp.nodetype in [addrn,typeconvn,subscriptn,vecn]) do
+              while assigned(hp) and (hp.nodetype in [addrn,typeconvn,subscriptn,vecn,addn,subn]) do
                 hp:=tunarynode(hp).left;
               if (hp.nodetype=loadn) then
                 begin
@@ -927,6 +945,28 @@ function get_next_varsym(def: tabstractrecorddef; const SymList:TFPHashObjectLis
                   while assigned(hp) and (hp.nodetype<>loadn) do
                     begin
                        case hp.nodetype of
+                         addn :
+                           begin
+                             if (is_constintnode(taddnode(hp).right) or
+                               is_constenumnode(taddnode(hp).right) or
+                               is_constcharnode(taddnode(hp).right) or
+                               is_constboolnode(taddnode(hp).right)) and
+                               is_pointer(taddnode(hp).left.resultdef) then
+                               ftcb.queue_addn(tpointerdef(taddnode(hp).left.resultdef).pointeddef,get_ordinal_value(taddnode(hp).right))
+                             else
+                               Message(parser_e_illegal_expression);
+                           end;
+                         subn :
+                           begin
+                             if (is_constintnode(taddnode(hp).right) or
+                               is_constenumnode(taddnode(hp).right) or
+                               is_constcharnode(taddnode(hp).right) or
+                               is_constboolnode(taddnode(hp).right)) and
+                               is_pointer(taddnode(hp).left.resultdef) then
+                               ftcb.queue_subn(tpointerdef(taddnode(hp).left.resultdef).pointeddef,get_ordinal_value(taddnode(hp).right))
+                             else
+                               Message(parser_e_illegal_expression);
+                           end;
                          vecn :
                            begin
                              if (is_constintnode(tvecnode(hp).right) or

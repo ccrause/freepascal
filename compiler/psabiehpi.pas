@@ -522,7 +522,9 @@ implementation
 
     class procedure tpsabiehexceptionstatehandler.get_exception_temps(list: TAsmList; var t: texceptiontemps);
       begin
-        tg.gethltemp(list,ossinttype,ossinttype.size,tt_persistent,t.reasonbuf);
+        if not assigned(exceptionreasontype) then
+          exceptionreasontype:=ossinttype;
+        tg.gethltemp(list,exceptionreasontype,exceptionreasontype.size,tt_persistent,t.reasonbuf);
       end;
 
 
@@ -688,19 +690,24 @@ implementation
         begincatchres,
         paraloc1: tcgpara;
         pd: tprocdef;
-        rttisym: TAsmSymbol;
+        {rttisym: TAsmSymbol;
         rttidef: tdef;
+        indirect: boolean;
+        otherunit: boolean; }
         wrappedexception: tregister;
         exceptloc: tlocation;
-        indirect: boolean;
-        otherunit: boolean;
+{$if defined(i386) or defined(x86_64)}
         typeindex : aint;
+{$endif}
       begin
         paraloc1.init;
+{
         rttidef:=nil;
         rttisym:=nil;
+}
         wrappedexception:=hlcg.getaddressregister(list,voidpointertype);
         hlcg.a_load_reg_reg(list,voidpointertype,voidpointertype,NR_FUNCTION_RESULT_REG,wrappedexception);
+(*
         if add_catch then
           begin
             if assigned(excepttype) then
@@ -715,10 +722,13 @@ implementation
                 rttisym:=current_asmdata.RefAsmSymbol(excepttype.vmt_mangledname, AT_DATA, indirect);
               end;
           end;
+*)
         { check if the exception is handled by this node }
         if assigned(excepttype) then
           begin
+{$if defined(i386) or defined(x86_64)}
             typeindex:=(current_procinfo as tpsabiehprocinfo).CurrentAction.AddAction(excepttype);
+{$endif}
             current_asmdata.getjumplabel(catchstartlab);
 {$if defined(i386)}
             hlcg.a_cmp_const_reg_label (list,osuinttype,OC_EQ,typeindex+1,NR_FUNCTION_RESULT64_HIGH_REG,catchstartlab);
