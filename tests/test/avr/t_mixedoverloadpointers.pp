@@ -4,7 +4,6 @@
 program t_mixedoverload;
 
 type
-  //PByte_e = type PByte; section '.eeprom';
   Byte_e = type Byte; section '.eeprom';
   pbyte_e = type ^byte_e;
 
