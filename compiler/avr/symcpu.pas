@@ -119,6 +119,11 @@ type
   { tcpustringdef }
 
   tcpustringdef = class(tstringdef)
+  protected
+    procedure ppuload_platform(ppufile:tcompilerppufile); override;
+    procedure ppuwrite_platform(ppufile:tcompilerppufile); override;
+  public
+    function getcopy:tstoreddef; override;
     function GetTypeName:string; override;
   end;
   tcpustringdefclass = class of tcpustringdef;
@@ -201,9 +206,27 @@ implementation
 
 { tcpustringdef }
 
+procedure tcpustringdef.ppuload_platform(ppufile: tcompilerppufile);
+begin
+  inherited ppuload_platform(ppufile);
+  symsection:=tsymsection(ppufile.getbyte);
+end;
+
+procedure tcpustringdef.ppuwrite_platform(ppufile: tcompilerppufile);
+begin
+  inherited ppuwrite_platform(ppufile);
+  ppufile.putbyte(byte(symsection));
+end;
+
+function tcpustringdef.getcopy: tstoreddef;
+begin
+  Result:=inherited getcopy;
+  Result.symsection:=symsection;
+end;
+
 function tcpustringdef.GetTypeName: string;
 begin
-  result := inherited GetTypeName;
+  result:=inherited GetTypeName;
   case symsection of
     ss_eeprom: result:=result+'.EEPROM';
     ss_progmem: result:=result+'.PROGMEM';
