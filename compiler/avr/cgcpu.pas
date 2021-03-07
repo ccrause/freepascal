@@ -122,6 +122,7 @@ unit cgcpu;
        procedure a_op_const_reg_reg_internal(list: TAsmList; op: TOpCg; size: tcgsize; a: tcgint; src, srchi, dst, dsthi: tregister);
        // Check if load semantics require reference to be accessed via the Z register
        function useZregForReferenceLoad(source: treference): boolean;
+       function findProcDef(procname: string):tprocdef;
       protected
         procedure a_op_reg_reg_internal(list: TAsmList; Op: TOpCG; size: TCGSize; src, srchi, dst, dsthi: TRegister);
         procedure a_op_const_reg_internal(list : TAsmList; Op: TOpCG; size: TCGSize; a: tcgint; reg, reghi: TRegister);
@@ -143,7 +144,7 @@ unit cgcpu;
   implementation
 
     uses
-       globals,verbose,systems,cutils,
+       globals,verbose,systems,cutils,cclasses,
        fmodule,
        symconst,symsym,symtable,
        tgobj,rgobj,
@@ -547,6 +548,28 @@ unit cgcpu;
      function tcgavr.useZregForReferenceLoad(source: treference): boolean;
        begin
          result:=source.symsection in [ss_eeprom,ss_progmem];
+       end;
+
+     function tcgavr.findProcDef(procname: string): tprocdef;
+       var
+         symbol: tsym;
+         symtab: TSymtable;
+         controllername: string;
+       begin
+         result:=nil;
+         if current_settings.controllertype = ct_none then
+           begin
+             { Possibly compiling RTL controller unit, search for proc in current module }
+             if searchsym_in_module(current_module,upper(procname), symbol, symtab) and (symbol.typ=procsym) then
+               result:=tprocdef(tprocsym(symbol).ProcdefList[0]);
+           end
+         else
+           begin
+             { Look in currently defined controller unit for matching proc }
+             controllername := embedded_controllers[current_settings.controllertype].controllerunitstr;
+             if searchsym_in_named_module(controllername,upper(procname), symbol, symtab) and (symbol.typ=procsym) then
+               result:=tprocdef(tprocsym(symbol).ProcdefList[0]);
+           end;
        end;
 
 
@@ -2234,12 +2257,8 @@ unit cgcpu;
         l1: TAsmLabel;
         ai: taicpu;
         tmpreg: TRegister;
-        EECRref, EEARHref, EEARLref, EEDRref, href: treference;
-        symbol: tsym;
-        symtab: TSymtable;
         pd:tprocdef;
         paraloc1: tcgpara;
-        controllername: string;
       begin
         // Newer controllers map eeprom into data space
         if Ref.symsection=ss_eeprom then
@@ -2255,40 +2274,34 @@ unit cgcpu;
                       list.concat(taicpu.op_reg_const(A_SBCI,GetNextReg(Ref.base),0));
                     end;
 
-                { Locate FPC_READ_EEPROM_BYTE }
-                controllername := embedded_controllers[current_settings.controllertype].controllerunitstr;
-                if searchsym_in_named_module(controllername,'READEEPROMBYTE', symbol, symtab) and (symbol.typ=procsym) then
+                pd:=findProcDef('READEEPROMBYTE');
+                if Assigned(pd) then
                   begin
-                    pd:=tprocdef(tprocsym(symbol).ProcdefList[0]);
-                    if Assigned(pd) then
+                    paraloc1.init;
+                    paramanager.getcgtempparaloc(list,pd,1,paraloc1);
+                    a_load_reg_cgpara(list,OS_16,ref.base,paraloc1);
+                    paramanager.freecgpara(list,paraloc1);
+
+                    { Apply offset to pointer in R24:R25 }
+                    if Ref.offset<>0 then
                       begin
-                        paraloc1.init;
-                        paramanager.getcgtempparaloc(list,pd,1,paraloc1);
-                        a_load_reg_cgpara(list,OS_16,ref.base,paraloc1);    // address/pointer
-                        paramanager.freecgpara(list,paraloc1);
-
-                        // Apply offset to pointer in R24:R25
-                        if Ref.offset<>0 then
+                        if CPUAVR_HAS_MOVW in cpu_capabilities[current_settings.cputype] then
+                          list.concat(taicpu.op_reg_const(A_ADIW,NR_R24,Ref.offset))
+                        else
                           begin
-                            if CPUAVR_HAS_MOVW in cpu_capabilities[current_settings.cputype] then
-                              list.concat(taicpu.op_reg_const(A_ADIW,NR_R24,Ref.offset))
-                            else
-                              begin
-                                list.concat(taicpu.op_reg_const(A_LDI,GetDefaultTmpReg,Ref.offset));
-                                list.concat(taicpu.op_reg_reg(A_ADD,NR_R24,GetDefaultTmpReg));
-                                list.concat(taicpu.op_reg_reg(A_ADC,NR_R25,GetDefaultZeroReg));
-                              end;
+                            list.concat(taicpu.op_reg_const(A_LDI,GetDefaultTmpReg,Ref.offset));
+                            list.concat(taicpu.op_reg_reg(A_ADD,NR_R24,GetDefaultTmpReg));
+                            list.concat(taicpu.op_reg_reg(A_ADC,NR_R25,GetDefaultZeroReg));
                           end;
-
-                        alloccpuregisters(list,R_INTREGISTER,paramanager.get_volatile_registers_int(pocall_default));
-                        a_call_name(list,'FPC_READ_EEPROM_BYTE',false);
-                        dealloccpuregisters(list,R_INTREGISTER,paramanager.get_volatile_registers_int(pocall_default));
-                        // Return value in R24
-                        cg.a_reg_alloc(list,NR_R24);
-                        list.concat(taicpu.op_reg_reg(A_MOV,reg,NR_R24));
-                        cg.a_reg_dealloc(list,NR_R24);
-                        paraloc1.done;
                       end;
+
+                    alloccpuregisters(list,R_INTREGISTER,paramanager.get_volatile_registers_int(pocall_default));
+                    a_call_name(list,TCmdStrListItem(pd.aliasnames.First).Str,false);
+                    dealloccpuregisters(list,R_INTREGISTER,paramanager.get_volatile_registers_int(pocall_default));
+                    cg.a_reg_alloc(list,NR_R24);
+                    list.concat(taicpu.op_reg_reg(A_MOV,reg,NR_R24));
+                    cg.a_reg_dealloc(list,NR_R24);
+                    paraloc1.done;
                   end
                 else
                   Comment(V_Error,'Could not locate READEEPROMBYTE');
@@ -2307,7 +2320,7 @@ unit cgcpu;
               end
             else
               begin
-                // Add eeprom offset to index register high byte
+                { Add eeprom offset to index register high byte }
                 list.concat(taicpu.op_reg_const(A_SUBI,GetNextReg(Ref.base),$EC));
                 list.concat(taicpu.op_reg_ref(GetLoad(Ref),reg,Ref));
                 list.concat(taicpu.op_reg_const(A_SUBI,GetNextReg(Ref.base),$14));
@@ -2322,18 +2335,13 @@ unit cgcpu;
         l1: TAsmLabel;
         ai: taicpu;
         tmpreg: TRegister;
-        EECRref, EEARHref, EEARLref, EEDRref, href: treference;
-        NVMCTRLref, CTRLAref, CCPref, STATUSref: treference;
-        symbol: tsym;
-        symtab: TSymtable;
         def: tdef;
         pd:tprocdef;
         paraloc1, paraloc2: tcgpara;
-        controllername: string;
       begin
-        // Writing to flash requires page erase & page write semantics.
-        // General random access writes are therefore undesired and not allowed.
-        // Could probably move this to somewhere in first pass for earlier check
+        { Writing to flash requires page erase & page write semantics.
+          General random access writes are therefore undesired and not allowed.
+          Could probably move this to somewhere in first pass for earlier check }
         if ref.symsection=ss_progmem then
           Comment(V_Error,'Writing to program memory not supported');
 
@@ -2348,39 +2356,35 @@ unit cgcpu;
                   list.concat(taicpu.op_reg_const(A_SBCI,GetNextReg(Ref.base),0));
                 end;
 
-            { Locate FPC_WRITE_EEPROM_BYTE }
-            controllername := embedded_controllers[current_settings.controllertype].controllerunitstr;
-            if searchsym_in_named_module(controllername,'WRITEEEPROMBYTE', symbol, symtab) and (symbol.typ=procsym) then
+            pd:=findProcDef('WRITEEEPROMBYTE');
+            if Assigned(pd) then
               begin
-                pd:=tprocdef(tprocsym(symbol).ProcdefList[0]);
-                if Assigned(pd) then
+                paraloc1.init;
+                paraloc2.init;
+                paramanager.getcgtempparaloc(list,pd,1,paraloc1);
+                paramanager.getcgtempparaloc(list,pd,2,paraloc2);
+                a_load_reg_cgpara(list,OS_16,ref.base,paraloc1);
+                a_load_reg_cgpara(list,OS_8,reg,paraloc2);
+                paramanager.freecgpara(list,paraloc1);
+                paramanager.freecgpara(list,paraloc1);
+
+                { Apply offset to pointer in R24:R25 }
+                if Ref.offset<>0 then
                   begin
-                    paraloc1.init;
-                    paraloc2.init;
-                    paramanager.getcgtempparaloc(list,pd,1,paraloc1);
-                    paramanager.getcgtempparaloc(list,pd,2,paraloc2);
-                    a_load_reg_cgpara(list,OS_16,ref.base,paraloc1);    // address/pointer
-                    a_load_reg_cgpara(list,OS_8,reg,paraloc2);    // value
-                    paramanager.freecgpara(list,paraloc1);
-                    paramanager.freecgpara(list,paraloc1);
-                    // Apply offset to pointer in R24:R25
-                    if Ref.offset<>0 then
+                    if CPUAVR_HAS_MOVW in cpu_capabilities[current_settings.cputype] then
+                      list.concat(taicpu.op_reg_const(A_ADIW,NR_R24,Ref.offset))
+                    else
                       begin
-                        if CPUAVR_HAS_MOVW in cpu_capabilities[current_settings.cputype] then
-                          list.concat(taicpu.op_reg_const(A_ADIW,NR_R24,Ref.offset))
-                        else
-                          begin
-                            list.concat(taicpu.op_reg_const(A_LDI,GetDefaultTmpReg,Ref.offset));
-                            list.concat(taicpu.op_reg_reg(A_ADD,NR_R24,GetDefaultTmpReg));
-                            list.concat(taicpu.op_reg_reg(A_ADC,NR_R25,GetDefaultZeroReg));
-                          end;
+                        list.concat(taicpu.op_reg_const(A_LDI,GetDefaultTmpReg,Ref.offset));
+                        list.concat(taicpu.op_reg_reg(A_ADD,NR_R24,GetDefaultTmpReg));
+                        list.concat(taicpu.op_reg_reg(A_ADC,NR_R25,GetDefaultZeroReg));
                       end;
-                    alloccpuregisters(list,R_INTREGISTER,paramanager.get_volatile_registers_int(pocall_default));
-                    a_call_name(list,'FPC_WRITE_EEPROM_BYTE',false);
-                    dealloccpuregisters(list,R_INTREGISTER,paramanager.get_volatile_registers_int(pocall_default));
-                    paraloc1.done;
-                    paraloc2.done;
                   end;
+                alloccpuregisters(list,R_INTREGISTER,paramanager.get_volatile_registers_int(pocall_default));
+                a_call_name(list,TCmdStrListItem(pd.aliasnames.First).Str,false);
+                dealloccpuregisters(list,R_INTREGISTER,paramanager.get_volatile_registers_int(pocall_default));
+                paraloc1.done;
+                paraloc2.done;
               end
             else
               Comment(V_Error,'Could not locate WRITEEEPROMBYTE');
