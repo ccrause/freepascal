@@ -340,11 +340,7 @@ const
   EEPE = 1; // EEPROM Write Enable
   EERE = 0; // EEPROM Read Enable
 
- // Check if EEPROM access is supported by controller
-{$if declared (NVMCTRL) or declared(EECR)}
-  procedure writeEEPROMbyte(const EEPROMaddress: pointer; const val: byte); public name 'FPC_WRITE_EEPROM_BYTE';
-  function readEEPROMbyte(const EEPROMaddress: pointer): byte; public name 'FPC_READ_EEPROM_BYTE';
-{$endif}
+  {$include sectionhelpersh.inc}
 
 implementation
 
@@ -465,10 +461,6 @@ label
    .set SPM_Ready_ISR, Default_IRQ_handler
  end;
 
-{$if declared (NVMCTRL)}
-  {$include avrxmega3_eeprom.inc}
-{$elseif declared(EECR)}
-  {$include classicavr_eeprom.inc}
-{$endif}
+{$include sectionhelpers.inc}
 
 end.

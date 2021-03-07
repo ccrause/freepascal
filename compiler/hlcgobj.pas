@@ -693,6 +693,9 @@ implementation
 {$ifdef x86}
        cgx86,
 {$endif x86}
+{$ifdef avr}
+       CPUInfo,
+{$endif avr}
        ncgutil;
 
 
@@ -3392,7 +3395,45 @@ implementation
     var
       cgpara1,cgpara2,cgpara3 : TCGPara;
       pd : tprocdef;
+{$ifdef avr}
+      helpername,controllername: string;
+      symbol: tsym;
+      symtab: TSymtable;
+{$endif avr}
     begin
+{$ifdef avr}
+      if strdef.symsection<>dest.symsection then
+      begin
+        if strdef.symsection=ss_eeprom then
+          helpername:='fpc_shortstr_to_shortstr_eeprom'
+        else
+          helpername:='fpc_shortstr_to_shortstr_progmem';
+        pd:=nil;
+        controllername := embedded_controllers[current_settings.controllertype].controllerunitstr;
+        if searchsym_in_named_module(controllername,helpername, symbol, symtab) and (symbol.typ=procsym) then
+          pd:=tprocdef(tprocsym(symbol).ProcdefList[0]);
+
+        if not Assigned(pd) then
+          Comment(V_Error,'Could not locate required helper '+helpername)
+        else
+        begin
+          cgpara1.init;
+          cgpara2.init;
+          paramanager.getcgtempparaloc(list,pd,1,cgpara1);
+          paramanager.getcgtempparaloc(list,pd,2,cgpara2);
+          { Note: assume pd.is_pushleftright will allways be false for AVR }
+          a_loadaddr_ref_cgpara(list,strdef,source,cgpara2);
+          a_loadaddr_ref_cgpara(list,strdef,dest,cgpara1);
+          paramanager.freecgpara(list,cgpara2);
+          paramanager.freecgpara(list,cgpara1);
+          a_call_name(list,pd,upper(helpername),[@cgpara1,@cgpara2],nil,false).resetiftemp;
+          cgpara2.done;
+          cgpara1.done;
+        end
+      end
+      else
+      begin
+{$endif avr}
       pd:=search_system_proc('fpc_shortstr_to_shortstr');
       cgpara1.init;
       cgpara2.init;
@@ -3400,10 +3441,6 @@ implementation
       paramanager.getcgtempparaloc(list,pd,1,cgpara1);
       paramanager.getcgtempparaloc(list,pd,2,cgpara2);
       paramanager.getcgtempparaloc(list,pd,3,cgpara3);
-{$ifdef avr}
-      if strdef.symsection<>dest.symsection then
-        Comment(V_Error,'ShortString located in incompatible section');
-{$endif avr}
       if pd.is_pushleftright then
         begin
           a_loadaddr_ref_cgpara(list,strdef,dest,cgpara1);
@@ -3423,6 +3460,9 @@ implementation
       cgpara3.done;
       cgpara2.done;
       cgpara1.done;
+{$ifdef avr}
+      end;
+{$endif avr}
     end;
 
   procedure thlcgobj.g_copyvariant(list: TAsmList; const source, dest: treference; vardef: tvariantdef);
