@@ -1,13 +1,12 @@
 { %cpu=avr }
 { %target=embedded }
-{ %OPT=-Mobjfpc }
 
 program t_shortstr_to_shortstr;
 
 type
   shortstring_eeprom = type shortstring; section '.eeprom';
 
-procedure fpc_shortstr_to_shortstr_eeprom(out res:shortstring; constref sstr: shortstring_eeprom);
+procedure fpc_shortstr_to_shortstr_eeprom(var res:shortstring; constref sstr: shortstring_eeprom);
 var
   slen, i: byte;
 begin
