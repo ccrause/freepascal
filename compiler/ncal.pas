@@ -1572,6 +1572,10 @@ implementation
      constructor tcallnode.createintern(const name: string; params: tnode);
        var
          srsym: tsym;
+{$ifdef avr}
+         symtab: TSymtable;
+         controllername: string;
+{$endif avr}
        begin
          srsym := tsym(systemunit.Find(name));
          { in case we are looking for a non-external compilerproc of which we
@@ -1581,6 +1585,18 @@ implementation
          if not assigned(srsym) and
             (cs_compilesystem in current_settings.moduleswitches) then
            srsym := tsym(systemunit.Find(upper(name)));
+{$ifdef avr}
+         if not Assigned(srsym) then
+           if current_settings.controllertype = ct_none then
+             { Possibly compiling RTL controller unit, search for proc in current module }
+             searchsym_in_module(current_module,name,srsym,symtab)
+           else
+             begin
+               { Look in currently defined controller unit for matching proc }
+               controllername := embedded_controllers[current_settings.controllertype].controllerunitstr;
+               searchsym_in_named_module(controllername,name,srsym,symtab);
+             end;
+{$endif avr}
          if not assigned(srsym) or
             (srsym.typ<>procsym) then
            Message1(cg_f_unknown_compilerproc,name);

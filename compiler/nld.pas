@@ -852,6 +852,7 @@ implementation
         hdef: tdef;
         hs: string;
         needrtti: boolean;
+        procname: string;
       begin
          result:=nil;
          expectloc:=LOC_VOID;
@@ -896,7 +897,14 @@ implementation
                  hp:=ccallparanode.create
                        (right,
                   ccallparanode.create(left,nil));
-                 result:=ccallnode.createintern('fpc_'+tstringdef(right.resultdef).stringtypname+'_to_shortstr',hp);
+                 procname:='fpc_'+tstringdef(right.resultdef).stringtypname+'_to_shortstr';
+{$ifdef avr}
+                 if right.resultdef.symsection=ss_eeprom then
+                   procname:=procname+'_eeprom'
+                 else if right.resultdef.symsection=ss_progmem then
+                   procname:=procname+'_progmem';
+{$endif avr}
+                 result:=ccallnode.createintern(procname,hp);
                  firstpass(result);
                  left:=nil;
                  right:=nil;
