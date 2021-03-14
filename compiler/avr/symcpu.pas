@@ -71,6 +71,11 @@ type
   { tcpurecorddef }
 
   tcpurecorddef = class(trecorddef)
+  protected
+    procedure ppuload_platform(ppufile:tcompilerppufile); override;
+    procedure ppuwrite_platform(ppufile:tcompilerppufile); override;
+  public
+    function getcopy:tstoreddef; override;
     function GetTypeName:string; override;
   end;
   tcpurecorddefclass = class of tcpurecorddef;
@@ -90,6 +95,11 @@ type
   { tcpuarraydef }
 
   tcpuarraydef = class(tarraydef)
+  protected
+    procedure ppuload_platform(ppufile:tcompilerppufile); override;
+    procedure ppuwrite_platform(ppufile:tcompilerppufile); override;
+  public
+    function getcopy:tstoreddef; override;
     function GetTypeName:string; override;
   end;
   tcpuarraydefclass = class of tcpuarraydef;
@@ -97,6 +107,11 @@ type
   { tcpuorddef }
 
   tcpuorddef = class(torddef)
+  protected
+    procedure ppuload_platform(ppufile:tcompilerppufile); override;
+    procedure ppuwrite_platform(ppufile:tcompilerppufile); override;
+  public
+    function getcopy:tstoreddef; override;
     function GetTypeName:string; override;
   end;
   tcpuorddefclass = class of tcpuorddef;
@@ -104,6 +119,11 @@ type
   { tcpufloatdef }
 
   tcpufloatdef = class(tfloatdef)
+  protected
+    procedure ppuload_platform(ppufile:tcompilerppufile); override;
+    procedure ppuwrite_platform(ppufile:tcompilerppufile); override;
+  public
+    function getcopy:tstoreddef; override;
     function GetTypeName:string; override;
   end;
   tcpufloatdefclass = class of tcpufloatdef;
@@ -237,6 +257,24 @@ end;
 
 { tcpuorddef }
 
+procedure tcpuorddef.ppuload_platform(ppufile: tcompilerppufile);
+begin
+  inherited ppuload_platform(ppufile);
+  symsection:=tsymsection(ppufile.getbyte);
+end;
+
+procedure tcpuorddef.ppuwrite_platform(ppufile: tcompilerppufile);
+begin
+  inherited ppuwrite_platform(ppufile);
+  ppufile.putbyte(byte(symsection));
+end;
+
+function tcpuorddef.getcopy: tstoreddef;
+begin
+  Result:=inherited getcopy;
+  Result.symsection:=symsection;
+end;
+
 function tcpuorddef.GetTypeName: string;
 begin
   result := inherited GetTypeName;
@@ -249,6 +287,24 @@ begin
 end;
 
 { tcpuarraydef }
+
+procedure tcpuarraydef.ppuload_platform(ppufile: tcompilerppufile);
+begin
+  inherited ppuload_platform(ppufile);
+  symsection:=tsymsection(ppufile.getbyte);
+end;
+
+procedure tcpuarraydef.ppuwrite_platform(ppufile: tcompilerppufile);
+begin
+  inherited ppuwrite_platform(ppufile);
+  ppufile.putbyte(byte(symsection));
+end;
+
+function tcpuarraydef.getcopy: tstoreddef;
+begin
+  Result := inherited getcopy;
+  Result.symsection:=symsection;
+end;
 
 function tcpuarraydef.GetTypeName: string;
 begin
@@ -263,6 +319,24 @@ end;
 
 { tcpufloatdef }
 
+procedure tcpufloatdef.ppuload_platform(ppufile: tcompilerppufile);
+begin
+  inherited ppuload_platform(ppufile);
+  symsection:=tsymsection(ppufile.getbyte);
+end;
+
+procedure tcpufloatdef.ppuwrite_platform(ppufile: tcompilerppufile);
+begin
+  inherited ppuwrite_platform(ppufile);
+  ppufile.putbyte(byte(symsection));
+end;
+
+function tcpufloatdef.getcopy: tstoreddef;
+begin
+  Result := inherited getcopy;
+  Result.symsection:=symsection;
+end;
+
 function tcpufloatdef.GetTypeName: string;
 begin
   result := inherited GetTypeName;
@@ -275,6 +349,24 @@ begin
 end;
 
 { tcpurecorddef }
+
+procedure tcpurecorddef.ppuload_platform(ppufile: tcompilerppufile);
+begin
+  inherited ppuload_platform(ppufile);
+  symsection:=tsymsection(ppufile.getbyte);
+end;
+
+procedure tcpurecorddef.ppuwrite_platform(ppufile: tcompilerppufile);
+begin
+  inherited ppuwrite_platform(ppufile);
+  ppufile.putbyte(byte(symsection));
+end;
+
+function tcpurecorddef.getcopy: tstoreddef;
+begin
+  Result := inherited getcopy;
+  tcpurecorddef(result).symsection:=symsection;
+end;
 
 function tcpurecorddef.GetTypeName: string;
 begin
