@@ -74,6 +74,9 @@ implementation
       verbose,globals,cutils,
       aasmcnst,
       symconst,symdef,aasmtai,aasmdata,defutil,
+{$ifdef avr}
+      symsym,
+{$endif avr}
       cpuinfo,cpubase,
       cgbase,cgutils,
       hlcgobj,cclasses
@@ -226,7 +229,9 @@ implementation
          strpointerdef: tdef;
          datatcb: ttai_typedconstbuilder;
          datadef: tdef;
-
+{$ifdef avr}
+        currentsymsection: tsymsection;
+{$endif avr}
       const
         PoolMap: array[tconststringtype] of TConstPoolType = (
           sp_conststr,
@@ -237,6 +242,9 @@ implementation
           sp_unicodestr
         );
       begin
+{$ifdef avr}
+        currentsymsection:=Self.location.reference.symsection;
+{$endif avr}
          case cst_type of
            cst_shortstring,
            cst_conststring,
@@ -336,6 +344,17 @@ implementation
                           datatcb.maybe_begin_aggregate(datadef);
                           datatcb.emit_tai(Tai_string.Create_pchar(pc,l+2),datadef);
                           datatcb.maybe_end_aggregate(datadef);
+{$ifdef avr}
+                          if currentsymsection<>ss_none then
+                          begin
+                            datadef.symsection:=currentsymsection;
+                            current_asmdata.asmlists[al_typedconsts].concatList(
+                              datatcb.get_final_asmlist(lastlabel.lab,datadef,sec_user,symSectionToSectionName(currentsymsection),
+                              const_align(sizeof(pint)))
+                            )
+                          end
+                          else
+{$endif avr}
                           current_asmdata.asmlists[al_typedconsts].concatList(
                             datatcb.get_final_asmlist(lastlabel.lab,datadef,sec_rodata_norel,lastlabel.lab.name,const_align(sizeof(pint)))
                           );
@@ -379,6 +398,9 @@ implementation
              location_reset_ref(location, LOC_CREFERENCE, def_cgsize(resultdef), const_align(strpointerdef.size), []);
              location.reference.symbol:=lab_str;
            end;
+{$ifdef avr}
+         Self.location.reference.symsection:=currentsymsection;
+{$endif avr}
       end;
 
 

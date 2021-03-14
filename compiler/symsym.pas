@@ -411,6 +411,9 @@ interface
           constdefderef : tderef;
           consttyp    : tconsttyp;
           value       : tconstvalue;
+{$ifdef avr}
+          symsection : tsymsection;
+{$endif avr}
           constructor create_ord(const n : TSymStr;t : tconsttyp;v : tconstexprint;def:tdef);virtual;
           constructor create_ordptr(const n : TSymStr;t : tconsttyp;v : tconstptruint;def:tdef);virtual;
           constructor create_ptr(const n : TSymStr;t : tconsttyp;v : pointer;def:tdef);virtual;

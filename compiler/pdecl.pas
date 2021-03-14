@@ -125,6 +125,11 @@ implementation
                    else
                      hp:=cconstsym.create_string(orgname,conststring,sp,tstringconstnode(p).len,nil);
                  end;
+
+{$ifdef avr}
+               if p.resultdef.symsection<>ss_none then
+                 hp.symsection := p.resultdef.symsection;
+{$endif avr}
              end;
            realconstn :
              begin
@@ -230,6 +235,7 @@ implementation
          skipequal : boolean;
          tclist : tasmlist;
          varspez : tvarspez;
+         sectionname: ansistring;
       begin
          old_block_type:=block_type;
          block_type:=bt_const;
@@ -272,6 +278,21 @@ implementation
                    else
                      stringdispose(deprecatedmsg);
                    consume(_SEMICOLON);
+{$ifdef avr}
+                   { try to parse a section directive }
+                   if (target_info.system in systems_allow_section) and
+                      (symtablestack.top.symtabletype in [staticsymtable,globalsymtable]) and
+                      (idtoken=_SECTION) then
+                     begin
+                       try_consume_sectiondirective(sectionname);
+                       if sectionname<>'' then
+                         begin
+                           //tconstsym(sym).section:=sectionname;
+                           tconstsym(sym).symsection:=sectionNameToSymSection(sectionname);
+                         end;
+                     end;
+{$endif avr}
+
                 end;
 
              _COLON:

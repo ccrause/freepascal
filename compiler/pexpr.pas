@@ -2061,6 +2061,9 @@ implementation
      strdef : tdef;
      spezcontext : tspecializationcontext;
      old_current_filepos : tfileposinfo;
+{$ifdef avr}
+     currentsymsection: tsymsection;
+{$endif avr}
     label
      skipreckklammercheck,
      skippointdefcheck;
@@ -2182,7 +2185,13 @@ implementation
                            { Support string[0..9] which returns array [0..9] of char.}
                            if try_to_consume(_POINTPOINT) then
                              p2:=crangenode.create(p2,comp_expr([ef_accept_equal]));
+{$ifdef avr}
+                           currentsymsection:=p1.location.reference.symsection;
+{$endif avr}
                            p1:=cvecnode.create(p1,p2);
+{$ifdef avr}
+                           p1.location.reference.symsection:=currentsymsection;
+{$endif avr}
                          end;
                        arraydef:
                          begin
@@ -2244,7 +2253,13 @@ implementation
                                if try_to_consume(_POINTPOINT) then
                                  { Support arrayvar[0..9] which returns array [0..9] of arraytype.}
                                  p2:=crangenode.create(p2,comp_expr([ef_accept_equal]));
+{$ifdef avr}
+                               currentsymsection:=p1.location.reference.symsection;
+{$endif avr}
                                p1:=cvecnode.create(p1,p2);
+{$ifdef avr}
+                               p1.location.reference.symsection:=currentsymsection;
+{$endif avr}
                              end;
                          end;
                        else
@@ -3946,6 +3961,11 @@ implementation
              _CSTRING :
                begin
                  p1:=cstringconstnode.createpchar(ansistring2pchar(cstringpattern),length(cstringpattern),nil);
+{$ifdef avr}
+                 { Put string literals in progmem to save RAM
+                   should be optional... }
+                 p1.location.reference.symsection:=ss_progmem;
+{$endif avr}
                  consume(_CSTRING);
                  if token in postfixoperator_tokens then
                    begin

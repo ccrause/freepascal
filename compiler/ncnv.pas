@@ -334,7 +334,10 @@ implementation
       ttypeconvnodetype = (tct_implicit,tct_explicit,tct_internal);
 
     procedure do_inserttypeconv(var p: tnode;def: tdef; convtype: ttypeconvnodetype);
-
+//{$ifdef avr}
+//      var
+//        currentsymsection: tsymsection;
+//{$endif avr}
       begin
         if not assigned(p.resultdef) then
          begin
@@ -364,11 +367,22 @@ implementation
             { don't replace encoded string constants to rawbytestring encoding.
               preserve the codepage }
             if not (is_rawbytestring(def) and (p.nodetype=stringconstn)) then
-              { this now destroys the section information... }
-              p.resultdef:=def
+{$ifdef avr}
+             begin
+{$endif avr}
+             { this now destroys the section information... }
+              p.resultdef:=def;
+{$ifdef avr}
+              if p.location.reference.symsection<>ss_none then
+                p.resultdef.symsection:=p.location.reference.symsection;
+             end;
+{$endif avr}
           end
         else
          begin
+//{$ifdef avr}
+//           currentsymsection:=p.location.reference.symsection;
+//{$endif avr}
            case convtype of
              tct_implicit:
                p:=ctypeconvnode.create(p,def);
@@ -378,15 +392,27 @@ implementation
                p:=ctypeconvnode.create_internal(p,def);
            end;
            p.fileinfo:=ttypeconvnode(p).left.fileinfo;
+//{$ifdef avr}
+//           p.location.reference.symsection:=currentsymsection;
+//{$endif avr}
            typecheckpass(p);
          end;
       end;
 
 
     procedure inserttypeconv(var p:tnode;def:tdef);
-
+{$ifdef avr}
+      var
+        currentsymsection: tsymsection;
+{$endif avr}
       begin
+{$ifdef avr}
+        currentsymsection:=p.location.reference.symsection;
+{$endif avr}
         do_inserttypeconv(p,def,tct_implicit);
+{$ifdef avr}
+        p.location.reference.symsection:=currentsymsection;
+{$endif avr}
       end;
 
 
