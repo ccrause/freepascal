@@ -3964,7 +3964,8 @@ implementation
 {$ifdef avr}
                  { Put string literals in progmem to save RAM
                    should be optional... }
-                 p1.location.reference.symsection:=ss_progmem;
+                 if cs_string_in_progmem in current_settings.localswitches then
+                   p1.location.reference.symsection:=ss_progmem;
 {$endif avr}
                  consume(_CSTRING);
                  if token in postfixoperator_tokens then

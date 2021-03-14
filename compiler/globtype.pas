@@ -171,7 +171,9 @@ interface
          { i8086 specific }
          cs_force_far_calls,
          cs_hugeptr_arithmetic_normalization,
-         cs_hugeptr_comparison_normalization
+         cs_hugeptr_comparison_normalization,
+         { avr specific }
+         cs_string_in_progmem
        );
        tlocalswitches = set of tlocalswitch;
 
