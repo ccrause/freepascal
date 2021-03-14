@@ -67,6 +67,49 @@
         for i := 0 to slen do
           res[i] := sstr[i];
       end;
+
+      function fpc_shortstr_copy_from_eeprom(constref s : shortstring_eeprom;index : SizeInt;count : SizeInt): shortstring;[public,alias:'FPC_SHORTSTR_COPY_FROM_EEPROM']; compilerproc;
+      var
+        i: byte;
+      begin
+        if count<0 then
+         count:=0;
+        if index>1 then
+         dec(index)
+        else
+         index:=0;
+        if index>ord(s[0]) then
+         count:=0
+        else
+         if count>ord(s[0])-index then
+          count:=ord(s[0])-index;
+
+        fpc_shortstr_copy_from_eeprom[0]:=chr(count);
+        for i := 1 to count do
+          fpc_shortstr_copy_from_eeprom[i] := s[i+index];
+      end;
+
+      function fpc_shortstr_copy_from_progmem(constref s : shortstring_progmem;index : SizeInt;count : SizeInt): shortstring;[public,alias:'FPC_SHORTSTR_COPY_FROM_PROGMEM']; compilerproc;
+      var
+        i: byte;
+      begin
+        if count<0 then
+         count:=0;
+        if index>1 then
+         dec(index)
+        else
+         index:=0;
+        if index>ord(s[0]) then
+         count:=0
+        else
+         if count>ord(s[0])-index then
+          count:=ord(s[0])-index;
+
+        fpc_shortstr_copy_from_progmem[0]:=chr(count);
+        for i := 1 to count do
+          fpc_shortstr_copy_from_progmem[i] := s[i+index];
+      end;
+
     {$endif}
 
 
