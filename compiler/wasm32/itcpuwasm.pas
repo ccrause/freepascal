@@ -1,7 +1,7 @@
 {
-    Copyright (c) 1998-2003 by Carl Eric Codere and Peter Vreman
+    Copyright (c) 2016 by Karoly Balogh
 
-    Handles the common Risc-V32 assembler reader routines
+    This unit contains the WebAssembly instruction tables
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -19,23 +19,18 @@
 
  ****************************************************************************
 }
-unit rarv32;
+unit itcpuwasm;
 
 {$i fpcdefs.inc}
 
-  interface
+interface
 
     uses
-      aasmbase,aasmtai,aasmdata,aasmcpu,
-      cpubase,rautils,cclasses;
+      cpubase,cgbase;
 
-    type
-      TRVOperand=class(TOperand)
-      end;
+    const
+      wasm_op2str : op2strtable = ({$i strinst.inc});
 
-      TRVInstruction=class(TInstruction)
-      end;
-
-  implementation
+implementation
 
 end.
