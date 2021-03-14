@@ -953,6 +953,8 @@ const
   UDORD1 = 2; // Data Order
   UCPHA1 = 1; // Clock Phase
 
+{$include sectionhelpersh.inc}
+
 implementation
 
 {$i avrcommon.inc}
@@ -1255,5 +1257,7 @@ label
    .set AES_READY_ISR, Default_IRQ_handler
    .set BAT_LOW_ISR, Default_IRQ_handler
  end;
+
+{$include sectionhelpers.inc}
 
 end.

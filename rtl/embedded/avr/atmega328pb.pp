@@ -627,6 +627,7 @@ const
   TWAM15 = $06;
   TWAM16 = $07;
 
+{$include sectionhelpersh.inc}
 
 implementation
 
@@ -822,5 +823,7 @@ asm
   .set TIMER4_COMPB_ISR, Default_IRQ_handler
   .set TIMER4_OVF_ISR, Default_IRQ_handler
 end;
+
+{$include sectionhelpers.inc}
 
 end.

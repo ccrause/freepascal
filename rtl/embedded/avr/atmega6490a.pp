@@ -376,6 +376,8 @@ const
   PCIF = 4; // Pin Change Interrupt Flags
   INTF0 = 0; // External Interrupt Flag 0
 
+{$include sectionhelpersh.inc}
+
 implementation
 
 {$i avrcommon.inc}
@@ -490,5 +492,7 @@ label
    .set PCINT2_ISR, Default_IRQ_handler
    .set PCINT3_ISR, Default_IRQ_handler
  end;
+
+{$include sectionhelpers.inc}
 
 end.

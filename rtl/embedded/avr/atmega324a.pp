@@ -401,6 +401,8 @@ const
   PRUSART0 = 1; // Power Reduction USARTs
   PRADC = 0; // Power Reduction ADC
 
+{$include sectionhelpersh.inc}
+
 implementation
 
 {$i avrcommon.inc}
@@ -539,5 +541,7 @@ label
    .set USART1_UDRE_ISR, Default_IRQ_handler
    .set USART1_TX_ISR, Default_IRQ_handler
  end;
+
+{$include sectionhelpers.inc}
 
 end.

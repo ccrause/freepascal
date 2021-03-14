@@ -349,6 +349,8 @@ const
   PGERS = 1; // Page Erase
   SPMEN = 0; // Store Program Memory Enable
 
+{$include sectionhelpersh.inc}
+
 implementation
 
 {$i avrcommon.inc}
@@ -479,5 +481,7 @@ label
    .set EE_READY_ISR, Default_IRQ_handler
    .set SPM_ISR, Default_IRQ_handler
  end;
+
+{$include sectionhelpers.inc}
 
 end.

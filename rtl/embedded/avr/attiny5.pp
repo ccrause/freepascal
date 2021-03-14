@@ -164,6 +164,8 @@ const
   WDP = 0; // Watchdog Timer Prescaler Bits
   WDE = 3; // Watch Dog Enable
 
+{$include sectionhelpersh.inc}
+
 implementation
 
 {$define RELBRANCHES}
@@ -224,5 +226,7 @@ label
    .set VLM_ISR, Default_IRQ_handler
    .set ADC_ISR, Default_IRQ_handler
  end;
+
+{$include sectionhelpers.inc}
 
 end.

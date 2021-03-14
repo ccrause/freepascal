@@ -226,6 +226,8 @@ const
   BPDS = 1; // 
   BPDSE = 0; // 
 
+{$include sectionhelpersh.inc}
+
 implementation
 
 {$define RELBRANCHES}
@@ -326,5 +328,7 @@ label
    .set PCINT_A_ISR, Default_IRQ_handler
    .set PCINT_D_ISR, Default_IRQ_handler
  end;
+
+{$include sectionhelpers.inc}
 
 end.

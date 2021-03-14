@@ -340,6 +340,8 @@ const
   SM = 1; // Sleep Mode Select Bits
   SE = 0; // Sleep Enable
 
+{$include sectionhelpersh.inc}
+
 implementation
 
 {$i avrcommon.inc}
@@ -458,5 +460,7 @@ label
    .set TWI_ISR, Default_IRQ_handler
    .set SPM_Ready_ISR, Default_IRQ_handler
  end;
+
+{$include sectionhelpers.inc}
 
 end.

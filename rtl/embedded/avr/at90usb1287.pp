@@ -668,6 +668,8 @@ const
   PLLE = 1; // PLL Enable Bit
   PLOCK = 0; // PLL Lock Status Bit
 
+{$include sectionhelpersh.inc}
+
 implementation
 
 {$i avrcommon.inc}
@@ -834,5 +836,7 @@ label
    .set TWI_ISR, Default_IRQ_handler
    .set SPM_READY_ISR, Default_IRQ_handler
  end;
+
+{$include sectionhelpers.inc}
 
 end.

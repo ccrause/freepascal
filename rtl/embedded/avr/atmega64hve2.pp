@@ -438,6 +438,7 @@ const
   VADICIE = $04;  
   VADACIE = $05;  
 
+{$include sectionhelpersh.inc}
 
 implementation
 
@@ -553,5 +554,7 @@ asm
   .set SPM_ISR, Default_IRQ_handler
   .set PLL_ISR, Default_IRQ_handler
 end;
+
+{$include sectionhelpers.inc}
 
 end.

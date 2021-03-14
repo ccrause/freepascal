@@ -1790,6 +1790,7 @@ const
   RX_LENGTH6 = $06;  // Received Frame Length
   RX_LENGTH7 = $07;  // Received Frame Length
 
+{$include sectionhelpersh.inc}
 
 implementation
 
@@ -2089,5 +2090,7 @@ asm
   .set TRX24_AMI2_ISR, Default_IRQ_handler
   .set TRX24_AMI3_ISR, Default_IRQ_handler
 end;
+
+{$include sectionhelpers.inc}
 
 end.

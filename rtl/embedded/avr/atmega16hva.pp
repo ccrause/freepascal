@@ -310,6 +310,7 @@ const
   BPPL = $00;  
   BPPLE = $01;  
 
+{$include sectionhelpersh.inc}
 
 implementation
 
@@ -409,5 +410,7 @@ asm
   .set CCADC_ACC_ISR, Default_IRQ_handler
   .set EE_READY_ISR, Default_IRQ_handler
 end;
+
+{$include sectionhelpers.inc}
 
 end.

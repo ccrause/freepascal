@@ -352,6 +352,8 @@ const
   CLKRDY = 4; // Clock Ready Flag
   CLKC = 0; // Clock Control bits
 
+{$include sectionhelpersh.inc}
+
 implementation
 
 {$define RELBRANCHES}
@@ -448,5 +450,7 @@ label
    .set USI_START_ISR, Default_IRQ_handler
    .set USI_OVF_ISR, Default_IRQ_handler
  end;
+
+{$include sectionhelpers.inc}
 
 end.

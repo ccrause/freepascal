@@ -212,6 +212,8 @@ const
   USICLK = 1; // Clock Strobe
   USITC = 0; // Toggle Clock Port Pin
 
+{$include sectionhelpersh.inc}
+
 implementation
 
 {$define RELBRANCHES}
@@ -304,5 +306,7 @@ label
    .set EEPROM_Ready_ISR, Default_IRQ_handler
    .set WDT_OVERFLOW_ISR, Default_IRQ_handler
  end;
+
+{$include sectionhelpers.inc}
 
 end.

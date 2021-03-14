@@ -93,6 +93,7 @@ const
   T = $06;  
   I = $07;  
 
+{$include sectionhelpersh.inc}
 
 implementation
 {$define RELBRANCHES}
@@ -132,5 +133,7 @@ asm
   .set EE_RDY_ISR, Default_IRQ_handler
   .set ANA_COMP_ISR, Default_IRQ_handler
 end;
+
+{$include sectionhelpers.inc}
 
 end.

@@ -416,6 +416,8 @@ const
   DDC = 4; // Port C Data Direction Register bits
   // PINC
 
+{$include sectionhelpersh.inc}
+
 implementation
 
 {$i avrcommon.inc}
@@ -546,5 +548,7 @@ label
    .set EE_READY_ISR, Default_IRQ_handler
    .set SPM_READY_ISR, Default_IRQ_handler
  end;
+
+{$include sectionhelpers.inc}
 
 end.

@@ -149,6 +149,8 @@ const
   WDCE = 4; // Watchdog Change Enable
   WDE = 3; // Watch Dog Enable
 
+{$include sectionhelpersh.inc}
+
 implementation
 
 {$define RELBRANCHES}
@@ -205,5 +207,7 @@ label
    .set WDT_ISR, Default_IRQ_handler
    .set ADC_ISR, Default_IRQ_handler
  end;
+
+{$include sectionhelpers.inc}
 
 end.

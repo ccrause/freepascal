@@ -450,6 +450,7 @@ const
   RXS = $06;  
   RXSIE = $07;  
 
+{$include sectionhelpersh.inc}
 
 implementation
 
@@ -573,5 +574,7 @@ asm
   .set SPM_Ready_ISR, Default_IRQ_handler
   .set USART_START_ISR, Default_IRQ_handler
 end;
+
+{$include sectionhelpers.inc}
 
 end.

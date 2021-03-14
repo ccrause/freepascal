@@ -535,6 +535,8 @@ const
   IDE = 4; // Identifier Extension
   DLC = 0; // Data Length Code Bits
 
+{$include sectionhelpersh.inc}
+
 implementation
 
 {$i avrcommon.inc}
@@ -697,5 +699,7 @@ label
    .set TWI_ISR, Default_IRQ_handler
    .set SPM_READY_ISR, Default_IRQ_handler
  end;
+
+{$include sectionhelpers.inc}
 
 end.

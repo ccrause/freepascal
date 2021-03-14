@@ -400,6 +400,8 @@ const
   ADIE = 3; // ADC Interrupt Enable
   ADPS = 0; // ADC  Prescaler Select Bits
 
+{$include sectionhelpersh.inc}
+
 implementation
 
 {$i avrcommon.inc}
@@ -554,5 +556,7 @@ label
    .set TWI_ISR, Default_IRQ_handler
    .set SPM_READY_ISR, Default_IRQ_handler
  end;
+
+{$include sectionhelpers.inc}
 
 end.

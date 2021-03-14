@@ -225,6 +225,8 @@ const
   PGERS = 1; // Page Erase
   SPMEN = 0; // Store Program Memory Enable
 
+{$include sectionhelpersh.inc}
+
 implementation
 
 {$define RELBRANCHES}
@@ -301,5 +303,7 @@ label
    .set USI_START_ISR, Default_IRQ_handler
    .set USI_OVF_ISR, Default_IRQ_handler
  end;
+
+{$include sectionhelpers.inc}
 
 end.

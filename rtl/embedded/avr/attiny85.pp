@@ -223,7 +223,7 @@ const
   PLLE = 1; // PLL Enable
   PLOCK = 0; // PLL Lock detector
 
-  {$include sectionhelpersh.inc}
+{$include sectionhelpersh.inc}
 
 implementation
 
@@ -302,6 +302,6 @@ label
    .set USI_OVF_ISR, Default_IRQ_handler
  end;
 
- {$include sectionhelpers.inc}
+{$include sectionhelpers.inc}
 
 end.

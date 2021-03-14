@@ -263,6 +263,8 @@ const
   PLLE = 1; // PLL Enable
   PLOCK = 0; // PLL Lock detector
 
+{$include sectionhelpersh.inc}
+
 implementation
 
 {$define RELBRANCHES}
@@ -355,5 +357,7 @@ label
    .set TIMER1_COMPD_ISR, Default_IRQ_handler
    .set FAULT_PROTECTION_ISR, Default_IRQ_handler
  end;
+
+{$include sectionhelpers.inc}
 
 end.

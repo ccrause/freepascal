@@ -666,6 +666,8 @@ const
   UCSZ3 = 1; // Character Size
   UCPOL3 = 0; // Clock Polarity
 
+{$include sectionhelpersh.inc}
+
 implementation
 
 {$i avrcommon.inc}
@@ -908,5 +910,7 @@ label
    .set USART3__UDRE_ISR, Default_IRQ_handler
    .set USART3__TX_ISR, Default_IRQ_handler
  end;
+
+{$include sectionhelpers.inc}
 
 end.

@@ -218,6 +218,8 @@ const
   WCOL = 6; // Write Collision Flag
   SPI2X = 0; // Double SPI Speed Bit
 
+{$include sectionhelpersh.inc}
+
 implementation
 
 {$define RELBRANCHES}
@@ -302,5 +304,7 @@ label
    .set SPI_ISR, Default_IRQ_handler
    .set QTRIP_ISR, Default_IRQ_handler
  end;
+
+{$include sectionhelpers.inc}
 
 end.

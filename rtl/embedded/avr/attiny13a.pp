@@ -157,6 +157,8 @@ const
   BPDS = 1; // BOD Power-Down in Power-Down Sleep
   BPDSE = 0; // BOD Power-Down Sleep Enable
 
+{$include sectionhelpersh.inc}
+
 implementation
 
 {$define RELBRANCHES}
@@ -213,5 +215,7 @@ label
    .set WDT_ISR, Default_IRQ_handler
    .set ADC_ISR, Default_IRQ_handler
  end;
+
+{$include sectionhelpers.inc}
 
 end.

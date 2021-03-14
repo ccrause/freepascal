@@ -490,6 +490,8 @@ const
   PRN2 = 1; // Ramp Number
   PEOP2 = 0; // End of PSC2 Interrupt
 
+{$include sectionhelpersh.inc}
+
 implementation
 
 {$define RELBRANCHES}
@@ -634,5 +636,7 @@ label
    .set RESERVED31_ISR, Default_IRQ_handler
    .set SPM_READY_ISR, Default_IRQ_handler
  end;
+
+{$include sectionhelpers.inc}
 
 end.

@@ -2003,6 +2003,8 @@ var
   LOCKBIT: TLOCKBIT absolute $128A;
   USERROW: TUSERROW absolute $1300;
 
+{$include sectionhelpersh.inc}
+
 implementation
 {$define RELBRANCHES}
 {$i avrcommon.inc}
@@ -2177,5 +2179,7 @@ asm
   .set PORTB_PORT_ISR, Default_IRQ_handler
   .set PORTE_PORT_ISR, Default_IRQ_handler
 end;
+
+{$include sectionhelpers.inc}
 
 end.

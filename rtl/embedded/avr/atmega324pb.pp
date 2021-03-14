@@ -606,6 +606,7 @@ const
   TWAM15 = $06;
   TWAM16 = $07;
 
+{$include sectionhelpersh.inc}
 
 implementation
 
@@ -837,5 +838,7 @@ asm
   .set USART2_RXS_ISR, Default_IRQ_handler
   .set USART2_START_ISR, Default_IRQ_handler
 end;
+
+{$include sectionhelpers.inc}
 
 end.

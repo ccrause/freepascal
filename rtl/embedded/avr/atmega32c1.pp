@@ -511,6 +511,8 @@ const
   EEWE = 1; // EEPROM Write Enable
   EERE = 0; // EEPROM Read Enable
 
+{$include sectionhelpersh.inc}
+
 implementation
 
 {$i avrcommon.inc}
@@ -649,5 +651,7 @@ label
    .set EE_READY_ISR, Default_IRQ_handler
    .set SPM_READY_ISR, Default_IRQ_handler
  end;
+
+{$include sectionhelpers.inc}
 
 end.
