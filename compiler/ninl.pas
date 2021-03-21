@@ -768,6 +768,10 @@ implementation
               stringdef :
                 begin
                   name:=procprefixes[do_read]+tstringdef(para.left.resultdef).stringtypname;
+{$ifdef avr}
+                  if para.left.resultdef.symsection<>ss_none then
+                    name:=name+'_'+symSectionToSectionPostfixName(para.left.resultdef.symsection);
+{$endif avr}
                   if (m_isolike_io in current_settings.modeswitches) and (tstringdef(para.left.resultdef).stringtype<>st_shortstring) then
                     begin
                       CGMessagePos(para.fileinfo,type_e_cant_read_write_type_in_iso_mode);

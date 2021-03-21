@@ -519,6 +519,7 @@ interface
 {$ifdef avr}
     function sectionNameToSymSection(sectionname:ansistring):tsymsection;
     function symSectionToSectionName(ss:tsymsection):ansistring;
+    function symSectionToSectionPostfixName(ss:tsymsection):ansistring;
     procedure maybeRegisterNewTypeWithSection(var sym:tabstractvarsym); overload;
     procedure maybeRegisterNewTypeWithSection(var def:tdef; const symsection: tsymsection); overload;
 {$endif avr}
@@ -629,6 +630,18 @@ implementation
           result:='';
         end;
       end;
+
+    function symSectionToSectionPostfixName(ss: tsymsection): ansistring;
+    begin
+      begin
+        case ss of
+          ss_progmem:result:='progmem';
+          ss_eeprom:result:='eeprom';
+        else
+          result:='';
+        end;
+      end;
+    end;
 
     procedure maybeRegisterNewTypeWithSection(var sym:tabstractvarsym);
       var
