@@ -88,6 +88,20 @@ interface
          sp_ansistr,
          sp_widestr,
          sp_unicodestr,
+{$ifdef avr}
+         sp_conststr_progmem,
+         sp_shortstr_progmem,
+         sp_longstr_progmem,
+         sp_ansistr_progmem,
+         sp_widestr_progmem,
+         sp_unicodestr_progmem,
+         sp_conststr_eeprom,
+         sp_shortstr_eeprom,
+         sp_longstr_eeprom,
+         sp_ansistr_eeprom,
+         sp_widestr_eeprom,
+         sp_unicodestr_eeprom,
+{$endif avr}
          sp_objcclassnamerefs,
          sp_varnamerefs,
          sp_objcclassnames,
@@ -438,6 +452,10 @@ implementation
         if FConstPools[APoolType] = nil then
           case APoolType of
             sp_ansistr: FConstPools[APoolType] := TTagHashSet.Create(64, True, False);
+{$ifdef avr}
+            sp_ansistr_progmem,sp_ansistr_eeprom:
+              FConstPools[APoolType] := TTagHashSet.Create(64, True, False);
+{$endif avr}
           else
             FConstPools[APoolType] := THashSet.Create(64, True, False);
           end;

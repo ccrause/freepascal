@@ -231,6 +231,7 @@ implementation
          datadef: tdef;
 {$ifdef avr}
         currentsymsection: tsymsection;
+        tmpcst: tconststringtype;
 {$endif avr}
       const
         PoolMap: array[tconststringtype] of TConstPoolType = (
@@ -240,7 +241,21 @@ implementation
           sp_ansistr,
           sp_widestr,
           sp_unicodestr
-        );
+{$ifdef avr}
+          , sp_conststr_progmem
+          , sp_shortstr_progmem
+          , sp_longstr_progmem
+          , sp_ansistr_progmem
+          , sp_widestr_progmem
+          , sp_unicodestr_progmem
+          , sp_conststr_eeprom
+          , sp_shortstr_eeprom
+          , sp_longstr_eeprom
+          , sp_ansistr_eeprom
+          , sp_widestr_eeprom
+          , sp_unicodestr_eeprom
+{$endif avr}
+          );
       begin
 {$ifdef avr}
         currentsymsection:=Self.location.reference.symsection;
@@ -273,6 +288,14 @@ implementation
          { const already used ? }
          if not assigned(lab_str) then
            begin
+{$ifdef avr}
+             tmpcst:=cst_type;
+             { Apologies for this ugly hack! }
+             if currentsymsection=ss_progmem then
+               cst_type:=tconststringtype(ord(cst_type) + (ord(cst_conststring_progmem) - ord(cst_conststring)))
+             else if currentsymsection=ss_eeprom then
+               cst_type:=tconststringtype(ord(cst_type) + (ord(cst_conststring_eeprom) - ord(cst_conststring)));
+{$endif avr}
               pool := current_asmdata.ConstPools[PoolMap[cst_type]];
 
               if cst_type in [cst_widestring, cst_unicodestring] then
@@ -283,6 +306,9 @@ implementation
               else
                 entry := pool.FindOrAdd(value_str,len);
 
+{$ifdef avr}
+              cst_type:=tmpcst;
+{$endif avr}
               lab_str := TAsmLabel(entry^.Data);  // is it needed anymore?
 
               { :-(, we must generate a new entry }

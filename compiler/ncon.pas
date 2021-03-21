@@ -116,6 +116,20 @@ interface
          cst_ansistring,
          cst_widestring,
          cst_unicodestring
+{$ifdef avr}
+         , cst_conststring_progmem
+         , cst_shortstring_progmem
+         , cst_longstring_progmem
+         , cst_ansistring_progmem
+         , cst_widestring_progmem
+         , cst_unicodestring_progmem
+         , cst_conststring_eeprom
+         , cst_shortstring_eeprom
+         , cst_longstring_eeprom
+         , cst_ansistring_eeprom
+         , cst_widestring_eeprom
+         , cst_unicodestring_eeprom
+{$endif avr}
        );
 
        tstringconstnode = class(tconstnode)
