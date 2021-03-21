@@ -122,6 +122,8 @@
       type
         pointer_progmem = type pointer; section '.progmem';
         pchar_progmem = type pchar; section '.progmem';
+        pointer_eeprom = type pointer; section '.eeprom';
+        pchar_eeprom = type pchar; section '.eeprom';
         FileFunc = Procedure(var t : TextRec);
 
       procedure fpc_WriteBuffer(var f:Text;const b: pointer_progmem;len:SizeInt);
@@ -131,6 +133,32 @@
         idx, i : SizeInt;
       begin
         p:=pchar_progmem(b);
+        idx:=0;
+        left:=TextRec(f).BufSize-TextRec(f).BufPos;
+        while len>left do
+         begin
+           //move(p[idx],TextRec(f).Bufptr^[TextRec(f).BufPos],left);
+           for i := 0 to left-1 do
+             TextRec(f).Bufptr^[TextRec(f).BufPos+i] := char(p[idx+i]);
+           dec(len,left);
+           inc(idx,left);
+           inc(TextRec(f).BufPos,left);
+           FileFunc(TextRec(f).InOutFunc)(TextRec(f));
+           left:=TextRec(f).BufSize-TextRec(f).BufPos;
+         end;
+        //move(p[idx],TextRec(f).Bufptr^[TextRec(f).BufPos],len);
+        for i := 0 to len-1 do
+          TextRec(f).Bufptr^[TextRec(f).BufPos+i] := char(p[idx+i]);
+        inc(TextRec(f).BufPos,len);
+      end;
+
+      procedure fpc_WriteBuffer(var f:Text;const b: pointer_eeprom;len:SizeInt);
+      var
+        p   : pchar_eeprom;
+        left,
+        idx, i : SizeInt;
+      begin
+        p:=pchar_eeprom(b);
         idx:=0;
         left:=TextRec(f).BufSize-TextRec(f).BufPos;
         while len>left do
@@ -185,6 +213,21 @@
         end;
       end;
 
+      procedure fpc_write_text_shortstr_eeprom(Len : longint;var f : text;constref s : shortstring_eeprom); compilerproc;
+      begin
+        if (InOutRes<>0) then
+         exit;
+        case TextRec(f).mode of
+          fmOutput { fmAppend gets changed to fmOutPut in do_open (JM) }:
+            begin
+              if Len>Length(s) then
+                fpc_WriteBlanks(f,Len-Length(s));
+              fpc_WriteBuffer(f,pointer_eeprom(@s[1]),Length(s));
+            end;
+          fmInput: InOutRes:=105
+          else InOutRes:=103;
+        end;
+      end;
     {$endif}
 
 

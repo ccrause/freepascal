@@ -12,6 +12,7 @@
 
 // text.inc
   procedure fpc_write_text_shortstr_progmem(Len : longint;var f : text;constref s : shortstring_progmem); compilerproc;
+  procedure fpc_write_text_shortstr_eeprom(Len : longint;var f : text;constref s : shortstring_eeprom); compilerproc;
   //function fpc_shortstr_copy_from_eeprom(constref s : shortstring_eeprom;index : SizeInt;count : SizeInt): shortstring; compilerproc;
   //function fpc_shortstr_copy_from_progmem(constref s : shortstring_progmem;index : SizeInt;count : SizeInt): shortstring; compilerproc;
 {$endif}
