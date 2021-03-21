@@ -865,6 +865,10 @@ implementation
       ref.base:=reg;
       ref.offset:=offset;
       ref.temppos:=temppos;
+{$ifdef avr}
+      { Copy section information from pointer definition }
+      ref.symsection:=regsize.symsection;
+{$endif avr}
     end;
 
   procedure thlcgobj.a_label(list: TAsmList; l: tasmlabel); inline;
