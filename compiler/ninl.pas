@@ -760,7 +760,17 @@ implementation
 
           if inlinenumber in [in_write_x,in_writeln_x] then
             { prefer strings to chararrays }
+{$ifdef avr}
+          begin
+{$endif avr}
             maybe_convert_to_string(para.left);
+{$ifdef avr}
+            { type conversion above can clobber section information in definition }
+            if (para.left.location.reference.symsection<>ss_none) and
+               not is_typeparam(para.left.resultdef) then
+              para.left.resultdef.symsection:=para.left.location.reference.symsection;
+          end;
+{$endif avr}
           if is_typeparam(para.left.resultdef) then
             error_para:=true
           else
