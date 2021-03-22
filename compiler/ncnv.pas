@@ -334,10 +334,6 @@ implementation
       ttypeconvnodetype = (tct_implicit,tct_explicit,tct_internal);
 
     procedure do_inserttypeconv(var p: tnode;def: tdef; convtype: ttypeconvnodetype);
-//{$ifdef avr}
-//      var
-//        currentsymsection: tsymsection;
-//{$endif avr}
       begin
         if not assigned(p.resultdef) then
          begin
@@ -380,9 +376,6 @@ implementation
           end
         else
          begin
-//{$ifdef avr}
-//           currentsymsection:=p.location.reference.symsection;
-//{$endif avr}
            case convtype of
              tct_implicit:
                p:=ctypeconvnode.create(p,def);
@@ -392,9 +385,6 @@ implementation
                p:=ctypeconvnode.create_internal(p,def);
            end;
            p.fileinfo:=ttypeconvnode(p).left.fileinfo;
-//{$ifdef avr}
-//           p.location.reference.symsection:=currentsymsection;
-//{$endif avr}
            typecheckpass(p);
          end;
       end;
