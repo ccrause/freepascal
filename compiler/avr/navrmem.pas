@@ -56,10 +56,8 @@ unit navrmem;
            ((href.base<>NR_NO) xor (href.index<>NR_NO)) then
            begin
              location_reset(location,LOC_CREGISTER,int_cgsize(resultdef.size));
-             {$ifdef avr}
-               // Propagate section identifier for potential load/store operations at higher node level
-               location.reference.symsection:=left.location.reference.symsection;
-             {$endif};
+             { Propagate section identifier for potential load/store operations at higher node level }
+             location.reference.symsection:=left.location.reference.symsection;
              if href.base<>NR_NO then
                location.register:=href.base
              else if href.index<>NR_NO then
@@ -70,10 +68,8 @@ unit navrmem;
          else
            begin
              location_reset(location,LOC_REGISTER,int_cgsize(resultdef.size));
-             {$ifdef avr}
-               // Propagate section identifier for potential load/store operations at higher node level
-               location.reference.symsection:=left.location.reference.symsection;
-             {$endif};
+             { Propagate section identifier for potential load/store operations at higher node level }
+             location.reference.symsection:=left.location.reference.symsection;
              location.register:=hlcg.getaddressregister(current_asmdata.CurrAsmList,resultdef);
              if not(left.location.loc in [LOC_REFERENCE,LOC_CREFERENCE]) then
                { on x86_64-win64, array of chars can be returned in registers, however,
