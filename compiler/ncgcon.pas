@@ -401,6 +401,17 @@ implementation
                           datatcb.maybe_begin_aggregate(datadef);
                           datatcb.emit_tai(Tai_string.Create_pchar(pc,len+1),datadef);
                           datatcb.maybe_end_aggregate(datadef);
+{$ifdef avr}
+                          if currentsymsection<>ss_none then
+                          begin
+                            datadef.symsection:=currentsymsection;
+                            current_asmdata.asmlists[al_typedconsts].concatList(
+                              datatcb.get_final_asmlist(lastlabel.lab,datadef,sec_user,symSectionToSectionName(currentsymsection),
+                              const_align(sizeof(pint)))
+                            )
+                          end
+                          else
+{$endif avr}
                           current_asmdata.asmlists[al_typedconsts].concatList(
                             datatcb.get_final_asmlist(lastlabel.lab,datadef,sec_rodata_norel,lastlabel.lab.name,const_align(sizeof(pint)))
                           );
