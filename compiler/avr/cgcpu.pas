@@ -1988,13 +1988,7 @@ unit cgcpu;
         else if (ref.base<>NR_NO) and (ref.offset<>0) then
           result:=A_LDD
         else
-          begin
-            if (ref.symsection=ss_none) or
-               not(CPUAVR_HAS_LPMX in cpu_capabilities[current_settings.cputype]) then
-              result:=A_LD
-            else
-              result:=A_LPM;
-          end;
+          result:=A_LD
       end;
 
 
@@ -2259,6 +2253,7 @@ unit cgcpu;
         tmpreg: TRegister;
         pd:tprocdef;
         paraloc1: tcgpara;
+        tmpref: treference;
       begin
         // Newer controllers map eeprom into data space
         if Ref.symsection=ss_eeprom then
@@ -2324,6 +2319,40 @@ unit cgcpu;
                 list.concat(taicpu.op_reg_const(A_SUBI,GetNextReg(Ref.base),$EC));
                 list.concat(taicpu.op_reg_ref(GetLoad(Ref),reg,Ref));
                 list.concat(taicpu.op_reg_const(A_SUBI,GetNextReg(Ref.base),$14));
+              end;
+          end
+        { Check if using LPM }
+        else if (ref.symsection=ss_progmem) and
+                (CPUAVR_HAS_LPMX in cpu_capabilities[current_settings.cputype]) then
+          begin
+            tmpref:=ref;
+            { Add displacement to reference }
+            if (ref.base<>NR_NO) and (ref.offset<>0) then
+              begin
+                if CPUAVR_HAS_MOVW in cpu_capabilities[current_settings.cputype] then
+                  list.concat(taicpu.op_reg_const(A_ADIW,Ref.base,Ref.offset))
+                else
+                  begin
+                    list.concat(taicpu.op_reg_const(A_LDI,GetDefaultTmpReg,Ref.offset));
+                    list.concat(taicpu.op_reg_reg(A_ADD,Ref.base,GetDefaultTmpReg));
+                    list.concat(taicpu.op_reg_reg(A_ADC,GetNextReg(Ref.base),GetDefaultZeroReg));
+                  end;
+                tmpref.offset:=0;
+              end;
+
+            list.concat(taicpu.op_reg_ref(A_LPM,reg,tmpref));
+
+            { Subtract displacement from reference }
+            if (ref.base<>NR_NO) and (ref.offset<>0) then
+              begin
+                if CPUAVR_HAS_MOVW in cpu_capabilities[current_settings.cputype] then
+                  list.concat(taicpu.op_reg_const(A_SBIW,Ref.base,Ref.offset))
+                else
+                  begin
+                    list.concat(taicpu.op_reg_const(A_SUBI,Ref.base,Ref.offset));
+                    list.concat(taicpu.op_reg_reg(A_SBC,GetNextReg(Ref.base),GetDefaultZeroReg));
+                  end;
+                tmpref.offset:=0;
               end;
           end
         else
