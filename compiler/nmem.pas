@@ -795,10 +795,10 @@ implementation
          if left.resultdef.typ=pointerdef then
           begin
            resultdef:=tpointerdef(left.resultdef).pointeddef;
-           {$ifdef avr}
+{$ifdef avr}
            { Copy section across from pointer type so that correct access is generated }
-           resultdef.symsection:=left.resultdef.symsection;
-           {$endif avr}
+           maybeRegisterNewTypeWithSection(resultdef,left.resultdef.symsection);
+{$endif avr}
           end
          else if left.resultdef.typ=undefineddef then
            resultdef:=cundefineddef.create(true)

@@ -363,16 +363,8 @@ implementation
             { don't replace encoded string constants to rawbytestring encoding.
               preserve the codepage }
             if not (is_rawbytestring(def) and (p.nodetype=stringconstn)) then
-{$ifdef avr}
-             begin
-{$endif avr}
              { this now destroys the section information... }
               p.resultdef:=def;
-{$ifdef avr}
-              if p.location.reference.symsection<>ss_none then
-                p.resultdef.symsection:=p.location.reference.symsection;
-             end;
-{$endif avr}
           end
         else
          begin
@@ -401,7 +393,8 @@ implementation
 {$endif avr}
         do_inserttypeconv(p,def,tct_implicit);
 {$ifdef avr}
-        p.location.reference.symsection:=currentsymsection;
+        if p.nodetype <> stringconstn then
+          p.location.reference.symsection:=currentsymsection;
 {$endif avr}
       end;
 

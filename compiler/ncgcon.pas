@@ -373,7 +373,6 @@ implementation
 {$ifdef avr}
                           if currentsymsection<>ss_none then
                           begin
-                            datadef.symsection:=currentsymsection;
                             current_asmdata.asmlists[al_typedconsts].concatList(
                               datatcb.get_final_asmlist(lastlabel.lab,datadef,sec_user,symSectionToSectionName(currentsymsection),
                               const_align(sizeof(pint)))
@@ -404,7 +403,6 @@ implementation
 {$ifdef avr}
                           if currentsymsection<>ss_none then
                           begin
-                            datadef.symsection:=currentsymsection;
                             current_asmdata.asmlists[al_typedconsts].concatList(
                               datatcb.get_final_asmlist(lastlabel.lab,datadef,sec_user,symSectionToSectionName(currentsymsection),
                               const_align(sizeof(pint)))

@@ -700,25 +700,35 @@ implementation
         hash:THashedIDString;
         hadTypeSym:boolean;
       begin
-        if def.symsection<>symsection then
+        if (def.symsection<>symsection) then
           begin
-            newtype:=ttypesym(def.typesym);
-            s:=def.typesym.RealName + symSectionToSectionName(symsection);
-            hash.Id:=upper(s);
-            if symtablestack.top.FindWithHash(hash)=nil then
+            if Assigned(def.typesym) then
               begin
-                // register new type symbol
+                newtype:=ttypesym(def.typesym);
+                s:=def.typesym.RealName + symSectionToSectionName(symsection);
+                hash.Id:=upper(s);
+                if symtablestack.top.FindWithHash(hash)=nil then
+                  begin
+                    // register new type symbol
+                    def:=tstoreddef(def).getcopy;
+                    def.symsection:=symsection;
+                    include(def.defoptions,df_unique);
+                    if not Assigned(newtype) then
+                      begin
+                        newtype:=ctypesym.create(s,def);
+                        newtype.visibility:=symtablestack.top.currentvisibility;
+                        include(newtype.symoptions,sp_explicitrename);
+                        symtablestack.top.insert(newtype);
+                      end;
+                    def.typesym:=newtype;
+                    def.register_def;
+                  end;
+              end
+            else  { Anonymous type definition }
+              begin
                 def:=tstoreddef(def).getcopy;
                 def.symsection:=symsection;
                 include(def.defoptions,df_unique);
-                if not Assigned(newtype) then
-                  begin
-                    newtype:=ctypesym.create(s,def);
-                    newtype.visibility:=symtablestack.top.currentvisibility;
-                    include(newtype.symoptions,sp_explicitrename);
-                    symtablestack.top.insert(newtype);
-                  end;
-                def.typesym:=newtype;
                 def.register_def;
               end;
           end;

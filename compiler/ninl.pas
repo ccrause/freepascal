@@ -768,7 +768,7 @@ implementation
             { type conversion above can clobber section information in definition }
             if (para.left.location.reference.symsection<>ss_none) and
                not is_typeparam(para.left.resultdef) then
-              para.left.resultdef.symsection:=para.left.location.reference.symsection;
+              maybeRegisterNewTypeWithSection(para.left.resultdef, para.left.location.reference.symsection);
           end;
 {$endif avr}
           if is_typeparam(para.left.resultdef) then
