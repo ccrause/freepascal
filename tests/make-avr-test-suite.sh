@@ -19,7 +19,7 @@ cd $TestFPCSource/tests
 
 export FPCFPMAKE=$(DriverFpcMake)
 
-make distclean TEST_DELTEMP=1 FPC=$DriverCompiler TEST_FPC=$TestCompiler V=1 TEST_SUBARCH=$TestSubArch TEST_OPT= TEST_VERBOSE=1 #FPCFPMAKE=$DriverFpcMake
+make distclean TEST_DELTEMP=1 FPC=$DriverCompiler TEST_FPC=$TestCompiler V=1 TEST_SUBARCH=$TestSubArch TEST_OPT= TEST_VERBOSE=1 FPCFPMAKE=$DriverFpcMake
 
 # include TEST_VERBOSE below to print compiler command line and test build options during test run
 
