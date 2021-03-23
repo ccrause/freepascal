@@ -529,6 +529,16 @@ implementation
         inherited XMLPrintNodeData(T);
         WriteLn(T, printnodeindention, '<symbol>', symtableentry.name, '</symbol>');
 
+        if symtableentry.typ <> undefinedsym then
+        begin
+          WriteLn(T, printnodeindention, '<symsection>', tabstractvarsym(symtableentry).symsection, '</symsection>');
+          if Assigned(tabstractvarsym(symtableentry).vardef) then
+            WriteLn(T, printnodeindention, '<vardef.symsection>', tabstractvarsym(symtableentry).vardef.symsection, '</vardef.symsection>');
+        end;
+
+        if Assigned(resultdef) then
+          WriteLn(T, printnodeindention, '<resultdef.symsection>', resultdef.symsection, '</resultdef.symsection>');
+
         if symtableentry.typ = procsym then
           WriteLn(T, printnodeindention, '<procdef>', fprocdef.mangledname, '</procdef>');
       end;
@@ -899,9 +909,11 @@ implementation
                   ccallparanode.create(left,nil));
                  procname:='fpc_'+tstringdef(right.resultdef).stringtypname+'_to_shortstr';
 {$ifdef avr}
-                 if right.resultdef.symsection=ss_eeprom then
+                 if (right.resultdef.symsection=ss_eeprom) or
+                    (right.location.reference.symsection=ss_eeprom) then
                    procname:=procname+'_eeprom'
-                 else if right.resultdef.symsection=ss_progmem then
+                 else if (right.resultdef.symsection=ss_progmem) or
+                         (right.location.reference.symsection=ss_progmem) then
                    procname:=procname+'_progmem';
 {$endif avr}
                  result:=ccallnode.createintern(procname,hp);
@@ -1045,6 +1057,9 @@ implementation
         XMLPrintNode(T, Right);
         PrintNodeUnindent;
         WriteLn(T, PrintNodeIndention, '</', nodetype2str[nodetype], '>');
+
+        if Assigned(resultdef) then
+          WriteLn(T, printnodeindention, '<resultdef.symsection>', resultdef.symsection, '</resultdef.symsection>');
       end;
 {$endif DEBUG_NODE_XML}
 

@@ -986,7 +986,7 @@ implementation
               include(tarraydef(resultdef).arrayoptions,ado_IsConstString);
 {$ifdef avr}
               { Propagate symsection from node to resultdef }
-              resultdef.symsection := self.location.reference.symsection;
+              maybeRegisterNewTypeWithSection(resultdef,self.location.reference.symsection);
 {$endif avr}
             end;
           cst_shortstring :
@@ -1269,6 +1269,11 @@ implementation
         end;
 
         WriteLn(T, printnodeindention, '<value>', SanitiseXMLString(OutputStr), '</value>');
+        if Assigned(resultdef) then
+        begin
+          writeln(T, printnodeindention, '<resultdef.symsection>', resultdef.symsection, '</resultdef.symsection>');
+          writeln(T, printnodeindention, '<loc.ref.symsection>', location.reference.symsection, '</loc.ref.symsection>');
+        end;
       end;
 {$endif DEBUG_NODE_XML}
 
