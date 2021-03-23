@@ -3163,6 +3163,10 @@ implementation
         tempnode (*,tempnode2*) : ttempcreatenode;
         cmpfuncname: string;
         para: tcallparanode;
+        helpername: string;
+{$ifdef avr}
+        tmpsymsection: tsymsection;
+{$endif avr}
       begin
         result:=nil;
         { when we get here, we are sure that both the left and the right }
@@ -3210,10 +3214,19 @@ implementation
                             ),
                             para
                           );
-                  result:=ccallnode.createintern(
-                            'fpc_'+tstringdef(resultdef).stringtypname+'_concat',
-                            para
-                          );
+
+                 helpername:='fpc_'+tstringdef(resultdef).stringtypname+'_concat';
+{$ifdef avr}
+                 tmpsymsection:=ss_none;
+                 if right.location.reference.symsection<>ss_none then
+                   tmpsymsection:=right.location.reference.symsection
+                 else if right.resultdef.symsection<>ss_none then
+                   tmpsymsection:=right.resultdef.symsection;
+                 if tmpsymsection<>ss_none then
+                   helpername:=helpername+
+                               '_'+symSectionToSectionPostfixName(tmpsymsection);
+{$endif avr}
+                  result:=ccallnode.createintern(helpername,para);
                   include(aktassignmentnode.flags,nf_assign_done_in_right);
                   firstpass(result);
                 end
@@ -3343,7 +3356,15 @@ implementation
               { for equality checks use optimized version }
               if nodetype in [equaln,unequaln] then
                 cmpfuncname := cmpfuncname + '_equal';
-
+{$ifdef avr}
+              tmpsymsection:=ss_none;
+              if right.location.reference.symsection<>ss_none then
+                tmpsymsection:=right.location.reference.symsection
+              else if right.resultdef.symsection<>ss_none then
+                tmpsymsection:=right.resultdef.symsection;
+              if tmpsymsection<>ss_none then
+                cmpfuncname:=cmpfuncname+'_'+symSectionToSectionPostfixName(tmpsymsection);
+{$endif avr}
               result := ccallnode.createintern(cmpfuncname,
                 ccallparanode.create(right,ccallparanode.create(left,nil)));
               { and compare its result with 0 according to the original operator }

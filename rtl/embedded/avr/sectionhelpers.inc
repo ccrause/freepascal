@@ -118,7 +118,110 @@
           fpc_shortstr_copy_from_progmem[i] := s[i+index];
       end;
 
-      // Local helpers, also defined in text.inc but not visible
+      procedure fpc_shortstr_concat_progmem(var dests:shortstring;const s1:shortstring; constref s2:shortstring_progmem);[public,alias:'FPC_SHORTSTR_CONCAT_PROGMEM']; compilerproc;
+      var
+        s1l, s2l, i: byte;
+      begin
+        s1l:=length(s1);
+        s2l:=length(s2);
+        if s1l+s2l>high(dests) then
+          begin
+            if s1l>high(dests) then
+              s1l:=high(dests);
+            s2l:=high(dests)-s1l;
+          end;
+        if @dests=@s1 then
+          begin
+            for i := 1 to s2l do
+              dests[s1l+i]:=s2[i];
+          end
+        // Only cater for assignment to normal variable not in section
+        //else
+        //  if @dests=@s2 then
+        //    begin
+        //      fpc_shortstr_shortstr_intern_charmove(dests,1,dests,s1l+1,s2l);
+        //      fpc_shortstr_shortstr_intern_charmove(s1,1,dests,1,s1l);
+        //    end
+        else
+          begin
+            for i := 1 to s1l do
+              dests[i]:=s1[i];
+
+            for i := 1 to s2l do
+              dests[s1l+i]:=s2[i];
+          end;
+        dests[0]:=chr(s1l+s2l);
+      end;
+
+      procedure fpc_shortstr_concat_eeprom(var dests:shortstring;const s1:shortstring; constref s2:shortstring_eeprom);[public,alias:'FPC_SHORTSTR_CONCAT_EEPROM']; compilerproc;
+      var
+        s1l, s2l, i: byte;
+      begin
+        s1l:=length(s1);
+        s2l:=length(s2);
+        if s1l+s2l>high(dests) then
+          begin
+            if s1l>high(dests) then
+              s1l:=high(dests);
+            s2l:=high(dests)-s1l;
+          end;
+        if @dests=@s1 then
+          begin
+            for i := 1 to s2l do
+              dests[s1l+i]:=s2[i];
+          end
+        // Only cater for assignment to normal variable not in section
+        //else
+        //  if @dests=@s2 then
+        //    begin
+        //      fpc_shortstr_shortstr_intern_charmove(dests,1,dests,s1l+1,s2l);
+        //      fpc_shortstr_shortstr_intern_charmove(s1,1,dests,1,s1l);
+        //    end
+        else
+          begin
+            for i := 1 to s1l do
+              dests[i]:=s1[i];
+
+            for i := 1 to s2l do
+              dests[s1l+i]:=s2[i];
+          end;
+        dests[0]:=chr(s1l+s2l);
+      end;
+
+      // This caters for the specific pattern: if s = 'xxx'
+      // where literal 'xxx' is stored in progmem/eeprom
+      function fpc_shortstr_compare_equal_progmem(const left:shortstring; constref right: shortstring_progmem): longint; [public,alias:'FPC_SHORTSTR_COMPARE_EQUAL_PROGMEM']; compilerproc;
+      var
+        i: byte;
+      begin
+        fpc_shortstr_compare_equal_progmem := byte(left[0]) - byte(right[0]);
+        if fpc_shortstr_compare_equal_progmem = 0 then
+          begin
+            //Result := CompareByte(left[1],right[1], ObjpasInt(left[0]));
+            i := 0;
+            while (i < length(left)) and (left[i] = right[i]) do
+              inc(i);
+
+            fpc_shortstr_compare_equal_progmem := byte(left[i]) - byte(right[i]);
+          end;
+      end;
+
+      function fpc_shortstr_compare_equal_eeprom(const left:shortstring; constref right: shortstring_eeprom): longint; [public,alias:'FPC_SHORTSTR_COMPARE_EQUAL_EEPROM']; compilerproc;
+      var
+        i: byte;
+      begin
+        fpc_shortstr_compare_equal_eeprom := byte(left[0]) - byte(right[0]);
+        if fpc_shortstr_compare_equal_eeprom = 0 then
+          begin
+            i := 0;
+            while (i < length(left)) and (left[i] = right[i]) do
+              inc(i);
+
+            fpc_shortstr_compare_equal_eeprom := byte(left[i]) - byte(right[i]);
+          end;
+      end;
+
+// Local helpers, also defined in text.inc but not visible
       type
         pointer_progmem = type pointer; section '.progmem';
         pchar_progmem = type pchar; section '.progmem';
@@ -197,7 +300,7 @@
       end;
 
 
-      procedure fpc_write_text_shortstr_progmem(Len : longint;var f : text;constref s : shortstring_progmem); compilerproc;
+      procedure fpc_write_text_shortstr_progmem(Len : longint;var f : text;constref s : shortstring_progmem); [public,alias:'FPC_WRITE_TEXT_SHORTSTR_PROGMEM']; compilerproc;
       begin
         if (InOutRes<>0) then
          exit;
@@ -213,7 +316,7 @@
         end;
       end;
 
-      procedure fpc_write_text_shortstr_eeprom(Len : longint;var f : text;constref s : shortstring_eeprom); compilerproc;
+      procedure fpc_write_text_shortstr_eeprom(Len : longint;var f : text;constref s : shortstring_eeprom); [public,alias:'FPC_WRITE_TEXT_SHORTSTR_EEPROM']; compilerproc;
       begin
         if (InOutRes<>0) then
          exit;
@@ -228,6 +331,45 @@
           else InOutRes:=103;
         end;
       end;
+
+      function fpc_shortstr_copy_progmem(constref s : shortstring_progmem;index : SizeInt;count : SizeInt): shortstring; [public,alias:'FPC_SHORTSTR_COPY_PROGMEM']; compilerproc;
+      var
+        i: byte;
+      begin
+        if count<0 then
+          count:=0;
+        if index>1 then
+          dec(index)
+        else
+          index:=0;
+        if index>length(s) then
+          count:=0
+        else if count>length(s)-index then
+          count:=length(s)-index;
+        fpc_shortstr_copy_progmem[0]:=chr(Count);
+
+        for i := 1 to count do
+          fpc_shortstr_copy_progmem[i] := s[i+index];
+      end;
+
+      function fpc_shortstr_copy_eeprom(constref s : shortstring_eeprom;index : SizeInt;count : SizeInt): shortstring; [public,alias:'FPC_SHORTSTR_COPY_EEPROM']; compilerproc;
+      var
+        i: byte;
+      begin
+        if count<0 then
+          count:=0;
+        if index>1 then
+          dec(index)
+        else
+          index:=0;
+        if index>length(s) then
+          count:=0
+        else if count>length(s)-index then
+          count:=length(s)-index;
+        fpc_shortstr_copy_eeprom[0]:=chr(Count);
+
+        for i := 1 to count do
+          fpc_shortstr_copy_eeprom[i] := s[i+index];
+      end;
+
     {$endif}
-
-
