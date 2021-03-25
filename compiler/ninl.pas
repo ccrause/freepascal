@@ -895,7 +895,11 @@ implementation
                     begin
                       CGMessagePos(para.fileinfo,type_e_cant_read_write_type);
                       error_para := true;
-                    end
+                    end;
+{$ifdef avr}
+                  if not(do_read) and (para.left.resultdef.symsection<>ss_none) then
+                    name:=name+'_'+symSectionToSectionPostfixName(para.left.resultdef.symsection);
+{$endif avr}
                 end;
               else
                 begin
