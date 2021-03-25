@@ -401,6 +401,10 @@ implementation
                      stoptions:=[];
                    single_type(arrayelementdef,stoptions);
                    tarraydef(hdef).elementdef:=arrayelementdef;
+{$ifdef avr}
+                   if arrayelementdef.symsection<>ss_none then
+                     hdef.symsection:=arrayelementdef.symsection;
+{$endif avr}
                  end;
               end
              else
