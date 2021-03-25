@@ -1133,17 +1133,24 @@ implementation
         newblock : tblocknode;
         newstat  : tstatementnode;
         restemp  : ttempcreatenode;
+        procname: string;
       begin
         if is_widechar(tarraydef(left.resultdef).elementdef) then
           chartype:='widechar'
         else
           chartype:='char';
+        procname:='fpc_'+chartype+'array_to_';
         if tstringdef(resultdef).stringtype=st_shortstring then
           begin
             newblock:=internalstatements(newstat);
             restemp:=ctempcreatenode.create(resultdef,resultdef.size,tt_persistent,false);
             addstatement(newstat,restemp);
-            addstatement(newstat,ccallnode.createintern('fpc_'+chartype+'array_to_shortstr',
+            procname:=procname+'shortstr';
+{$ifdef avr}
+            if (left.resultdef.symsection<>ss_none) then
+              procname:=procname+'_'+symSectionToSectionPostfixName(left.resultdef.symsection);
+{$endif avr}
+            addstatement(newstat,ccallnode.createintern(procname,
               ccallparanode.create(cordconstnode.create(
                 ord(tarraydef(left.resultdef).lowrange=0),pasbool1type,false),
               ccallparanode.create(left,ccallparanode.create(
@@ -1154,8 +1161,12 @@ implementation
           end
         else if (tstringdef(resultdef).stringtype=st_ansistring) then
           begin
-            result:=ccallnode.createinternres(
-                      'fpc_'+chartype+'array_to_'+tstringdef(resultdef).stringtypname,
+            procname:=procname+tstringdef(resultdef).stringtypname;
+{$ifdef avr}
+            if (left.resultdef.symsection<>ss_none) then
+              procname:=procname+'_'+symSectionToSectionPostfixName(left.resultdef.symsection);
+{$endif avr}
+            result:=ccallnode.createinternres(procname,
                       ccallparanode.create(
                         cordconstnode.create(
                           ord(tarraydef(left.resultdef).lowrange=0),
@@ -1175,11 +1186,17 @@ implementation
                     );
           end
         else
-          result:=ccallnode.createinternres(
-            'fpc_'+chartype+'array_to_'+tstringdef(resultdef).stringtypname,
-            ccallparanode.create(cordconstnode.create(
-               ord(tarraydef(left.resultdef).lowrange=0),pasbool1type,false),
-             ccallparanode.create(left,nil)),resultdef);
+          begin
+            procname:=procname+tstringdef(resultdef).stringtypname;
+{$ifdef avr}
+            if (left.resultdef.symsection<>ss_none) then
+              procname:=procname+'_'+symSectionToSectionPostfixName(left.resultdef.symsection);
+{$endif avr}
+            result:=ccallnode.createinternres(procname,
+              ccallparanode.create(cordconstnode.create(
+                 ord(tarraydef(left.resultdef).lowrange=0),pasbool1type,false),
+               ccallparanode.create(left,nil)),resultdef);
+          end;
         left:=nil;
       end;
 
