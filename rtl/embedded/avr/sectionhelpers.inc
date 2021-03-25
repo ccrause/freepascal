@@ -56,6 +56,8 @@
     {$endif}
 
     {$if declared (NVMCTRL) or declared(EECR)}
+      {$mode objfpc}
+
       procedure fpc_shortstr_to_shortstr_eeprom(var res:shortstring; constref sstr: shortstring_eeprom);[public,alias:'FPC_SHORTSTR_TO_SHORTSTR_EEPROM']; compilerproc;
       var
         slen, i : byte;
@@ -188,8 +190,6 @@
         dests[0]:=chr(s1l+s2l);
       end;
 
-      // This caters for the specific pattern: if s = 'xxx'
-      // where literal 'xxx' is stored in progmem/eeprom
       function fpc_shortstr_compare_equal_progmem(const left:shortstring; constref right: shortstring_progmem): longint; [public,alias:'FPC_SHORTSTR_COMPARE_EQUAL_PROGMEM']; compilerproc;
       var
         i: byte;
@@ -221,12 +221,109 @@
           end;
       end;
 
-// Local helpers, also defined in text.inc but not visible
+      function IndexByte_progmem(Const buf: pointer_progmem;len:SizeInt;b:byte):SizeInt;
+      var
+        psrc,pend : pbyte_progmem;
+      begin
+        psrc:=buf;
+        { simulate assembler implementations behaviour, which is expected }
+        { fpc_pchar_to_ansistr in astrings.inc                            }
+        if (len < 0) or
+           (psrc+len < psrc) then
+          pend:=pbyte_progmem(high(PtrUInt)-sizeof(byte))
+        else
+          pend:=psrc+len;
+        while (psrc<pend) do
+          begin
+            if psrc^=b then
+              begin
+                IndexByte_progmem:=psrc-pbyte_progmem(buf);
+                exit;
+              end;
+            inc(psrc);
+          end;
+        IndexByte_progmem:=-1;
+      end;
+
+      function IndexByte_eeprom(Const buf: pointer_eeprom;len:SizeInt;b:byte):SizeInt;
+      var
+        psrc,pend : pbyte_eeprom;
+      begin
+        psrc:=buf;
+        { simulate assembler implementations behaviour, which is expected }
+        { fpc_pchar_to_ansistr in astrings.inc                            }
+        if (len < 0) or
+           (psrc+len < psrc) then
+          pend:=pbyte_eeprom(high(PtrUInt)-sizeof(byte))
+        else
+          pend:=psrc+len;
+        while (psrc<pend) do
+          begin
+            if psrc^=b then
+              begin
+                IndexByte_eeprom:=psrc-pbyte_eeprom(buf);
+                exit;
+              end;
+            inc(psrc);
+          end;
+        IndexByte_eeprom:=-1;
+      end;
+
+      procedure fpc_chararray_to_shortstr_progmem(var res: shortstring; const arr: array of char_progmem; zerobased: boolean{ = true}); [public,alias:'FPC_CHARARRAY_TO_SHORTSTR_PROGMEM']; compilerproc;
+      var
+        l, index, len, i: integer;
+      begin
+        l:=high(arr)+1;
+        if l>=high(res)+1 then
+          l:=high(res)
+        else if l<0 then
+          l:=0;
+        if zerobased then
+          begin
+            index:=IndexByte_progmem(pointer_progmem(@arr[0]),l,0);
+            if index<0 then
+              len:=l
+            else
+              len:=index;
+          end
+        else
+          len:=l;
+
+        //move(arr[0],res[1],len);
+        for i := 1 to len do
+          res[i] := arr[i-1];
+
+        res[0]:=chr(len);
+      end;
+
+      procedure fpc_chararray_to_shortstr_eeprom(var res: shortstring; const arr: array of char_eeprom; zerobased: boolean{ = true}); [public,alias:'FPC_CHARARRAY_TO_SHORTSTR_EEPROM']; compilerproc;
+      var
+        l, index, len, i: integer;
+      begin
+        l:=high(arr)+1;
+        if l>=high(res)+1 then
+          l:=high(res)
+        else if l<0 then
+          l:=0;
+        if zerobased then
+          begin
+            index:=IndexByte_eeprom(pointer_eeprom(@arr[0]),l,0);
+            if index<0 then
+              len:=l
+            else
+              len:=index;
+          end
+        else
+          len:=l;
+
+        //move(arr[0],res[1],len);
+        for i := 1 to len do
+          res[i] := arr[i-1];
+
+        res[0]:=chr(len);
+      end;
+
       type
-        pointer_progmem = type pointer; section '.progmem';
-        pchar_progmem = type pchar; section '.progmem';
-        pointer_eeprom = type pointer; section '.eeprom';
-        pchar_eeprom = type pchar; section '.eeprom';
         FileFunc = Procedure(var t : TextRec);
 
       procedure fpc_WriteBuffer(var f:Text;const b: pointer_progmem;len:SizeInt);
@@ -281,7 +378,6 @@
         inc(TextRec(f).BufPos,len);
       end;
 
-
       Procedure fpc_WriteBlanks(var f:Text;len:longint);
       var
         left : longint;
@@ -298,7 +394,6 @@
         FillChar(TextRec(f).Bufptr^[TextRec(f).BufPos],len,' ');
         inc(TextRec(f).BufPos,len);
       end;
-
 
       procedure fpc_write_text_shortstr_progmem(Len : longint;var f : text;constref s : shortstring_progmem); [public,alias:'FPC_WRITE_TEXT_SHORTSTR_PROGMEM']; compilerproc;
       begin
@@ -332,6 +427,69 @@
         end;
       end;
 
+      procedure fpc_write_text_pchar_as_array_progmem(Len : longint;var f: Text; const s: array of char_progmem; zerobased: boolean{ = true}); iocheck;  [public,alias:'FPC_WRITE_TEXT_PCHAR_AS_ARRAY_PROGMEM']; compilerproc;
+      var
+        ArrayLen : longint;
+        p : pchar_progmem;
+      Begin
+        If (InOutRes<>0) then
+         exit;
+        case TextRec(f).mode of
+          fmOutput { fmAppend gets changed to fmOutPut in do_open (JM) }:
+            begin
+              p:=pchar_progmem(@s);
+              if zerobased then
+                begin
+                  { can't use StrLen, since that one could try to read past the end }
+                  { of the heap (JM)                                                }
+                  ArrayLen:=IndexByte_progmem(pbyte_progmem(p),high(s)+1,0);
+                  { IndexByte returns -1 if not found (JM) }
+                  if ArrayLen = -1 then
+                    ArrayLen := high(s)+1;
+                end
+              else
+                ArrayLen := high(s)+1;
+              If Len>ArrayLen Then
+                fpc_WriteBlanks(f,Len-ArrayLen);
+              fpc_WriteBuffer(f,p,ArrayLen);
+            end;
+          fmInput: InOutRes:=105
+          else InOutRes:=103;
+        end;
+      End;
+
+      procedure fpc_write_text_pchar_as_array_eeprom(Len : longint;var f: Text; const s: array of char_eeprom; zerobased: boolean{ = true}); iocheck;  [public,alias:'FPC_WRITE_TEXT_PCHAR_AS_ARRAY_EEPROM']; compilerproc;
+      var
+        ArrayLen : longint;
+        p : pchar_eeprom;
+      Begin
+        If (InOutRes<>0) then
+         exit;
+        case TextRec(f).mode of
+          fmOutput { fmAppend gets changed to fmOutPut in do_open (JM) }:
+            begin
+              p:=pchar_eeprom(@s);
+              if zerobased then
+                begin
+                  { can't use StrLen, since that one could try to read past the end }
+                  { of the heap (JM)                                                }
+                  ArrayLen:=IndexByte_eeprom(pbyte_eeprom(p),high(s)+1,0);
+                  { IndexByte returns -1 if not found (JM) }
+                  if ArrayLen = -1 then
+                    ArrayLen := high(s)+1;
+                end
+              else
+                ArrayLen := high(s)+1;
+              If Len>ArrayLen Then
+                fpc_WriteBlanks(f,Len-ArrayLen);
+              fpc_WriteBuffer(f,p,ArrayLen);
+            end;
+          fmInput: InOutRes:=105
+          else InOutRes:=103;
+        end;
+      End;
+
+      // sstrings.inc
       function fpc_shortstr_copy_progmem(constref s : shortstring_progmem;index : SizeInt;count : SizeInt): shortstring; [public,alias:'FPC_SHORTSTR_COPY_PROGMEM']; compilerproc;
       var
         i: byte;
