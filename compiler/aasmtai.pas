@@ -666,6 +666,9 @@ interface
           { this constructor is made private on purpose }
           { because sections should be created via new_section() }
           constructor Create(Asectype:TAsmSectiontype;const Aname:string;Aalign:longint;Asecorder:TasmSectionorder=secorder_default);
+{$ifdef avr}
+          constructor Create_proc(Asectype:TAsmSectiontype;const Aname:string;Aalign:longint;Asecorder:TasmSectionorder=secorder_default);
+{$endif avr}
 {$pop}
        end;
 
@@ -1045,7 +1048,9 @@ interface
 
     procedure maybe_new_object_file(list:TAsmList);
     function new_section(list:TAsmList;Asectype:TAsmSectiontype;const Aname:string;Aalign:byte;Asecorder:TasmSectionorder=secorder_default) : tai_section;
-
+{$ifdef avr}
+    function new_proc_section(list:TAsmList;Asectype:TAsmSectiontype;const Aname:string;Aalign:byte;Asecorder:TasmSectionorder=secorder_default) : tai_section;
+{$endif avr}
     function ppuloadai(ppufile:tcompilerppufile):tai;
     procedure ppuwriteai(ppufile:tcompilerppufile;n:tai);
 
@@ -1082,6 +1087,18 @@ implementation
         inc(list.section_count);
         list.concat(cai_align.create(Aalign));
       end;
+
+{$ifdef avr}
+    function new_proc_section(list: TAsmList; Asectype: TAsmSectiontype;
+      const Aname: string; Aalign: byte; Asecorder: TasmSectionorder
+      ): tai_section;
+    begin
+      Result:=tai_section.Create_proc(Asectype,Aname,Aalign,Asecorder);
+      list.concat(Result);
+      inc(list.section_count);
+      list.concat(cai_align.create(Aalign));
+    end;
+{$endif avr}
 
 
     function ppuloadai(ppufile:tcompilerppufile):tai;
@@ -1302,6 +1319,17 @@ implementation
         name:=stringdup(Aname);
         sec:=nil;
       end;
+
+{$ifdef avr}
+    constructor tai_section.Create_proc(Asectype: TAsmSectiontype;
+      const Aname: string; Aalign: longint; Asecorder: TasmSectionorder);
+      begin
+        Create(Asectype,Aname,Aalign,Asecorder);
+        secprogbits:=SPB_PROGBITS;
+        exclude(secflags,SF_W);
+        include(secflags,SF_X);
+      end;
+{$endif avr}
 
 
     constructor tai_section.ppuload(t:taitype;ppufile:tcompilerppufile);

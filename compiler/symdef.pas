@@ -695,6 +695,9 @@ interface
           { number of user visible parameters }
           maxparacount,
           minparacount    : byte;
+{$ifdef avr}
+          section : ansistring;
+{$endif avr}
           constructor create(dt:tdeftyp;level:byte;doregister:boolean);
           constructor ppuload(dt:tdeftyp;ppufile:tcompilerppufile);
           destructor destroy;override;
