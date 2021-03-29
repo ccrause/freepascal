@@ -699,6 +699,7 @@ implementation
         symt:TSymtable;
         hash:THashedIDString;
         hadTypeSym:boolean;
+        symEntry:TSymEntry;
       begin
         if (def.symsection<>symsection) then
           begin
@@ -707,7 +708,8 @@ implementation
                 newtype:=ttypesym(def.typesym);
                 s:=def.typesym.RealName + symSectionToSectionName(symsection);
                 hash.Id:=upper(s);
-                if symtablestack.top.FindWithHash(hash)=nil then
+                symEntry:=symtablestack.top.FindWithHash(hash);
+                if symEntry=nil then
                   begin
                     // register new type symbol
                     def:=tstoreddef(def).getcopy;
@@ -722,7 +724,9 @@ implementation
                       end;
                     def.typesym:=newtype;
                     def.register_def;
-                  end;
+                  end
+                else
+                  def:=ttypesym(symEntry).typedef;
               end
             else  { Anonymous type definition }
               begin
