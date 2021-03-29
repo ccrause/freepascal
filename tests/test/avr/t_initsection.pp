@@ -10,7 +10,7 @@ const
 var
   b1, b3: byte; section '.noinit';
 
-procedure init1Proc; noreturn; section '.init0';
+procedure init1Proc; noreturn; section '.init1';
 begin
   b1 := init1_const;
 end;

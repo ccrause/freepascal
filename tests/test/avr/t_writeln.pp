@@ -4,8 +4,6 @@
 program t_writeln;
 
 type
-  shortstring_progmem = type shortstring; section '.progmem';
-  shortstring_eeprom = type shortstring; section '.eeprom';
   FileFunc = Procedure(var t : TextRec);
 
 const
@@ -17,7 +15,7 @@ const
   s_normal: shortstring = 'RAMss';
 
 var
-  s, stemp: shortstring;
+  stemp: shortstring;
   stdOutFlushFunc: codepointer;
 
 procedure flushStdOut;

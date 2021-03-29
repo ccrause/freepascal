@@ -2,7 +2,7 @@
 { %target=embedded }
 { %fail }
 
-program t_failparam2;
+program t_failparam3;
 
 type
   myword_progmem = type word; section '.progmem';
