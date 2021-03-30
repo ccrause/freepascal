@@ -40,7 +40,7 @@ begin
   // Set stdout.LineEnd the same as LineEnding
   SetTextLineEnding(stdout, LineEnding);
 
-  {$stringinprogmem+} // store literal in progmem
+  {$literalstringinprogmem+} // store literal in progmem
   writeln('literal');
   stemp := 'literal' + LineEnding;
   if not compareWriteBufferWith(stemp) then

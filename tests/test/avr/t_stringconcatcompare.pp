@@ -8,7 +8,7 @@ var
   test_in_eeprom: shortstring = '43210-?'; section '.eeprom';
 
 begin
-  {$stringinprogmem+} // store literal in progmem
+  {$literalstringinprogmem+} // store literal in progmem
   s := '43210';
   s := s + '-?';
 

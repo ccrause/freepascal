@@ -173,7 +173,7 @@ interface
          cs_hugeptr_arithmetic_normalization,
          cs_hugeptr_comparison_normalization,
          { avr specific }
-         cs_string_in_progmem
+         cs_literal_string_in_progmem
        );
        tlocalswitches = set of tlocalswitch;
 

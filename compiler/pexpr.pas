@@ -3964,7 +3964,7 @@ implementation
 {$ifdef avr}
                  { Put string literals in progmem to save RAM
                    should be optional... }
-                 if cs_string_in_progmem in current_settings.localswitches then
+                 if cs_literal_string_in_progmem in current_settings.localswitches then
                    p1.location.reference.symsection:=ss_progmem;
 {$endif avr}
                  consume(_CSTRING);

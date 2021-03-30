@@ -1473,9 +1473,9 @@ unit scandir;
         // different places. Skip it for now.
       end;
 
-    procedure dir_stringinprogmem;
+    procedure dir_literalstringinprogmem;
       begin
-        do_localswitch(cs_string_in_progmem);
+        do_localswitch(cs_literal_string_in_progmem);
       end;
 
 
@@ -2050,7 +2050,7 @@ unit scandir;
         AddDirective('STACKFRAMES',directive_all, @dir_stackframes);
         AddDirective('STOP',directive_all, @dir_stop);
         AddDirective('STRINGCHECKS', directive_all, @dir_stringchecks);
-        AddDirective('STRINGINPROGMEM', directive_all, @dir_stringinprogmem);
+        AddDirective('LITERALSTRINGINPROGMEM', directive_all, @dir_literalstringinprogmem);
         AddDirective('SYSCALL',directive_all, @dir_syscall);
         AddDirective('TARGETSWITCH',directive_all, @dir_targetswitch);
         AddDirective('THREADNAME',directive_all, @dir_threadname);
