@@ -651,6 +651,7 @@ implementation
         srsym:tsym;
         symt:TSymtable;
         hdef:tdef;
+        symEntry:TSymEntry;
       begin
         { Symbols of pointer type should not transfer the section property to the type
           as the pointer can be located in one section and the pointed to data in another }
@@ -668,7 +669,8 @@ implementation
                     // Check if type for this section is already registered
                     s := sym.vardef.typename + symSectionToSectionName(sym.symsection);
                     hash.Id:=upper(s);
-                    if symtablestack.top.FindWithHash(hash)=nil then
+                    symEntry:=symtablestack.top.FindWithHash(hash);
+                    if symEntry=nil then
                       begin
                         // register new type symbol
                         hdef:=tstoreddef(sym.vardef).getcopy;
@@ -684,7 +686,9 @@ implementation
                         sym.vardef:=hdef;
                         { Add reference since this is called when amending a type's section info in a declaration }
                         newtype.IncRefCount;
-                      end;
+                      end
+                    else
+                      sym.vardef:=ttypesym(symEntry).typedef;
                   end;
               end;
           end;
