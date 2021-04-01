@@ -1192,7 +1192,7 @@ begin
 
 {$ifdef avr}
               if hdef.typ in [arraydef,recorddef,pointerdef,orddef,
-                              stringdef,objectdef,floatdef] then
+                              stringdef,floatdef] then
                 { Try to read section directive and associate with this pointer type }
                 if try_to_consume(_SECTION) then
                  begin

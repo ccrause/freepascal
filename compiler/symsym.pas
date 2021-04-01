@@ -650,12 +650,12 @@ implementation
         newtype:ttypesym;
         srsym:tsym;
         symt:TSymtable;
-        hdef:tdef;
+        hdef,hdef2:tdef;
         symEntry:TSymEntry;
       begin
         { Symbols of pointer type should not transfer the section property to the type
           as the pointer can be located in one section and the pointed to data in another }
-        if (sym.vardef.typ<>pointerdef) then
+        if (sym.vardef.typ<>pointerdef) and (sym.vardef.typ<>objectdef) then
           begin
             if (sym.vardef.symsection<>ss_none) then
               begin
@@ -691,7 +691,9 @@ implementation
                       sym.vardef:=ttypesym(symEntry).typedef;
                   end;
               end;
-          end;
+          end
+        else if (sym.vardef.typ=objectdef) then
+          Comment(V_Error,'Placing an object in a section is not supported');
       end;
 
         procedure maybeRegisterNewTypeWithSection(var def: tdef;
