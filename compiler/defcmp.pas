@@ -182,6 +182,35 @@ implementation
       symtable,symsym,symcpu,
       defutil,symutil;
 
+{$ifdef avr}
+    function compare_defs_record(def_from,def_to:trecorddef;var doconv:tconverttype):tequaltype;
+    var
+      i: integer;
+      fvs1, fvs2: tfieldvarsym;
+    begin
+      compare_defs_record := te_incompatible;
+      doconv := tc_not_possible;
+      if (def_from.size = def_to.size) and
+         (def_from.symtable.SymList.Count = def_to.symtable.SymList.Count) then
+      begin
+        i := 0;
+        fvs1 := nil;
+        fvs2 := nil;
+        while (i < trecorddef(def_from).symtable.SymList.Count) and
+             (fvs1 = fvs2) do
+        begin
+          fvs1 := tfieldvarsym(trecorddef(def_from).symtable.SymList.Items[i]);
+          fvs2 := tfieldvarsym(trecorddef(def_to).symtable.SymList.Items[i]);
+          inc(i);
+        end;
+        if fvs1 = fvs2 then
+        begin
+          compare_defs_record := te_equal;
+          doconv:=tc_equal;
+        end;
+      end;
+    end;
+{$endif avr}
 
     function compare_defs_ext(def_from,def_to : tdef;
                               fromtreetype : tnodetype;
@@ -1965,7 +1994,12 @@ implementation
                 begin
                   doconv:=tc_intf_2_guid;
                   eq:=te_convert_l1;
-                end;
+                end
+{$ifdef avr}
+               else if (def_to.typ = recorddef) and
+                  ((def_from.symsection <> ss_none) or (def_to.symsection <> ss_none)) then
+                 eq:=compare_defs_record(trecorddef(def_from),trecorddef(def_to),doconv);
+{$endif avr}
              end;
 
            formaldef :
