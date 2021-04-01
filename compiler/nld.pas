@@ -529,7 +529,7 @@ implementation
         inherited XMLPrintNodeData(T);
         WriteLn(T, printnodeindention, '<symbol>', symtableentry.name, '</symbol>');
 
-        if symtableentry.typ <> undefinedsym then
+        if symtableentry is tabstractvarsym then
         begin
           WriteLn(T, printnodeindention, '<symsection>', tabstractvarsym(symtableentry).symsection, '</symsection>');
           if Assigned(tabstractvarsym(symtableentry).vardef) then
