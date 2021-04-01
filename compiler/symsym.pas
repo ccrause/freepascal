@@ -618,7 +618,12 @@ implementation
         else if CompareText('.EEPROM',sectionname)=0 then
           result:=ss_eeprom
         else
-          result:=ss_none;
+          begin
+            result:=ss_none;
+            if (CompareText('PROGMEM',sectionname)=0) or
+               (CompareText('EEPROM',sectionname)=0) then
+              Comment(V_Hint,sectionname+' is not recognized as a special section, but seems similar to .'+upper(sectionname)+' which is supported by the compiler');
+          end;
       end;
 
     function symSectionToSectionName(ss:tsymsection):ansistring;
