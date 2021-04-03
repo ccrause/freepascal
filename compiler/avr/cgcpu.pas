@@ -120,8 +120,8 @@ unit cgcpu;
 
       private
        procedure a_op_const_reg_reg_internal(list: TAsmList; op: TOpCg; size: tcgsize; a: tcgint; src, srchi, dst, dsthi: tregister);
-       // Check if load semantics require reference to be accessed via the Z register
-       function useZregForReferenceLoad(source: treference): boolean;
+       // If section is mapped to address space, add mapped offset to ref.offset for unified memory controllers
+       procedure maybeAdjustReferenceOffset(var ref: treference);
        function findProcDef(procname: string):tprocdef;
       protected
         procedure a_op_reg_reg_internal(list: TAsmList; Op: TOpCG; size: TCGSize; src, srchi, dst, dsthi: TRegister);
@@ -545,10 +545,18 @@ unit cgcpu;
        end;
 
 
-     function tcgavr.useZregForReferenceLoad(source: treference): boolean;
+     procedure tcgavr.maybeAdjustReferenceOffset(var ref: treference);
+     begin
+       if (ref.symsection in [ss_progmem,ss_eeprom]) and
+          ((CPUAVR_HAS_NVM_DATASPACE in cpu_capabilities[current_settings.cputype]) or
+          not(CPUAVR_HAS_LPMX in cpu_capabilities[current_settings.cputype])) then
        begin
-         result:=source.symsection in [ss_eeprom,ss_progmem];
+         if ref.symsection=ss_eeprom then
+           ref.offset := ref.offset + embedded_controllers[current_settings.controllertype].eeprombase
+         else
+           ref.offset := ref.offset + embedded_controllers[current_settings.controllertype].flashbase;
        end;
+     end;
 
      function tcgavr.findProcDef(procname: string): tprocdef;
        var
@@ -1279,6 +1287,9 @@ unit cgcpu;
          else
            QuickRef:=true;
 
+         if QuickRef then
+           maybeAdjustReferenceOffset(href);
+
          if (tcgsize2size[fromsize]>32) or (tcgsize2size[tosize]>32) or (fromsize=OS_NO) or (tosize=OS_NO) then
            internalerror(2011021303);
 
@@ -1467,7 +1478,7 @@ unit cgcpu;
          href : treference;
          conv_done: boolean;
          tmpreg : tregister;
-         i : integer;
+         i,offset,oldoffset : integer;
          QuickRef,ungetcpuregister_z: boolean;
        begin
          QuickRef:=false;
@@ -1483,7 +1494,7 @@ unit cgcpu;
 
          { try to use ldd/lds }
          if not((href.Base=NR_NO) and (href.Index=NR_NO)) or
-           useZregForReferenceLoad(href) then
+           needSectionSpecificHelperCode(href.symsection,true) then
            begin
              if not((href.addressmode=AM_UNCHANGED) and
                     (href.symbol=nil) and
@@ -1506,12 +1517,26 @@ unit cgcpu;
                      emit_mov(list,NR_R31,GetNextReg(href.base));
                      href.base:=NR_R30;
                      ungetcpuregister_z:=true;
+
+                     if not needSectionSpecificHelperCode(href.symsection, true) then
+                       begin
+                         oldoffset:=href.offset;
+                         maybeAdjustReferenceOffset(href);
+                         offset:=href.offset-oldoffset;
+                         offset:= 256 - (offset shr 8);
+                         href.offset:=oldoffset;
+                         href.symsection:=ss_none;
+                         list.concat(taicpu.op_reg_const(A_SUBI,GetNextReg(href.base),byte(offset)));
+                       end;
                    end;
                  QuickRef:=true;
                end;
            end
          else
            QuickRef:=true;
+
+         if QuickRef then
+           maybeAdjustReferenceOffset(href);
 
          if (tcgsize2size[fromsize]>32) or (tcgsize2size[tosize]>32) or (fromsize=OS_NO) or (tosize=OS_NO) then
            internalerror(2011021304);
@@ -2244,8 +2269,8 @@ unit cgcpu;
           internalerror(2011022002);
       end;
 
-    // Read ref into register
-    procedure tcgavr.checkLoadRefReg(list: TAsmList; reg: tregister;
+
+     procedure tcgavr.checkLoadRefReg(list: TAsmList; reg: tregister;
       const Ref: treference);
       var
         l1: TAsmLabel;
@@ -2255,10 +2280,9 @@ unit cgcpu;
         paraloc1: tcgpara;
         tmpref: treference;
       begin
-        // Newer controllers map eeprom into data space
-        if Ref.symsection=ss_eeprom then
+        if needSectionSpecificHelperCode(Ref.symsection,true) then
           begin
-            if not (CPUAVR_HAS_NVM_DATASPACE in cpu_capabilities[current_settings.cputype]) then
+            if Ref.symsection=ss_eeprom then
               begin
                 if Ref.addressmode=AM_PREDRECEMENT then
                   if CPUAVR_HAS_MOVW in cpu_capabilities[current_settings.cputype] then
@@ -2313,51 +2337,43 @@ unit cgcpu;
                     end;
                 end;
               end
-            else
+            else if (ref.symsection=ss_progmem) then
               begin
-                { Add eeprom offset to index register high byte }
-                list.concat(taicpu.op_reg_const(A_SUBI,GetNextReg(Ref.base),$EC));
-                list.concat(taicpu.op_reg_ref(GetLoad(Ref),reg,Ref));
-                list.concat(taicpu.op_reg_const(A_SUBI,GetNextReg(Ref.base),$14));
-              end;
-          end
-        { Check if using LPM }
-        else if (ref.symsection=ss_progmem) and
-                (CPUAVR_HAS_LPMX in cpu_capabilities[current_settings.cputype]) then
-          begin
-            tmpref:=ref;
-            { Add displacement to reference }
-            if (ref.base<>NR_NO) and (ref.offset<>0) then
-              begin
-                if CPUAVR_HAS_MOVW in cpu_capabilities[current_settings.cputype] then
-                  list.concat(taicpu.op_reg_const(A_ADIW,Ref.base,Ref.offset))
-                else
+                tmpref:=ref;
+                { Add displacement to reference }
+                if (ref.base<>NR_NO) and (ref.offset<>0) then
                   begin
-                    list.concat(taicpu.op_reg_const(A_LDI,GetDefaultTmpReg,Ref.offset));
-                    list.concat(taicpu.op_reg_reg(A_ADD,Ref.base,GetDefaultTmpReg));
-                    list.concat(taicpu.op_reg_reg(A_ADC,GetNextReg(Ref.base),GetDefaultZeroReg));
+                    if CPUAVR_HAS_MOVW in cpu_capabilities[current_settings.cputype] then
+                      list.concat(taicpu.op_reg_const(A_ADIW,Ref.base,Ref.offset))
+                    else
+                      begin
+                        list.concat(taicpu.op_reg_const(A_LDI,GetDefaultTmpReg,Ref.offset));
+                        list.concat(taicpu.op_reg_reg(A_ADD,Ref.base,GetDefaultTmpReg));
+                        list.concat(taicpu.op_reg_reg(A_ADC,GetNextReg(Ref.base),GetDefaultZeroReg));
+                      end;
+                    tmpref.offset:=0;
                   end;
-                tmpref.offset:=0;
-              end;
 
-            list.concat(taicpu.op_reg_ref(A_LPM,reg,tmpref));
+                list.concat(taicpu.op_reg_ref(A_LPM,reg,tmpref));
 
-            { Subtract displacement from reference }
-            if (ref.base<>NR_NO) and (ref.offset<>0) then
-              begin
-                if CPUAVR_HAS_MOVW in cpu_capabilities[current_settings.cputype] then
-                  list.concat(taicpu.op_reg_const(A_SBIW,Ref.base,Ref.offset))
-                else
+                { Subtract displacement from reference }
+                if (ref.base<>NR_NO) and (ref.offset<>0) then
                   begin
-                    list.concat(taicpu.op_reg_const(A_SUBI,Ref.base,Ref.offset));
-                    list.concat(taicpu.op_reg_reg(A_SBC,GetNextReg(Ref.base),GetDefaultZeroReg));
+                    if CPUAVR_HAS_MOVW in cpu_capabilities[current_settings.cputype] then
+                      list.concat(taicpu.op_reg_const(A_SBIW,Ref.base,Ref.offset))
+                    else
+                      begin
+                        list.concat(taicpu.op_reg_const(A_SUBI,Ref.base,Ref.offset));
+                        list.concat(taicpu.op_reg_reg(A_SBC,GetNextReg(Ref.base),GetDefaultZeroReg));
+                      end;
+                    tmpref.offset:=0;
                   end;
-                tmpref.offset:=0;
-              end;
+              end
           end
         else
           list.concat(taicpu.op_reg_ref(GetLoad(Ref),reg,Ref));
       end;
+
 
     procedure tcgavr.checkStoreRegRef(list: TAsmList; const Ref: treference; reg: tregister);
       var
@@ -2610,6 +2626,8 @@ unit cgcpu;
             reference_reset(tmpref,0,[]);
             tmpref.symbol:=ref.symbol;
             tmpref.offset:=ref.offset;
+            tmpref.symsection:=ref.symsection;
+            maybeAdjustReferenceOffset(tmpref);
 
             if assigned(ref.symbol) and (ref.symbol.typ in [AT_FUNCTION,AT_LABEL]) then
               tmpref.refaddr:=addr_lo8_gs
@@ -2803,17 +2821,27 @@ unit cgcpu;
                       (source.Index=NR_NO) and
                       (source.Offset in [0..64-len])) and
                 not((source.Base=NR_NO) and (source.Index=NR_NO))
-              ) or useZregForReferenceLoad(source) then
+              ) or needSectionSpecificHelperCode(source.symsection,true) then
               begin
                 cg.getcpuregister(list,NR_R30);
                 cg.getcpuregister(list,NR_R31);
-                srcref:=normalize_ref(list,source,NR_R30);
+                if not needSectionSpecificHelperCode(source.symsection,true) then
+                  begin
+                    srcref:=source;
+                    maybeAdjustReferenceOffset(srcref);
+                    srcref:=normalize_ref(list,srcref,NR_R30);
+                  end
+                else
+                  srcref:=normalize_ref(list,source,NR_R30);
               end
             else
               begin
                 SrcQuickRef:=true;
                 srcref:=source;
               end;
+
+            if SrcQuickRef then
+              maybeAdjustReferenceOffset(srcref);
 
             if ((CPUAVR_16_REGS in cpu_capabilities[current_settings.cputype]) and
               not((dest.Base=NR_NO) and (dest.Index=NR_NO) and (dest.Offset in [0..192-len]))) or
@@ -2825,7 +2853,7 @@ unit cgcpu;
                     (dest.Index=NR_No) and
                     (dest.Offset in [0..64-len])) and
                 not((dest.Base=NR_NO) and (dest.Index=NR_NO))
-              ) or useZregForReferenceLoad(dest) then
+              ) or needSectionSpecificHelperCode(dest.symsection,false) then
               begin
                 if not(SrcQuickRef) then
                   begin
@@ -2870,49 +2898,52 @@ unit cgcpu;
                 dstref:=dest;
               end;
 
-              // CC
-              // If dest is an ioreg (31 < offset < srambase) and size = 16 bit then
-              // write high byte first, then low byte
-              // but not for avrxmega3
-              if (len = 2) and DestQuickRef and (current_settings.cputype <> cpu_avrxmega3) and
-                (dest.offset > 31) and
-                (dest.offset < cpuinfo.embedded_controllers[current_settings.controllertype].srambase) then
-                begin
-                  // If src is also a 16 bit ioreg then read low byte then high byte
-                  if SrcQuickRef and (srcref.offset > 31)
-                    and (srcref.offset < cpuinfo.embedded_controllers[current_settings.controllertype].srambase) then
-                    begin
-                      // First read source into temp registers
-                      tmpreg:=getintregister(list, OS_16);
-                      checkLoadRefReg(list,tmpreg,srcref);
-                      inc(srcref.offset);
-                      tmpreg2:=GetNextReg(tmpreg);
-                      checkLoadRefReg(list,tmpreg2,srcref);
+            if DestQuickRef then
+              maybeAdjustReferenceOffset(dstref);
 
-                      // then move temp registers to dest in reverse order
-                      inc(dstref.offset);
-                      checkStoreRegRef(list,dstref,tmpreg2);
-                      dec(dstref.offset);
-                      checkStoreRegRef(list,dstref,tmpreg);
-                    end
-                  else
-                    begin
+            // CC
+            // If dest is an ioreg (31 < offset < srambase) and size = 16 bit then
+            // write high byte first, then low byte
+            // but not for avrxmega3
+            if (len = 2) and DestQuickRef and (current_settings.cputype <> cpu_avrxmega3) and
+              (dest.offset > 31) and
+              (dest.offset < cpuinfo.embedded_controllers[current_settings.controllertype].srambase) then
+              begin
+                // If src is also a 16 bit ioreg then read low byte then high byte
+                if SrcQuickRef and (srcref.offset > 31)
+                  and (srcref.offset < cpuinfo.embedded_controllers[current_settings.controllertype].srambase) then
+                  begin
+                    // First read source into temp registers
+                    tmpreg:=getintregister(list, OS_16);
+                    checkLoadRefReg(list,tmpreg,srcref);
+                    inc(srcref.offset);
+                    tmpreg2:=GetNextReg(tmpreg);
+                    checkLoadRefReg(list,tmpreg2,srcref);
+
+                    // then move temp registers to dest in reverse order
+                    inc(dstref.offset);
+                    checkStoreRegRef(list,dstref,tmpreg2);
+                    dec(dstref.offset);
+                    checkStoreRegRef(list,dstref,tmpreg);
+                  end
+                else
+                  begin
+                    srcref.addressmode:=AM_UNCHANGED;
+                    inc(srcref.offset);
+                    dstref.addressmode:=AM_UNCHANGED;
+                    inc(dstref.offset);
+                    copy_byte(srcref,dstref);
+
+                    if not(SrcQuickRef) then
+                      srcref.addressmode:=AM_POSTINCREMENT
+                    else
                       srcref.addressmode:=AM_UNCHANGED;
-                      inc(srcref.offset);
-                      dstref.addressmode:=AM_UNCHANGED;
-                      inc(dstref.offset);
-                      copy_byte(srcref,dstref);
 
-                      if not(SrcQuickRef) then
-                        srcref.addressmode:=AM_POSTINCREMENT
-                      else
-                        srcref.addressmode:=AM_UNCHANGED;
-
-                      dec(srcref.offset);
-                      dec(dstref.offset);
-                      copy_byte(srcref,dstref);
-                    end;
-                end
+                    dec(srcref.offset);
+                    dec(dstref.offset);
+                    copy_byte(srcref,dstref);
+                  end;
+              end
             else
               for i:=1 to len do
                 begin

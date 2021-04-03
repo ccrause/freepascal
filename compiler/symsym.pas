@@ -522,6 +522,7 @@ interface
     function symSectionToSectionPostfixName(ss:tsymsection):ansistring;
     procedure maybeRegisterNewTypeWithSection(var sym:tabstractvarsym); overload;
     procedure maybeRegisterNewTypeWithSection(var def:tdef; const symsection: tsymsection); overload;
+    function needSectionSpecificHelperCode(ss:tsymsection; isRead: boolean): boolean;
 {$endif avr}
 
 implementation
@@ -747,6 +748,14 @@ implementation
                 def.register_def;
               end;
           end;
+      end;
+
+    function needSectionSpecificHelperCode(ss: tsymsection; isRead: boolean): boolean;
+      begin
+        result:=(ss in [ss_progmem,ss_eeprom]) and
+           (not(CPUAVR_HAS_NVM_DATASPACE in cpu_capabilities[current_settings.cputype]) or
+           not(CPUAVR_HAS_LPMX in cpu_capabilities[current_settings.cputype]) or
+           not isRead);
       end;
 
 {$endif avr}

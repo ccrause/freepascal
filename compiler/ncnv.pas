@@ -1147,7 +1147,7 @@ implementation
             addstatement(newstat,restemp);
             procname:=procname+'shortstr';
 {$ifdef avr}
-            if (left.resultdef.symsection<>ss_none) then
+            if needSectionSpecificHelperCode(left.resultdef.symsection,true) then
               procname:=procname+'_'+symSectionToSectionPostfixName(left.resultdef.symsection);
 {$endif avr}
             addstatement(newstat,ccallnode.createintern(procname,
@@ -1163,7 +1163,7 @@ implementation
           begin
             procname:=procname+tstringdef(resultdef).stringtypname;
 {$ifdef avr}
-            if (left.resultdef.symsection<>ss_none) then
+            if needSectionSpecificHelperCode(left.resultdef.symsection,true) then
               procname:=procname+'_'+symSectionToSectionPostfixName(left.resultdef.symsection);
 {$endif avr}
             result:=ccallnode.createinternres(procname,
@@ -1189,7 +1189,7 @@ implementation
           begin
             procname:=procname+tstringdef(resultdef).stringtypname;
 {$ifdef avr}
-            if (left.resultdef.symsection<>ss_none) then
+            if needSectionSpecificHelperCode(left.resultdef.symsection,true) then
               procname:=procname+'_'+symSectionToSectionPostfixName(left.resultdef.symsection);
 {$endif avr}
             result:=ccallnode.createinternres(procname,

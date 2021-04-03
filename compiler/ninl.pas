@@ -779,7 +779,7 @@ implementation
                 begin
                   name:=procprefixes[do_read]+tstringdef(para.left.resultdef).stringtypname;
 {$ifdef avr}
-                  if para.left.resultdef.symsection<>ss_none then
+                  if needSectionSpecificHelperCode(para.left.resultdef.symsection, not do_read) then
                     name:=name+'_'+symSectionToSectionPostfixName(para.left.resultdef.symsection);
 {$endif avr}
                   if (m_isolike_io in current_settings.modeswitches) and (tstringdef(para.left.resultdef).stringtype<>st_shortstring) then

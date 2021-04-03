@@ -909,11 +909,13 @@ implementation
                   ccallparanode.create(left,nil));
                  procname:='fpc_'+tstringdef(right.resultdef).stringtypname+'_to_shortstr';
 {$ifdef avr}
-                 if (right.resultdef.symsection=ss_eeprom) or
-                    (right.location.reference.symsection=ss_eeprom) then
+                 if ((right.resultdef.symsection=ss_eeprom) or
+                    (right.location.reference.symsection=ss_eeprom)) and
+                    needSectionSpecificHelperCode(ss_eeprom, true) then
                    procname:=procname+'_eeprom'
-                 else if (right.resultdef.symsection=ss_progmem) or
-                         (right.location.reference.symsection=ss_progmem) then
+                 else if ((right.resultdef.symsection=ss_progmem) or
+                         (right.location.reference.symsection=ss_progmem)) and
+                         needSectionSpecificHelperCode(ss_progmem, true)  then
                    procname:=procname+'_progmem';
 {$endif avr}
                  result:=ccallnode.createintern(procname,hp);
