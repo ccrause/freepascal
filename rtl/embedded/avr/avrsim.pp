@@ -9,7 +9,7 @@ unit avrsim;
 
   interface
     var
-      OUTPUTREG        : byte absolute $20;    // Interpreted by fp-avrsi as similar to a UART TX data register, data written here will be printed to console
+      OUTPUTREG        : byte absolute $20;    // Interpreted by fp-avrsim as similar to a UART TX data register, data written here will be printed to console
       EXITCODEREG      : byte absolute $21;    // The value written to this register will be returned as exit code by fp-avrsim
       HALTREQUEST      : byte absolute $22;    // In fp-avrsim setting this register to 1 exits the simulation
       EXCEPTIONJMPZERO : boolean absolute $34; // Writing a value > 0 to this register will cause an exception when a jump or call instruction with address 0 as target is encountered in fp-avrsim
@@ -97,7 +97,7 @@ unit avrsim;
 {$endif CPUAVR1}
       end;
 
-    procedure fpc_copy_data; assembler; nostackframe; noreturn; section '.init4';
+    procedure _FPC_copy_data; assembler; nostackframe; noreturn; section '.init4';
       asm
         // Initialize .data section
         ldi XL,lo8(_data)
@@ -145,7 +145,10 @@ unit avrsim;
         cpi XL, lo8(_bss_end)
         cpc XH, YH
         brne .LZeroBssLoop
+      end;
 
+    procedure _FPC_jmp_main; noreturn; assembler; nostackframe; section '.init9';
+      asm
 {$ifdef RELBRANCHES}
         rjmp PASCALMAIN
 {$else RELBRANCHES}
