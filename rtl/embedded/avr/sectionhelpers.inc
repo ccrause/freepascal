@@ -55,7 +55,7 @@
       {$pop}
     {$endif}
 
-    {$if declared (NVMCTRL) or declared(EECR)}
+    {$if declared(EECR)}
       {$mode objfpc}
 
       procedure fpc_shortstr_to_shortstr_eeprom(var res:shortstring; constref sstr: shortstring_eeprom);[public,alias:'FPC_SHORTSTR_TO_SHORTSTR_EEPROM']; compilerproc;
