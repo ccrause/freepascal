@@ -155,7 +155,77 @@
         dests[0]:=chr(s1l+s2l);
       end;
 
-      procedure fpc_shortstr_concat_eeprom(var dests:shortstring;const s1:shortstring; constref s2:shortstring_eeprom);[public,alias:'FPC_SHORTSTR_CONCAT_EEPROM']; compilerproc;
+      procedure fpc_shortstr_concat_progmem_progmem(var dests:shortstring;constref s1, s2:shortstring_progmem);[public,alias:'FPC_SHORTSTR_CONCAT_PROGMEM_PROGMEM']; compilerproc;
+      var
+        s1l, s2l, i: byte;
+      begin
+        s1l:=length(s1);
+        s2l:=length(s2);
+        if s1l+s2l>high(dests) then
+          begin
+            if s1l>high(dests) then
+              s1l:=high(dests);
+            s2l:=high(dests)-s1l;
+          end;
+        if @dests=@s1 then
+          begin
+            for i := 1 to s2l do
+              dests[s1l+i]:=s2[i];
+          end
+        // Only cater for assignment to normal variable not in section
+        //else
+        //  if @dests=@s2 then
+        //    begin
+        //      fpc_shortstr_shortstr_intern_charmove(dests,1,dests,s1l+1,s2l);
+        //      fpc_shortstr_shortstr_intern_charmove(s1,1,dests,1,s1l);
+        //    end
+        else
+          begin
+            for i := 1 to s1l do
+              dests[i]:=s1[i];
+
+            for i := 1 to s2l do
+              dests[s1l+i]:=s2[i];
+          end;
+        dests[0]:=chr(s1l+s2l);
+      end;
+
+procedure fpc_shortstr_concat_eeprom(var dests:shortstring;const s1:shortstring; constref s2:shortstring_eeprom);[public,alias:'FPC_SHORTSTR_CONCAT_EEPROM']; compilerproc;
+      var
+        s1l, s2l, i: byte;
+      begin
+        s1l:=length(s1);
+        s2l:=length(s2);
+        if s1l+s2l>high(dests) then
+          begin
+            if s1l>high(dests) then
+              s1l:=high(dests);
+            s2l:=high(dests)-s1l;
+          end;
+        if @dests=@s1 then
+          begin
+            for i := 1 to s2l do
+              dests[s1l+i]:=s2[i];
+          end
+        // Only cater for assignment to normal variable not in section
+        //else
+        //  if @dests=@s2 then
+        //    begin
+        //      fpc_shortstr_shortstr_intern_charmove(dests,1,dests,s1l+1,s2l);
+        //      fpc_shortstr_shortstr_intern_charmove(s1,1,dests,1,s1l);
+        //    end
+        else
+          begin
+            for i := 1 to s1l do
+              dests[i]:=s1[i];
+
+            for i := 1 to s2l do
+              dests[s1l+i]:=s2[i];
+          end;
+        dests[0]:=chr(s1l+s2l);
+      end;
+
+      procedure fpc_shortstr_concat_eeprom_eeprom(var dests:shortstring;constref s1, s2:shortstring_eeprom);[public,alias:'FPC_SHORTSTR_CONCAT_EEPROM_EEPROM']; compilerproc;
       var
         s1l, s2l, i: byte;
       begin

@@ -23,7 +23,9 @@
   procedure fpc_shortstr_to_shortstr_eeprom(var res:shortstring; constref sstr: shortstring_eeprom); compilerproc;
   procedure fpc_shortstr_to_shortstr_progmem(var res:shortstring; constref sstr: shortstring_progmem); compilerproc;
   procedure fpc_shortstr_concat_progmem(var dests:shortstring;const s1:shortstring; constref s2:shortstring_progmem);compilerproc;
+  procedure fpc_shortstr_concat_progmem_progmem(var dests:shortstring;constref s1, s2:shortstring_progmem);compilerproc;
   procedure fpc_shortstr_concat_eeprom(var dests:shortstring;const s1:shortstring; constref s2:shortstring_eeprom);compilerproc;
+  procedure fpc_shortstr_concat_eeprom_eeprom(var dests:shortstring;constref s1, s2:shortstring_eeprom);compilerproc;
   function fpc_shortstr_compare_equal_progmem(const left:shortstring; constref right: shortstring_progmem): longint; compilerproc;
   function fpc_shortstr_compare_equal_eeprom(const left:shortstring; constref right: shortstring_eeprom): longint; compilerproc;
   procedure fpc_chararray_to_shortstr_progmem(var res : shortstring; const arr: array of char_progmem; zerobased: boolean{ = true}); compilerproc;
