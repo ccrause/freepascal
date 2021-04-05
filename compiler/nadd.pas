@@ -3222,7 +3222,7 @@ implementation
                    tmpsymsection:=right.location.reference.symsection
                  else if right.resultdef.symsection<>ss_none then
                    tmpsymsection:=right.resultdef.symsection;
-                 if tmpsymsection<>ss_none then
+                 if (tmpsymsection<>ss_none) and needSectionSpecificHelperCode(tmpsymsection,true) then
                    helpername:=helpername+
                                '_'+symSectionToSectionPostfixName(tmpsymsection);
 {$endif avr}
