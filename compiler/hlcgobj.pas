@@ -3406,7 +3406,7 @@ implementation
 {$endif avr}
     begin
 {$ifdef avr}
-      if strdef.symsection<>dest.symsection then
+      if (strdef.symsection<>dest.symsection) and needSectionSpecificHelperCode(strdef.symsection,true) then
       begin
         if strdef.symsection=ss_eeprom then
           helpername:='fpc_shortstr_to_shortstr_eeprom'

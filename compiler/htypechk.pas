@@ -2060,7 +2060,11 @@ implementation
             begin
               { all shortstrings are allowed, size is not important }
               if is_shortstring(def_from) and
-                 is_shortstring(def_to) then
+                 is_shortstring(def_to)
+{$ifdef avr}
+                 and (def_from.symsection=def_to.symsection)
+{$endif avr}
+                 then
                 eq:=te_equal;
             end;
           objectdef :
@@ -2109,10 +2113,9 @@ implementation
                  (tstringdef(def_to).stringtype=tstringdef(p.resultdef).stringtype) and
                  (tstringdef(def_to).encoding=tstringdef(p.resultdef).encoding)
 {$ifdef avr}
-                 and (not needSectionSpecificHelperCode(tstringdef(p.resultdef).symsection, true) or
-                      (tstringdef(def_to).symsection=tstringdef(p.resultdef).symsection))
-{$endif avr}
-                 then
+                and needSectionSpecificHelperCode(tstringdef(p.resultdef).symsection, true) and
+                     (tstringdef(def_to).symsection=tstringdef(p.resultdef).symsection)
+{$endif avr}  then
                 eq:=te_equal
             end;
           formaldef,

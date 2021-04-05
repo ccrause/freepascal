@@ -1254,6 +1254,20 @@ implementation
                         exit;
                    end;
 
+{$ifdef avr}
+                 if is_shortstring(left.resultdef) and
+                    is_shortstring(parasym.vardef) and
+                    (needSectionSpecificHelperCode(left.resultdef.symsection,true) and
+                     (left.resultdef.symsection<>parasym.vardef.symsection)) and
+                    (parasym.vardef.typ<>formaldef) and
+                    not(parasym.univpara) then
+                   begin
+                     inserttypeconv(left,parasym.vardef);
+                     if codegenerror then
+                       exit;
+                   end;
+{$endif avr}
+
                 { truncate shortstring value parameters at the caller side if }
                 { they are passed by value (if passed by reference, then the  }
                 { callee will truncate when copying in the string)            }

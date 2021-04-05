@@ -661,6 +661,13 @@ implementation
             maybeRegisterNewTypeWithSection(resultdef,
               sectionNameToSymSection(tstaticvarsym(tloadnode(left).symtableentry).section));
           end;
+
+        { check if vecnode is located in a section.
+          If so, use or register a new def containing a reference to the section }
+        if (left.nodetype=vecn) and Assigned(left.resultdef) then
+          begin
+            maybeRegisterNewTypeWithSection(resultdef,left.resultdef.symsection);
+          end;
         {$endif avr}
       end;
 
@@ -1236,6 +1243,9 @@ implementation
            else
              CGMessage(type_e_array_required);
         end;
+ {$ifdef avr}
+        maybeRegisterNewTypeWithSection(resultdef, left.resultdef.symsection);
+ {$endif avr}
       end;
 
 
