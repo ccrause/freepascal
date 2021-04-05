@@ -383,19 +383,8 @@ implementation
 
 
     procedure inserttypeconv(var p:tnode;def:tdef);
-{$ifdef avr}
-      var
-        currentsymsection: tsymsection;
-{$endif avr}
       begin
-{$ifdef avr}
-        currentsymsection:=p.location.reference.symsection;
-{$endif avr}
         do_inserttypeconv(p,def,tct_implicit);
-{$ifdef avr}
-        if p.nodetype <> stringconstn then
-          p.location.reference.symsection:=currentsymsection;
-{$endif avr}
       end;
 
 
@@ -1401,6 +1390,11 @@ implementation
       end;
 
     function ttypeconvnode.typecheck_string_to_string : tnode;
+      var
+        newblock : tblocknode;
+        newstat  : tstatementnode;
+        restemp  : ttempcreatenode;
+        procname: string;
       begin
         result:=nil;
         if (left.nodetype=stringconstn) and
@@ -1458,7 +1452,33 @@ implementation
               Message2(type_w_explicit_string_cast,left.resultdef.typename,resultdef.typename)
             else
               Message2(type_w_implicit_string_cast,left.resultdef.typename,resultdef.typename);
-          end
+          end;
+
+{$ifdef avr}
+        { Convert shortstring in section to regular temp shortstring,
+          but only if controller doesn't have unified memory }
+        if (tstringdef(left.resultdef).stringtype=st_shortstring) and
+           (tstringdef(resultdef).stringtype=st_shortstring) and
+           needSectionSpecificHelperCode(left.resultdef.symsection,true) then
+          begin
+            procname:='fpc_shortstr_to_shortstr';
+            procname:=procname+'_'+symSectionToSectionPostfixName(left.resultdef.symsection);
+
+            newblock:=internalstatements(newstat);
+            restemp:=ctempcreatenode.create(resultdef,resultdef.size,tt_persistent,false);
+            addstatement(newstat,restemp);
+
+            { Call parameters: var res:shortstring; constref sstr: shortstring_eeprom }
+            addstatement(newstat,ccallnode.createintern(procname,
+              ccallparanode.create(left,
+              ccallparanode.create(ctemprefnode.create(restemp),nil))));
+
+            addstatement(newstat,ctempdeletenode.create_normal_temp(restemp));
+            addstatement(newstat,ctemprefnode.create(restemp));
+            result:=newblock;
+            left:=nil;
+          end;
+{$endif avr}
       end;
 
     function ttypeconvnode.typecheck_char_to_chararray : tnode;
