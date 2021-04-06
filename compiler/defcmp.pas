@@ -2096,7 +2096,7 @@ implementation
 {$ifdef avr}
         { Penalize defs in different sections,
           but not when parsing a constant into a typed const/var }
-        if not (fromtreetype in [nothingn,stringconstn]) and (def_from.symsection<>def_to.symsection) then
+        if {not (fromtreetype in [nothingn,stringconstn]) and} (def_from.symsection<>def_to.symsection) then
           begin
             if eq>te_convert_l5 then
               dec(eq);

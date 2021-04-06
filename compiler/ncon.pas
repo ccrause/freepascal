@@ -985,8 +985,10 @@ implementation
               tarraydef(resultdef).elementdef:=cansichartype;
               include(tarraydef(resultdef).arrayoptions,ado_IsConstString);
 {$ifdef avr}
-              { Propagate symsection from node to resultdef }
-              maybeRegisterNewTypeWithSection(resultdef,self.location.reference.symsection);
+              { Propagate symsection from node to resultdef,
+                but not while parsing a type, const, const type or var }
+              if not (self.blocktype in [bt_type,bt_const,bt_const_type,bt_var]) then
+                maybeRegisterNewTypeWithSection(resultdef,self.location.reference.symsection);
 {$endif avr}
             end;
           cst_shortstring :
