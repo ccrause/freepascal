@@ -606,6 +606,9 @@ implementation
         cr, cl  : Tconstexprint;
         v2p, c2p, c1p, v1p: pnode;
         p1,p2: TConstPtrUInt;
+{$ifdef avr}
+        ls,rs: tsymsection;
+{$endif avr}
       begin
         result:=nil;
         l1:=0;
@@ -1211,6 +1214,16 @@ implementation
                 addn :
                   begin
                     t:=cstringconstnode.createpchar(concatansistrings(s1,s2,l1,l2),l1+l2,nil);
+{$ifdef avr}
+                    { New string should inherit original section }
+                    // Todo: check if left & right are from the same sections
+                    ls:=ld.symsection;
+                    rs:=rd.symsection;
+                    if (ls=rs) and (ls<>ss_none) then
+                      t.location.reference.symsection:=ls
+                    else
+                      Comment(V_Note,'String constants from different sections merged, ignoring section information');
+{$endif avr}
                     typecheckpass(t);
                     if not is_ansistring(resultdef) or
                        (tstringdef(resultdef).encoding<>globals.CP_NONE) then
