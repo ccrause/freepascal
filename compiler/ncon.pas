@@ -1177,6 +1177,12 @@ implementation
                 end;
             end;
         cst_type:=st2cst[tstringdef(def).stringtype];
+{$ifdef avr}
+        { If retaining section information from here,
+          it will probably lead to calling a section specific string helper }
+        if Assigned(resultdef) and needSectionSpecificHelperCode(resultdef.symsection,true) then
+          maybeRegisterNewTypeWithSection(def,resultdef.symsection);
+{$endif avr}
         resultdef:=def;
       end;
 

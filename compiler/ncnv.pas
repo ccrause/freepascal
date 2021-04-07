@@ -3172,13 +3172,13 @@ implementation
               begin
 {$ifdef avr}
                 { stringconstn in section needs explicit conversion }
-                if (left.resultdef.symsection<>ss_none) and
-                   needSectionSpecificHelperCode(left.resultdef.symsection,true) then
-                  begin
-                    result:=typecheck_chararray_to_string;
-                    exit;
-                  end
-                else
+                //if (left.resultdef.symsection<>ss_none) and
+                //   needSectionSpecificHelperCode(left.resultdef.symsection,true) then
+                //  begin
+                //    result:=typecheck_chararray_to_string;
+                //    exit;
+                //  end
+                //else
 {$endif avr}
                 { output string consts in local ansistring encoding }
                 if is_ansistring(resultdef) and
