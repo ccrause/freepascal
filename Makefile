@@ -350,7 +350,7 @@ endif
 override PACKAGE_NAME=fpc
 override PACKAGE_VERSION=3.3.1
 REQUIREDVERSION=3.2.0
-REQUIREDVERSION2=3.0.4
+REQUIREDVERSION2=3.2.2
 ifndef inOS2
 override FPCDIR:=$(BASEDIR)
 export FPCDIR
@@ -1692,6 +1692,19 @@ else
 ifdef COMPILER_TARGETDIR
 override COMPILER_UNITTARGETDIR=$(COMPILER_TARGETDIR)
 override UNITTARGETDIRPREFIX=$(TARGETDIRPREFIX)
+endif
+endif
+ifdef SYSROOTPATH
+override FPCOPT+=-XR$(SYSROOTPATH)
+else
+ifeq ($(OS_TARGET),$(OS_SOURCE))
+ifneq ($(findstring $(OS_TARGET),darwin),)
+ifneq ($(findstring $(CPU_TARGET),aarch64),)
+ifneq ($(wildcard /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk),)
+override FPCOPT+=-XR/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk
+endif
+endif
+endif
 endif
 endif
 ifdef CREATESHARED

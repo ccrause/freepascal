@@ -26,13 +26,16 @@ var
   binend: byte; external name '_etext';
   bssstart: byte; external name '_sbss';
   bssend: byte; external name '_ebss';
+  nb_ChannelIds : word;
+  pChannelIds : pdword;
+  CmdLine_len : word; public name '__CmdLine_len';
+  pCmdLine : pchar; public name '__pCmdLine';
 
 procedure PascalMain; external name 'PASCALMAIN';
-procedure PascalStart; forward;
+procedure PascalStart(commandLine: pword; channelData: pword); cdecl; noreturn; forward;
 
 { this function must be the first in this unit which contains code }
-{$OPTIMIZATION OFF}
-function _FPC_proc_start: longint; cdecl; assembler; nostackframe; public name '_start';
+procedure _FPC_proc_start; cdecl; assembler; nostackframe; noreturn; public name '_start';
 asm
     bra   @start
     dc.l  $0
@@ -76,22 +79,28 @@ asm
     bne @relocloop
 
 @noreloc:
-    jsr PascalStart
+    pea (a7)
+    pea (a6,a5)
+
+    bra PascalStart
 end;
 
-procedure _FPC_proc_halt(_ExitCode: longint); public name '_haltproc';
+procedure _FPC_proc_halt(_ExitCode: longint); noreturn; public name '_haltproc';
 begin
   mt_frjob(-1, _ExitCode);
 end;
 
-procedure PascalStart;
+procedure PascalStart(commandLine: pword; channelData: pword); cdecl; noreturn;
 begin
   { initialize .bss }
   FillChar(bssstart,PtrUInt(@bssend)-PtrUInt(@bssstart),#0);
 
-  PascalMain;
+  nb_ChannelIDs:=channelData[0];
+  pChannelIDs:=@channelData[1];
+  CmdLine_Len:=commandLine[0];
+  pCmdLine:=@commandLine[1];
 
-  Halt; { this should never be reached }
+  PascalMain;
 end;
 
 

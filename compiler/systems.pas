@@ -78,6 +78,7 @@ interface
          ,af_no_stabs
          { assembler is part of the LLVM toolchain }
          ,af_llvm
+         ,af_supports_hlcfi
        );
 
        pasminfo = ^tasminfo;
@@ -442,7 +443,7 @@ interface
 
        { all systems where a value parameter passed by reference must be copied
          on the caller side rather than on the callee side }
-       systems_caller_copy_addr_value_para = [system_aarch64_ios,system_aarch64_darwin,system_aarch64_linux];
+       systems_caller_copy_addr_value_para = [system_aarch64_ios,system_aarch64_darwin,system_aarch64_linux,system_aarch64_win64];
 
        { pointer checking (requires special code in FPC_CHECKPOINTER,
          and can never work for libc-based targets or any other program

@@ -1404,6 +1404,7 @@ implementation
          n:=ttypenode(inherited dogetcopy);
          n.allowed:=allowed;
          n.typedef:=typedef;
+         n.typesym:=typesym;
          n.helperallowed:=helperallowed;
          result:=n;
       end;
@@ -1414,6 +1415,7 @@ implementation
         docompare :=
           inherited docompare(p) and
           (typedef=ttypenode(p).typedef) and
+          (typesym=ttypenode(p).typesym) and
           (allowed=ttypenode(p).allowed) and
           (helperallowed=ttypenode(p).helperallowed);
       end;
