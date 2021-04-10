@@ -19,16 +19,13 @@ interface
 {$define FPC_IS_SYSTEM}
 {$define FPC_STDOUT_TRUE_ALIAS}
 {$define FPC_ANSI_TEXTFILEREC}
-{$define FPC_QL_USE_TINYHEAP}
+{$define FPC_QL_USE_OSHEAP}
 
-{$ifdef FPC_QL_USE_TINYHEAP}
+{$ifdef FPC_QL_USE_OSHEAP}
 {$define HAS_MEMORYMANAGER}
-{$endif FPC_QL_USE_TINYHEAP}
+{$endif FPC_QL_USE_OSHEAP}
 
 {$i systemh.inc}
-{$ifdef FPC_QL_USE_TINYHEAP}
-{$i tnyheaph.inc}
-{$endif FPC_QL_USE_TINYHEAP}
 
 {Platform specific information}
 const
@@ -99,9 +96,9 @@ implementation
   {$endif defined(FPUSOFT)}
 
   {$i system.inc}
-  {$ifdef FPC_QL_USE_TINYHEAP}
-  {$i tinyheap.inc}
-  {$endif FPC_QL_USE_TINYHEAP}
+  {$ifdef FPC_QL_USE_OSHEAP}
+  {$i osheap.inc}
+  {$endif FPC_QL_USE_OSHEAP}
 
 
 function GetProcessID:SizeUInt;
@@ -109,14 +106,56 @@ begin
   GetProcessID := mt_inf(nil, nil);
 end;
 
+var
+  CmdLine_len : word; external name '__CmdLine_len';
+  pCmdLine : pchar; external name '__pCmdLine';
 procedure SysInitParamsAndEnv;
+var
+  str_len, i : word;
+  c : char;
+  in_word : boolean;
+const
+  word_separators=[' ',#0];
 begin
+  str_len:=CmdLine_len;
+  argc:=0;
+  argv:=nil;
+  args:=pCmdLine;
+  if not assigned(args) then
+    exit;
+  { Parse command line }
+  { Compute argc imply replace spaces by #0 }
+  i:=0;
+  in_word:=false;
+  while (i < str_len) do
+    begin
+      c:=args[i];
+      if (not in_word) then
+        begin
+          if not(c in word_separators) then
+            begin
+              inc(argc);
+              argv[argc]:=@args[i];
+              in_word:=true;
+            end
+          else
+            begin
+              args[i]:=#0;
+            end;
+       end
+     else if (c in word_separators) then
+       begin
+         in_word:=false;
+         args[i]:=#0;
+       end;
+     inc(i);
+   end;
 end;
 
 procedure randomize;
 begin
-  {$WARNING: randseed is uninitialized}
-  randseed:=0;
+  { Get the current date/time }
+  randseed:=mt_rclck;
 end;
 
 procedure PrintStr(ch: longint; const s: shortstring);
@@ -132,15 +171,6 @@ begin
   for i:=0 to 10000 do begin end;
 end;
 
-{$ifdef FPC_QL_USE_TINYHEAP}
-procedure InitQLHeap;
-begin
-  HeapOrg:=nil;
-  HeapEnd:=nil;
-  FreeList:=nil;
-  HeapPtr:=nil;
-end;
-{$endif}
 
 {*****************************************************************************
                         System Dependent Entry code
@@ -208,12 +238,12 @@ begin
 { Initialize ExitProc }
   ExitProc:=Nil;
   SysInitQDOS;
-{$ifndef FPC_QL_USE_TINYHEAP}
+{$ifndef FPC_QL_USE_OSHEAP}
 { Setup heap }
   InitHeap;
-{$else FPC_QL_USE_TINYHEAP}
-  InitQLHeap;
-{$endif FPC_QL_USE_TINYHEAP}
+{$else FPC_QL_USE_OSHEAP}
+//  InitOSHeap;
+{$endif FPC_QL_USE_OSHEAP}
   SysInitExceptions;
 {$ifdef FPC_HAS_FEATURE_UNICODESTRINGS}
   InitUnicodeStringManager;
