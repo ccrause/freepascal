@@ -740,6 +740,19 @@ implementation
                               end
                             else if not(cs_refcountedstrings in current_settings.localswitches) and
                                (tstringdef(def_to).stringtype=st_shortstring) then
+{$ifdef avr}
+                              { Give conversion to a symsection def a lower priority,
+                                to pick normal shortstring candidates first }
+                              if (def_to.symsection<>ss_none) then
+                                begin
+                                  if (def_from.symsection=def_to.symsection) and
+                                     not(cs_convert_sectioned_strings_to_temps in current_settings.localswitches) then
+                                    eq:=te_equal
+                                  else
+                                    eq:=te_convert_l2;
+                                end
+                              else
+{$endif avr}
                               eq:=te_equal
                             else if not(m_default_unicodestring in current_settings.modeswitches) and
                                (cs_refcountedstrings in current_settings.localswitches) and
@@ -1192,12 +1205,15 @@ implementation
                                      )
 {$endif avr}
                                 ) then
-                               begin
-                                 if fromtreetype=stringconstn then
-                                   eq:=te_convert_l1
-                                 else
-                                   eq:=te_equal;
-                               end;
+{$ifdef avr}
+                               { Try to favour the alternative conversion to (short)string }
+                               if (cs_convert_sectioned_strings_to_temps in current_settings.localswitches) and
+                                  is_char(tarraydef(def_from).elementdef) and
+                                  is_char(tarraydef(def_to).elementdef) then
+                                 eq:=te_convert_l1
+                               else
+{$endif avr}
+                                 eq:=te_equal;
                           end
                         else
                          { to array of const }
@@ -2094,9 +2110,12 @@ implementation
           doconv:=tc_equal;
 
 {$ifdef avr}
-        { Penalize defs in different sections,
-          but not when parsing a constant into a typed const/var }
-        if {not (fromtreetype in [nothingn,stringconstn]) and} (def_from.symsection<>def_to.symsection) then
+        { Penalize defs in different sections, }
+        if (def_from.symsection<>def_to.symsection) and
+          { but not when preferring temp strings }
+           not((def_to.typ=stringdef) and
+               (def_to.symsection=ss_none) and
+               (cs_convert_sectioned_strings_to_temps in current_settings.localswitches)) then
           begin
             if eq>te_convert_l5 then
               dec(eq);

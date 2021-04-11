@@ -1243,12 +1243,12 @@ implementation
                       else
                        begin
                          check_ranges(left.fileinfo,left,parasym.vardef);
+                         inserttypeconv(left,parasym.vardef);
 {$ifdef avr}             { Check section compatibility when passing by reference }
                          if (parasym.varspez in [vs_var,vs_out,vs_constref]) and
                             (left.resultdef.symsection<>parasym.vardef.symsection) then
                            Comment(V_Error,'Cannot pass a reference if sections do not match');
 {$endif avr}
-                         inserttypeconv(left,parasym.vardef);
                        end;
                       if codegenerror then
                         exit;

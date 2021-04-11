@@ -632,13 +632,23 @@ implementation
         { either to shortstring or ansistring depending on    }
         { length                                              }
         if (n.nodetype=stringconstn) then
-          if is_chararray(n.resultdef) then
-            if (tstringconstnode(n).len<=255) then
-              inserttypeconv(n,cshortstringtype)
-            else
-              inserttypeconv(n,getansistringdef)
-          else if is_widechararray(n.resultdef) then
-            inserttypeconv(n,cunicodestringtype);
+          begin
+            if is_chararray(n.resultdef) then
+              if (tstringconstnode(n).len<=255) then
+                inserttypeconv(n,cshortstringtype)
+              else
+                inserttypeconv(n,getansistringdef)
+            else if is_widechararray(n.resultdef) then
+              inserttypeconv(n,cunicodestringtype);
+          end
+{$ifdef avr}
+        { A shortstring in a section can also be converted to a temp string
+          to avoid calling a section helper }
+        else if (cs_convert_sectioned_strings_to_temps in current_settings.localswitches) and
+            (n.nodetype=loadn) and (tloadnode(n).resultdef.symsection<>ss_none) and
+                (tloadnode(n).resultdef.typ in [stringdef, arraydef]) then
+          inserttypeconv(n, cshortstringtype);
+{$endif avr}
       end;
 
 
