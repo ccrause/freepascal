@@ -12,7 +12,7 @@ var
   p_p: pchar_progmem;
 
 begin
-  {$literalstringinprogmem+} // store literal in progmem
+  {$literalstringsinprogmem+} // store literal in progmem
   s := '43210';
 
   { Verify length of s }
