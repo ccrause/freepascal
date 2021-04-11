@@ -2114,7 +2114,8 @@ implementation
                  (tstringdef(def_to).encoding=tstringdef(p.resultdef).encoding)
 {$ifdef avr}
                 and needSectionSpecificHelperCode(tstringdef(p.resultdef).symsection, true) and
-                     (tstringdef(def_to).symsection=tstringdef(p.resultdef).symsection)
+                     (tstringdef(def_to).symsection=tstringdef(p.resultdef).symsection) and
+                     not(cs_convert_sectioned_strings_to_temps in current_settings.localswitches)
 {$endif avr}  then
                 eq:=te_equal
             end;
