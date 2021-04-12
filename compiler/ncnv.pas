@@ -1801,13 +1801,19 @@ implementation
         newblock : tblocknode;
         newstat  : tstatementnode;
         restemp  : ttempcreatenode;
+        procname : string;
       begin
         if tstringdef(resultdef).stringtype=st_shortstring then
           begin
+            procname:='fpc_pchar_to_shortstr';
+{$ifdef avr}
+            if needSectionSpecificHelperCode(left.resultdef.symsection,true) then
+              procname:=procname+'_'+symSectionToSectionPostfixName(left.resultdef.symsection);
+{$endif avr}
             newblock:=internalstatements(newstat);
             restemp:=ctempcreatenode.create(resultdef,resultdef.size,tt_persistent,false);
             addstatement(newstat,restemp);
-            addstatement(newstat,ccallnode.createintern('fpc_pchar_to_shortstr',ccallparanode.create(left,ccallparanode.create(
+            addstatement(newstat,ccallnode.createintern(procname,ccallparanode.create(left,ccallparanode.create(
               ctemprefnode.create(restemp),nil))));
             addstatement(newstat,ctempdeletenode.create_normal_temp(restemp));
             addstatement(newstat,ctemprefnode.create(restemp));

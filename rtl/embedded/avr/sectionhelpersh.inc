@@ -30,6 +30,7 @@
   function fpc_shortstr_compare_equal_eeprom(const left:shortstring; constref right: shortstring_eeprom): longint; compilerproc;
   procedure fpc_chararray_to_shortstr_progmem(var res : shortstring; const arr: array of char_progmem; zerobased: boolean{ = true}); compilerproc;
   procedure fpc_chararray_to_shortstr_eeprom(var res : shortstring; const arr: array of char_eeprom; zerobased: boolean{ = true}); compilerproc;
+  procedure fpc_pchar_to_shortstr_progmem(var res : shortstring; p: pchar_progmem); compilerproc;
 
 // text.inc
   procedure fpc_write_text_shortstr_progmem(Len: longint; var f: text; constref s: shortstring_progmem); compilerproc;

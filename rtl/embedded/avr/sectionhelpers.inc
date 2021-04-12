@@ -393,6 +393,27 @@ procedure fpc_shortstr_concat_eeprom(var dests:shortstring;const s1:shortstring;
         res[0]:=chr(len);
       end;
 
+      procedure fpc_pchar_to_shortstr_progmem(var res : shortstring; p: pchar_progmem);[public,alias:'FPC_PCHAR_TO_SHORTSTR_PROGMEM']; compilerproc;
+      var
+        l : smallint;
+        s: shortstring;
+        i: byte;
+      begin
+        if p=nil then
+          l:=0
+        else
+          l:=IndexByte_progmem(p,-1,0);//strlen(p);
+        if l>high(res) then
+          l:=high(res);
+        if l>0 then
+          //move(p^,s[1],l);
+          for i := 1 to l do
+            s[i] := p[i-1];
+
+        s[0]:=chr(l);
+        res:=s;
+      end;
+
       type
         FileFunc = Procedure(var t : TextRec);
 

@@ -838,6 +838,13 @@ implementation
                              else if is_wide_or_unicode_string(def_to) then
                                eq:=te_convert_l3
                              else
+{$ifdef avr}
+                              { Can only convert from sectioned pchar to RAM string }
+                              if needSectionSpecificHelperCode(def_from.symsection,true) and
+                                 (def_to.symsection<>ss_none) then
+                                eq:=te_incompatible
+                              else
+{$endif avr}
                               eq:=te_convert_l4
                            end
                           else if is_pwidechar(def_from) then
