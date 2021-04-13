@@ -3836,7 +3836,9 @@ implementation
                            end;
                          { we'll just use the first candidate to make the
                            call }
-                       end;
+                       end
+                      else
+                        Message1(type_h_overload_selected, tprocdef(procdefinition).fullprocname(false));
 
                       { assign procdefinition }
                       if symtableproc=nil then

@@ -3670,6 +3670,8 @@ implementation
         else
           cntpd:=1;
 
+        list(false);
+
         if assigned(FCandidateProcs^.next) then
          begin
            save_validity(FCandidateProcs);
