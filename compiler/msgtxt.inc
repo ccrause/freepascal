@@ -752,7 +752,7 @@ const msgtxt : array[0..000363,1..240] of char=(
   '04129_E_Can'#039't read or write variables of this type in iso mode'#000+
   '04130_W_The length of the constant string (length is $1) must be equal'+
   ' to the number of array elements ($2 elements)'#000+
-  '04131_H_Overload $1 ','selected for call.'#000+
+  '04131_N_Overload sel','ected for call: $1'#000+
   '05000_E_Identifier not found "$1"'#000+
   '05001_F_Internal Error in SymTableStack()'#000+
   '05002_E_Duplicate identifier "$1"'#000+

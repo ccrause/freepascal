@@ -3838,7 +3838,7 @@ implementation
                            call }
                        end
                       else
-                        Message1(type_h_overload_selected, tprocdef(procdefinition).fullprocname(false));
+                        Message1(type_n_overload_selected, tprocdef(procdefinition).fullprocname(false));
 
                       { assign procdefinition }
                       if symtableproc=nil then

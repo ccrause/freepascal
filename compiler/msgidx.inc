@@ -593,7 +593,7 @@ const
   type_e_generic_const_type_not_allowed=04128;
   type_e_cant_read_write_type_in_iso_mode=04129;
   type_w_array_size_does_not_match_size_of_constant_string=04130;
-  type_h_overload_selected=04131;
+  type_n_overload_selected=04131;
   sym_e_id_not_found=05000;
   sym_f_internal_error_in_symtablestack=05001;
   sym_e_duplicate_id=05002;

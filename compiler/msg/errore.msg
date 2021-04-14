@@ -2081,8 +2081,8 @@ type_e_cant_read_write_type_in_iso_mode=04129_E_Can't read or write variables of
 % file of type text, which doesn't support that variable's type in the selected language mode (iso mode).
 type_w_array_size_does_not_match_size_of_constant_string=04130_W_The length of the constant string (length is $1) must be equal to the number of array elements ($2 elements)
 % ISO Pascal requires that string constants have the same length as the array to which them they are assigned.
-type_h_overload_selected=04131_H_Overload $1 selected for call.
-% ISO Pascal requires that string constants have the same length as the array to which them they are assigned.
+type_n_overload_selected=04131_N_Overload selected for call: $1
+% Writes a note stating which overload has been selected for this specific call.
 %
 % \end{description}
 #
