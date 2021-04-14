@@ -611,10 +611,12 @@ implementation
                          (not(tstringdef(def_from).stringtype in [st_ansistring,st_unicodestring]) or
                           (tstringdef(def_from).encoding=tstringdef(def_to).encoding)) then
 {$ifdef avr}
-                        if (tstringdef(def_from).symsection=tstringdef(def_to).symsection) then
+                        if (def_from.symsection=def_to.symsection) then
 {$endif avr}
                         eq:=te_equal
 {$ifdef avr}
+                        else if def_to.symsection<>ss_none then
+                          eq:=te_incompatible
                         else
                           begin
                             doconv:=tc_string_2_string;
@@ -651,6 +653,12 @@ implementation
                              end;
                            st_shortstring :
                              begin
+{$ifdef avr}
+                               if (def_from.symsection<>def_to.symsection) and
+                                  (def_to.symsection<>ss_none) then
+                                 eq:=te_incompatible
+                               else
+{$endif avr}
                                { Prefer shortstrings of different length or conversions
                                  from shortstring to ansistring }
                                case tstringdef(def_to).stringtype of
