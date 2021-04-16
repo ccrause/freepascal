@@ -1172,6 +1172,12 @@ unit cgcpu;
             reference_reset(tmpref,0,[]);
             tmpref.symbol:=ref.symbol;
             tmpref.offset:=ref.offset;
+            { Add flash memory offset for controllers without NVM or LPM }
+            if (ref.symsection=ss_progmem) and
+               (not(CPUAVR_HAS_NVM_DATASPACE in cpu_capabilities[current_settings.cputype]) or
+                not(CPUAVR_HAS_LPMX in cpu_capabilities[current_settings.cputype])) then
+              tmpref.offset:=tmpref.offset+embedded_controllers[current_settings.controllertype].flashbase;
+
             if assigned(ref.symbol) and (ref.symbol.typ in [AT_FUNCTION,AT_LABEL]) then
               tmpref.refaddr:=addr_lo8_gs
             else
@@ -2360,7 +2366,10 @@ unit cgcpu;
                     tmpref.offset:=0;
                   end;
 
-                list.concat(taicpu.op_reg_ref(A_LPM,reg,tmpref));
+                if CPUAVR_HAS_LPMX in cpu_capabilities[current_settings.cputype] then
+                  list.concat(taicpu.op_reg_ref(A_LPM,reg,tmpref))
+                else
+                  list.concat(taicpu.op_reg_ref(A_LD,reg,tmpref));
 
                 { Subtract displacement from reference }
                 if (ref.base<>NR_NO) and (ref.offset<>0) then
