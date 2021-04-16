@@ -754,8 +754,8 @@ implementation
       begin
         result:=(ss in [ss_progmem,ss_eeprom]) and
            (not(CPUAVR_HAS_NVM_DATASPACE in cpu_capabilities[current_settings.cputype]) or
-           not(CPUAVR_HAS_LPMX in cpu_capabilities[current_settings.cputype]) or
-           not isRead);
+            not(CPUAVR_HAS_LPMX in cpu_capabilities[current_settings.cputype]) or
+            not isRead);
       end;
 
 {$endif avr}
