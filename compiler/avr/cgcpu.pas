@@ -115,7 +115,7 @@ unit cgcpu;
         procedure gen_multiply(list: TAsmList; op: topcg; size: TCgSize; src2, src1, dst: tregister; check_overflow: boolean; var ovloc: tlocation);
 
         // Check which access method should be used to load a ref into a reg
-        procedure checkLoadRefReg(list: TAsmList; reg: tregister; const Ref: treference);
+        procedure checkLoadRefReg(list: TAsmList; var reg: tregister; const Ref: treference);
         procedure checkStoreRegRef(list: TAsmList; const Ref: treference; reg: tregister);
 
       private
@@ -2270,8 +2270,8 @@ unit cgcpu;
       end;
 
 
-     procedure tcgavr.checkLoadRefReg(list: TAsmList; reg: tregister;
-      const Ref: treference);
+    procedure tcgavr.checkLoadRefReg(list: TAsmList; var reg: tregister;
+       const Ref: treference);
       var
         l1: TAsmLabel;
         ai: taicpu;
@@ -2318,8 +2318,14 @@ unit cgcpu;
                     a_call_name(list,TCmdStrListItem(pd.aliasnames.First).Str,false);
                     dealloccpuregisters(list,R_INTREGISTER,paramanager.get_volatile_registers_int(pocall_default));
                     cg.a_reg_alloc(list,NR_R24);
-                    list.concat(taicpu.op_reg_reg(A_MOV,reg,NR_R24));
-                    cg.a_reg_dealloc(list,NR_R24);
+                    { If reg was preallocated, move result there }
+                    if (reg<>NR_NO) then
+                      begin
+                        list.concat(taicpu.op_reg_reg(A_MOV,reg,NR_R24));
+                        cg.a_reg_dealloc(list,NR_R24);
+                      end
+                    else
+                      reg:=NR_R24;
                     paraloc1.done;
                   end
                 else
@@ -2715,18 +2721,29 @@ unit cgcpu;
               not (CPUAVR_HAS_NVM_DATASPACE in cpu_capabilities[current_settings.cputype])) or
              (dstref.symsection=ss_eeprom) then
             begin
-              defaulttmp:=getintregister(list,OS_8);
-              a_reg_alloc(list,defaulttmp);
+              { Do not allocate a temp register when using an EEPROM read helper,
+                the result will be in R24, which will be allocated in checkLoadRefReg }
+              if (srcref.symsection=ss_eeprom) and (dstref.symsection=ss_none) then
+                defaulttmp:=NR_NO
+              else
+                begin
+                  defaulttmp:=getintregister(list,OS_8);
+                  cg.a_reg_alloc(list,defaulttmp);
+                end;
               checkLoadRefReg(list,defaulttmp,srcref);
               checkStoreRegRef(list,dstref,defaulttmp);
-              a_reg_dealloc(list,defaulttmp);
+              if (srcref.symsection=ss_eeprom) and (dstref.symsection=ss_none) then
+                cg.a_reg_dealloc(list,NR_R24)
+              else
+                cg.a_reg_dealloc(list,defaulttmp);
             end
           else
             begin
               cg.getcpuregister(list,GetDefaultTmpReg);
-              checkLoadRefReg(list,GetDefaultTmpReg,srcref);
+              defaulttmp:=GetDefaultTmpReg;
+              checkLoadRefReg(list,defaulttmp,srcref);
               checkStoreRegRef(list,dstref,GetDefaultTmpReg);
-              cg.ungetcpuregister(list,GetDefaultTmpReg);
+              cg.ungetcpuregister(list,defaulttmp);
             end;
         end;
 
