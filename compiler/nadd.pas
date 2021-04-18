@@ -1216,7 +1216,6 @@ implementation
                     t:=cstringconstnode.createpchar(concatansistrings(s1,s2,l1,l2),l1+l2,nil);
 {$ifdef avr}
                     { New string should inherit original section }
-                    // Todo: check if left & right are from the same sections
                     ls:=ld.symsection;
                     rs:=rd.symsection;
                     if (ls=rs) and (ls<>ss_none) then
