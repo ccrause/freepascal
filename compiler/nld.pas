@@ -528,7 +528,7 @@ implementation
       begin
         inherited XMLPrintNodeData(T);
         WriteLn(T, printnodeindention, '<symbol>', symtableentry.name, '</symbol>');
-
+{$ifdef avr}
         if symtableentry is tabstractvarsym then
         begin
           WriteLn(T, printnodeindention, '<symsection>', tabstractvarsym(symtableentry).symsection, '</symsection>');
@@ -538,7 +538,7 @@ implementation
 
         if Assigned(resultdef) then
           WriteLn(T, printnodeindention, '<resultdef.symsection>', resultdef.symsection, '</resultdef.symsection>');
-
+{$endif avr}
         if symtableentry.typ = procsym then
           WriteLn(T, printnodeindention, '<procdef>', fprocdef.mangledname, '</procdef>');
       end;
@@ -1059,9 +1059,10 @@ implementation
         XMLPrintNode(T, Right);
         PrintNodeUnindent;
         WriteLn(T, PrintNodeIndention, '</', nodetype2str[nodetype], '>');
-
+{$ifdef avr}
         if Assigned(resultdef) then
           WriteLn(T, printnodeindention, '<resultdef.symsection>', resultdef.symsection, '</resultdef.symsection>');
+{$endif avr}
       end;
 {$endif DEBUG_NODE_XML}
 

@@ -1277,11 +1277,13 @@ implementation
         end;
 
         WriteLn(T, printnodeindention, '<value>', SanitiseXMLString(OutputStr), '</value>');
+{$ifdef avr}
         if Assigned(resultdef) then
         begin
           writeln(T, printnodeindention, '<resultdef.symsection>', resultdef.symsection, '</resultdef.symsection>');
           writeln(T, printnodeindention, '<loc.ref.symsection>', location.reference.symsection, '</loc.ref.symsection>');
         end;
+{$endif avr}
       end;
 {$endif DEBUG_NODE_XML}
 
