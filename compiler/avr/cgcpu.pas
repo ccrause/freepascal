@@ -1311,7 +1311,6 @@ unit cgcpu;
                    if not(QuickRef) and (tcgsize2size[tosize]>1) then
                      href.addressmode:=AM_POSTINCREMENT;
 
-                   //list.concat(taicpu.op_ref_reg(GetStore(href),href,reg));
                    checkStoreRegRef(list,href,reg);
                    for i:=2 to tcgsize2size[tosize] do
                      begin
@@ -1323,7 +1322,6 @@ unit cgcpu;
                        else
                          href.addressmode:=AM_UNCHANGED;
 
-                       //list.concat(taicpu.op_ref_reg(GetStore(href),href,GetDefaultZeroReg));
                        checkStoreRegRef(list,href,GetDefaultZeroReg);
                      end;
                  end;
@@ -1331,7 +1329,6 @@ unit cgcpu;
                  begin
                    if not(QuickRef) and (tcgsize2size[tosize]>1) then
                      href.addressmode:=AM_POSTINCREMENT;
-                   //list.concat(taicpu.op_ref_reg(GetStore(href),href,reg));
                    checkStoreRegRef(list,href,reg);
 
                    if tcgsize2size[tosize]>1 then
@@ -1349,7 +1346,6 @@ unit cgcpu;
                              href.addressmode:=AM_POSTINCREMENT
                            else
                              href.addressmode:=AM_UNCHANGED;
-                           //list.concat(taicpu.op_ref_reg(GetStore(href),href,tmpreg));
                            checkStoreRegRef(list,href,reg);
                          end;
                      end;
@@ -1359,7 +1355,6 @@ unit cgcpu;
                    if not(QuickRef) and (tcgsize2size[tosize]>1) then
                      href.addressmode:=AM_POSTINCREMENT;
 
-                   //list.concat(taicpu.op_ref_reg(GetStore(href),href,reg));
                    checkStoreRegRef(list,href,reg);
                    if QuickRef then
                      inc(href.offset)
@@ -1369,7 +1364,6 @@ unit cgcpu;
                      href.addressmode:=AM_UNCHANGED;
 
                    reg:=GetNextReg(reg);
-                   //list.concat(taicpu.op_ref_reg(GetStore(href),href,reg));
                    checkStoreRegRef(list,href,reg);
 
                    for i:=3 to tcgsize2size[tosize] do
@@ -1382,7 +1376,6 @@ unit cgcpu;
                        else
                          href.addressmode:=AM_UNCHANGED;
 
-                       //list.concat(taicpu.op_ref_reg(GetStore(href),href,GetDefaultZeroReg));
                        checkStoreRegRef(list,href,GetDefaultZeroReg);
                      end;
                  end;
@@ -1391,7 +1384,6 @@ unit cgcpu;
                    if not(QuickRef) and (tcgsize2size[tosize]>1) then
                      href.addressmode:=AM_POSTINCREMENT;
 
-                   //list.concat(taicpu.op_ref_reg(GetStore(href),href,reg));
                    checkStoreRegRef(list,href,reg);
                    if QuickRef then
                      inc(href.offset)
@@ -1401,7 +1393,6 @@ unit cgcpu;
                      href.addressmode:=AM_UNCHANGED;
 
                    reg:=GetNextReg(reg);
-                   //list.concat(taicpu.op_ref_reg(GetStore(href),href,reg));
                    checkStoreRegRef(list,href,reg);
 
                    if tcgsize2size[tosize]>2 then
@@ -1419,7 +1410,6 @@ unit cgcpu;
                              href.addressmode:=AM_POSTINCREMENT
                            else
                              href.addressmode:=AM_UNCHANGED;
-                           //list.concat(taicpu.op_ref_reg(GetStore(href),href,tmpreg));
                            checkStoreRegRef(list,href,tmpreg);
                          end;
                      end;
@@ -1443,10 +1433,8 @@ unit cgcpu;
                  tmpreg:=GetNextReg(reg);
                  href.addressmode:=AM_UNCHANGED;
                  inc(href.offset);
-                 //list.concat(taicpu.op_ref_reg(GetStore(href),href,tmpreg));
                  checkStoreRegRef(list,href,tmpreg);
                  dec(href.offset);
-                 //list.concat(taicpu.op_ref_reg(GetStore(href),href,reg));
                  checkStoreRegRef(list,href,reg);
                end
              else
@@ -1458,7 +1446,6 @@ unit cgcpu;
                        else
                          href.addressmode:=AM_UNCHANGED;
 
-                     //list.concat(taicpu.op_ref_reg(GetStore(href),href,reg));
                      checkStoreRegRef(list,href,reg);
                      if QuickRef then
                        inc(href.offset);
@@ -1556,7 +1543,6 @@ unit cgcpu;
              case fromsize of
                OS_8:
                  begin
-                   //list.concat(taicpu.op_reg_ref(GetLoad(href),reg,href));
                    checkLoadRefReg(list,reg,href);
                    for i:=2 to tcgsize2size[tosize] do
                      begin
@@ -1566,7 +1552,6 @@ unit cgcpu;
                  end;
                OS_S8:
                  begin
-                   //list.concat(taicpu.op_reg_ref(GetLoad(href),reg,href));
                    checkLoadRefReg(list,reg,href);
                    tmpreg:=reg;
 
@@ -1588,7 +1573,6 @@ unit cgcpu;
                  begin
                    if not(QuickRef) then
                      href.addressmode:=AM_POSTINCREMENT;
-                   //list.concat(taicpu.op_reg_ref(GetLoad(href),reg,href));
                    checkLoadRefReg(list,reg,href);
 
                    if QuickRef then
@@ -1596,7 +1580,6 @@ unit cgcpu;
                    href.addressmode:=AM_UNCHANGED;
 
                    reg:=GetNextReg(reg);
-                   //list.concat(taicpu.op_reg_ref(GetLoad(href),reg,href));
                    checkLoadRefReg(list,reg,href);
 
                    for i:=3 to tcgsize2size[tosize] do
@@ -1609,14 +1592,12 @@ unit cgcpu;
                  begin
                    if not(QuickRef) then
                      href.addressmode:=AM_POSTINCREMENT;
-                   //list.concat(taicpu.op_reg_ref(GetLoad(href),reg,href));
                    checkLoadRefReg(list,reg,href);
                    if QuickRef then
                      inc(href.offset);
                    href.addressmode:=AM_UNCHANGED;
 
                    reg:=GetNextReg(reg);
-                   //list.concat(taicpu.op_reg_ref(GetLoad(href),reg,href));
                    checkLoadRefReg(list,reg,href);
                    tmpreg:=reg;
 
@@ -1644,7 +1625,6 @@ unit cgcpu;
                  else
                    href.addressmode:=AM_UNCHANGED;
 
-                 //list.concat(taicpu.op_reg_ref(GetLoad(href),reg,href));
                  checkLoadRefReg(list,reg,href);
 
                  if QuickRef then
