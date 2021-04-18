@@ -3972,8 +3972,7 @@ implementation
                begin
                  p1:=cstringconstnode.createpchar(ansistring2pchar(cstringpattern),length(cstringpattern),nil);
 {$ifdef avr}
-                 { Put string literals in progmem to save RAM
-                   should be optional... }
+                 { Put string literals in progmem to save RAM }
                  if cs_literal_strings_in_progmem in current_settings.localswitches then
                    p1.location.reference.symsection:=ss_progmem;
 {$endif avr}
