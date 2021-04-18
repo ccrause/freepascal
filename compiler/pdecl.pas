@@ -235,7 +235,9 @@ implementation
          skipequal : boolean;
          tclist : tasmlist;
          varspez : tvarspez;
+{$ifdef avr}
          sectionname: ansistring;
+{$endif avr}
       begin
          old_block_type:=block_type;
          block_type:=bt_const;
@@ -286,10 +288,7 @@ implementation
                      begin
                        try_consume_sectiondirective(sectionname);
                        if sectionname<>'' then
-                         begin
-                           //tconstsym(sym).section:=sectionname;
-                           tconstsym(sym).symsection:=sectionNameToSymSection(sectionname);
-                         end;
+                         tconstsym(sym).symsection:=sectionNameToSymSection(sectionname);
                      end;
 {$endif avr}
 
