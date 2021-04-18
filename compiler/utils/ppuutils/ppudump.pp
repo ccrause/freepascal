@@ -2356,7 +2356,8 @@ const
         'i8086 force FAR calls', {cs_force_far_calls}
         'i8086 huge pointer arithmetic', {cs_hugeptr_arithmetic_normalization}
         'i8086 huge pointer comparison', {cs_hugeptr_comparison_normalization}
-        'AVR place string literals in progmem section' {cs_string_in_progmem}
+        'AVR place string literals in progmem section', {cs_literal_strings_in_progmem}
+        'AVR copy sectioned strings to temporary strings' { cs_convert_sectioned_strings_to_temps}
        );
        { Switches which can be changed by a mode (fpc,tp7,delphi) }
        modeswitchname : array[tmodeswitch] of string[50] =
