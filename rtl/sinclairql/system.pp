@@ -54,13 +54,13 @@ const
     StdErrorHandle: longint = UnusedHandle;
 
 var
-    args: PChar;
-    argc: LongInt;
+    QL_ChannelIDNum : word;
+    QL_ChannelIDs: pdword;
+    QL_CommandLineLen : word;
+    QL_CommandLine : pchar;
+
     argv: PPChar;
-    envp: PPChar;
-
-    heapStart: pointer;
-
+    argc: Longint;
 
     {$if defined(FPUSOFT)}
 
@@ -70,8 +70,15 @@ var
 
     {$endif defined(FPUSOFT)}
 
+function SetQLJobName(const s: string): longint;
+function GetQLJobName: string;
+function GetQLJobNamePtr: pointer;
+
 
 implementation
+
+  {$define FPC_SYSTEM_HAS_STACKTOP}
+  {$define FPC_SYSTEM_HAS_BACKTRACESTR}
 
   {$if defined(FPUSOFT)}
 
@@ -106,50 +113,82 @@ begin
   GetProcessID := mt_inf(nil, nil);
 end;
 
+{*****************************************************************************
+                             ParamStr
+*****************************************************************************}
+
 var
-  CmdLine_len : word; external name '__CmdLine_len';
-  pCmdLine : pchar; external name '__pCmdLine';
+  args: PChar;
+
+{ number of args }
+function ParamCount: LongInt;
+begin
+  ParamCount:=argc;
+end;
+
+{ argument number l }
+function ParamStr(l: LongInt): string;
+begin
+  if (l >= 0) and (l <= argc) then
+    ParamStr:=argv[l]
+  else
+    ParamStr:='';
+end;
+
 procedure SysInitParamsAndEnv;
 var
-  str_len, i : word;
+  i,j : longint;
   c : char;
-  in_word : boolean;
+  argv_size : longint;
 const
   word_separators=[' ',#0];
 begin
-  str_len:=CmdLine_len;
   argc:=0;
   argv:=nil;
-  args:=pCmdLine;
+  args:=GetMem(QL_CommandLineLen+1);
   if not assigned(args) then
     exit;
-  { Parse command line }
-  { Compute argc imply replace spaces by #0 }
+
+  Move(QL_CommandLine^,args^,QL_CommandLineLen);
+  args[QL_CommandLineLen]:=#0;
+
   i:=0;
-  in_word:=false;
-  while (i < str_len) do
+  c:=' ';
+  while args[i]<>#0 do
     begin
+      if (c in word_separators) and not (args[i] in word_separators) then
+        inc(argc);
       c:=args[i];
-      if (not in_word) then
+      inc(i);
+    end;
+
+  { +2 is because argv[0] should be program name, 
+    and argv[argc+1] is argv array terminator }
+  argv:=GetMem((argc+2)*sizeof(pointer));
+  if not assigned(argv) then
+    begin
+      argc:=0;
+      exit;
+    end;
+  argv[argc+1]:=nil;
+  { FIX ME: for now the 0th argument (program name) is just always empty }
+  argv[0]:=#0;
+
+  i:=0;
+  j:=1;
+  c:=' ';
+  while args[i]<>#0 do
+    begin
+      if (c in word_separators) and not (args[i] in word_separators) then
         begin
-          if not(c in word_separators) then
-            begin
-              inc(argc);
-              argv[argc]:=@args[i];
-              in_word:=true;
-            end
-          else
-            begin
-              args[i]:=#0;
-            end;
-       end
-     else if (c in word_separators) then
-       begin
-         in_word:=false;
-         args[i]:=#0;
-       end;
-     inc(i);
-   end;
+          argv[j]:=@args[i];
+          inc(j);
+        end;
+      c:=args[i];
+      if (c in word_separators) then
+        args[i]:=#0;
+      inc(i);
+    end;
 end;
 
 procedure randomize;
@@ -157,6 +196,11 @@ begin
   { Get the current date/time }
   randseed:=mt_rclck;
 end;
+
+
+{*****************************************************************************
+                      Platform specific custom calls
+*****************************************************************************}
 
 procedure PrintStr(ch: longint; const s: shortstring);
 begin
@@ -172,14 +216,74 @@ begin
 end;
 
 
+var
+  start_proc: byte; external name '_start'; 
+
+  { WARNING! if you change this value, make sure there's enough
+    buffer space for the job name in the startup code! }
+const
+  JOB_NAME_MAX_LEN = 48;
+
+function SetQLJobName(const s: string): longint;
+var
+  len: longint;
+begin
+  SetQLJobName:=-1;
+  if pword(@start_proc)[3] = $4afb then
+    begin
+      len:=length(s);
+      if len > JOB_NAME_MAX_LEN then
+        len:=JOB_NAME_MAX_LEN;
+      Move(s[1],pword(@start_proc)[5],len);
+      pword(@start_proc)[4]:=len;
+      SetQLJobName:=len;
+    end;
+end;
+
+function GetQLJobName: string;
+var
+  len: longint;
+begin
+  GetQLJobName:='';
+  if pword(@start_proc)[3] = $4afb then
+    begin
+      len:=pword(@start_proc)[4];
+      if len <= JOB_NAME_MAX_LEN then
+        begin
+          SetLength(GetQLJobName,len);
+          Move(pword(@start_proc)[5],GetQLJobName[1],len);
+        end;
+    end;
+end;
+
+function GetQLJobNamePtr: pointer;
+begin
+  GetQLJobNamePtr:=nil;
+  if pword(@start_proc)[3] = $4afb then
+    begin
+      GetQLJobNamePtr:=@pword(@start_proc)[4];
+    end;
+end;
+
 {*****************************************************************************
                         System Dependent Entry code
 *****************************************************************************}
+var
+  jobStackDataPtr: pointer; external name '__stackpointer_on_entry';
+  program_name: shortstring; external name '__fpc_program_name';
+
 { QL/QDOS specific startup }
 procedure SysInitQDOS;
 var
   r: TQLRect;
 begin
+  QL_ChannelIDNum:=pword(jobStackDataPtr)[0];
+  QL_ChannelIDs:=@pword(jobStackDataPtr)[1];
+  QL_CommandLineLen:=pword(@QL_ChannelIDs[QL_ChannelIDNum])[0];
+  QL_CommandLine:=@pword(@QL_ChannelIDs[QL_ChannelIDNum])[1];
+
+  SetQLJobName(program_name);
+
   stdInputHandle:=io_open('con_',Q_OPEN);
   stdOutputHandle:=stdInputHandle;
   stdErrorHandle:=stdInputHandle;
@@ -201,9 +305,14 @@ procedure haltproc(e:longint); external name '_haltproc';
 
 procedure system_exit;
 const
-  anyKey: string = 'Press any key to exit';
+  anyKey: pchar = 'Press any key to exit';
 begin
-  io_sstrg(stdOutputHandle, -1, @anyKey[1], ord(anyKey[0]));
+  if assigned(args) then
+    FreeMem(args);
+  if assigned(argv) then
+    FreeMem(argv);
+
+  io_sstrg(stdOutputHandle, -1, anyKey, length(anykey));
   io_fbyte(stdInputHandle, -1);
 
   stdInputHandle:=UnusedHandle;
@@ -235,6 +344,8 @@ end;
 
 begin
   StackLength := CheckInitialStkLen (InitialStkLen);
+  StackBottom := StackTop - StackLength;
+  StackMargin := min(align(StackLength div 20,2),STACK_MARGIN_MAX);
 { Initialize ExitProc }
   ExitProc:=Nil;
   SysInitQDOS;

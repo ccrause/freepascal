@@ -16,6 +16,7 @@
  **********************************************************************}
 
 {$i qdos.inc}
+{$i sms.inc}
 
 procedure Error2InOutRes(errno: longint);
 begin
@@ -43,4 +44,26 @@ begin
     ERR_RO : InOutRes := 150;  { Read only. }
     ERR_BL : InOutRes := 1;    { UNLIKELY! Bad line of Basic. }
   end;
+end;
+
+
+var
+  stackpointer_on_entry: pointer; external name '__stackpointer_on_entry';
+
+function StackTop: Pointer;
+begin
+  StackTop:=stackpointer_on_entry;
+end;
+
+
+var
+  binstart: byte; external name '_stext';
+  binend: byte; external name '_etext';
+
+function SysBackTraceStr (Addr: CodePointer): ShortString;
+begin
+  if (addr<@binstart) or (addr>@binend) then
+    SysBackTraceStr:='  Addr $'+hexstr(addr)
+  else
+    SysBackTraceStr:='  Offs $'+hexstr(pointer(addr-@binstart));
 end;
