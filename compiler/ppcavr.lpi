@@ -22,14 +22,14 @@
     </PublishOptions>
     <RunParams>
       <local>
-        <CommandLineParams Value="-Tembedded -Pavr  -Wpatmega328p -MObjFPC -Scgi -l -vewnhibq -n @~\fpc\cc\fpc.cfg -Fi\home\christo\fpc\fpc-avr\src\tests\section\lib\avr-embedded -Fu\home\christo\fpc\fpc-avr\src\library -Fu\home\christo\fpc\fpc-avr\src\tests\section\ -FU\home\christo\fpc\fpc-avr\src\tests\section\lib\avr-embedded\ -FE\home\christo\fpc\fpc-avr\src\tests\section\ -o\home\christo\fpc\fpc-avr\src\tests\section\sectiontest2 -g -a -XPavr- -alr -Sm -Si -dF_CPU:=16000000 \home\christo\fpc\fpc-avr\src\tests\section\pointertest.pp"/>
+        <CommandLineParams Value="-Tembedded -Pavr  -Wpattiny10 -O1 -MObjFPC -Scgi -l -vewnhibq -n @~\fpc\cc\fpc.cfg -Fi\home\christo\fpc\fpc-avr\src\tests\section\lib\avr-embedded -Fu\home\christo\fpc\fpc-avr\src\library -Fu\home\christo\fpc\fpc-avr\src\tests\section\ -FU\home\christo\fpc\fpc-avr\src\tests\section\lib\avr-embedded\ -FE\home\christo\fpc\fpc-avr\src\tests\section\ -o\home\christo\fpc\fpc-avr\src\tests\section\sectiontest2 -g -a -XPavr- -alr -Sm -Si -dF_CPU:=16000000 \home\christo\fpc\fpc-avr\src\tests\section\pointertest.pp"/>
         <LaunchingApplication PathPlusParams="\usr\X11R6\bin\xterm -T 'Lazarus Run Output' -e $(LazarusDir)\tools\runwait.sh $(TargetCmdLine)"/>
       </local>
       <FormatVersion Value="2"/>
       <Modes Count="1">
         <Mode0 Name="default">
           <local>
-            <CommandLineParams Value="-Tembedded -Pavr  -Wpatmega328p -MObjFPC -Scgi -l -vewnhibq -n @~\fpc\cc\fpc.cfg -Fi\home\christo\fpc\fpc-avr\src\tests\section\lib\avr-embedded -Fu\home\christo\fpc\fpc-avr\src\library -Fu\home\christo\fpc\fpc-avr\src\tests\section\ -FU\home\christo\fpc\fpc-avr\src\tests\section\lib\avr-embedded\ -FE\home\christo\fpc\fpc-avr\src\tests\section\ -o\home\christo\fpc\fpc-avr\src\tests\section\sectiontest2 -g -a -XPavr- -alr -Sm -Si -dF_CPU:=16000000 \home\christo\fpc\fpc-avr\src\tests\section\pointertest.pp"/>
+            <CommandLineParams Value="-Tembedded -Pavr  -Wpattiny10 -O1 -MObjFPC -Scgi -l -vewnhibq -n @~\fpc\cc\fpc.cfg -Fi\home\christo\fpc\fpc-avr\src\tests\section\lib\avr-embedded -Fu\home\christo\fpc\fpc-avr\src\library -Fu\home\christo\fpc\fpc-avr\src\tests\section\ -FU\home\christo\fpc\fpc-avr\src\tests\section\lib\avr-embedded\ -FE\home\christo\fpc\fpc-avr\src\tests\section\ -o\home\christo\fpc\fpc-avr\src\tests\section\sectiontest2 -g -a -XPavr- -alr -Sm -Si -dF_CPU:=16000000 \home\christo\fpc\fpc-avr\src\tests\section\pointertest.pp"/>
             <LaunchingApplication PathPlusParams="\usr\X11R6\bin\xterm -T 'Lazarus Run Output' -e $(LazarusDir)\tools\runwait.sh $(TargetCmdLine)"/>
           </local>
         </Mode0>
@@ -80,7 +80,7 @@
         <StopAfterErrCount Value="50"/>
       </ConfigFile>
       <CustomOptions Value="-davr
--dDEBUG_AOPTCPU_not
+-dDEBUG_AOPTCPU
 -dDEBUG_NODE_XML
 -vq"/>
     </Other>
