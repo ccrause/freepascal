@@ -1,4 +1,4 @@
-  {
+  {                  f
     Copyright (c) 1998-2006 by the Free Pascal team
 
     This unit implements the generic part of the GNU assembler
@@ -513,7 +513,8 @@ implementation
          system_i386_OS2,
          system_i386_EMX: ;
          system_m68k_atari, { atari tos/mint GNU AS also doesn't seem to like .section (KB) }
-         system_m68k_amiga: { amiga has old GNU AS (2.14), which blews up from .section (KB) }
+         system_m68k_amiga, { amiga has old GNU AS (2.14), which blews up from .section (KB) }
+         system_m68k_sinclairql: { same story, only ancient GNU tools available (KB) }
            begin
              { ... but vasm is GAS compatible on amiga/atari, and supports named sections }
              if create_smartlink_sections then
@@ -1407,7 +1408,8 @@ implementation
                  end
                else
                  begin
-                   if ((target_info.system <> system_arm_linux) and (target_info.system <> system_arm_android)) then
+                   if ((target_info.system <> system_arm_linux) and (target_info.system <> system_arm_android)) or
+                     (target_asm.id=as_arm_vasm) then
                      sepChar := '@'
                    else
                      sepChar := '#';
@@ -1616,15 +1618,24 @@ implementation
              end;
            ait_eabi_attribute:
              begin
-               case tai_eabi_attribute(hp).eattr_typ of
-                 eattrtype_dword:
-                   writer.AsmWrite(#9'.eabi_attribute '+tostr(tai_eabi_attribute(hp).tag)+','+tostr(tai_eabi_attribute(hp).value));
-                 eattrtype_ntbs:
-                   writer.AsmWrite(#9'.eabi_attribute '+tostr(tai_eabi_attribute(hp).tag)+',"'+tai_eabi_attribute(hp).valuestr^+'"');
-                 else
-                   Internalerror(2019100601);
-               end;
-               writer.AsmLn;
+               { as of today, vasm does not support the eabi directives }
+               if target_asm.id<>as_arm_vasm then
+                 begin
+                   case tai_eabi_attribute(hp).eattr_typ of
+                     eattrtype_dword:
+                       writer.AsmWrite(#9'.eabi_attribute '+tostr(tai_eabi_attribute(hp).tag)+','+tostr(tai_eabi_attribute(hp).value));
+                     eattrtype_ntbs:
+                       begin
+                         if assigned(tai_eabi_attribute(hp).valuestr) then
+                           writer.AsmWrite(#9'.eabi_attribute '+tostr(tai_eabi_attribute(hp).tag)+',"'+tai_eabi_attribute(hp).valuestr^+'"')
+                         else
+                           writer.AsmWrite(#9'.eabi_attribute '+tostr(tai_eabi_attribute(hp).tag)+',""');
+                       end
+                     else
+                       Internalerror(2019100601);
+                   end;
+                   writer.AsmLn;
+                 end;
              end;
 
 {$ifdef WASM}

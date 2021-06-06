@@ -25,6 +25,7 @@ begin
 {$endif ALLPACKAGES}
     P.Version:='3.3.1';
     P.SourcePath.Add('src');
+    P.IncludePath.Add('src');
 
     P.OSes:=[sinclairql];
 
@@ -35,6 +36,12 @@ begin
 
     P.ExamplePath.Add('examples');
     T:=P.Targets.AddExampleProgram('qlcube.pas');
+    T:=P.Targets.AddExampleProgram('mtinf.pas');
+    T:=P.Targets.AddExampleProgram('sms_info.pas');
+
+    P.ExamplePath.Add('tests');
+    T:=P.Targets.AddExampleProgram('tsysvars.pas');
+    T:=P.Targets.AddExampleProgram('trecsize.pas');
 
 {$ifndef ALLPACKAGES}
     Run;

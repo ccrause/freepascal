@@ -7125,11 +7125,15 @@ begin
   '  Test999 = 2.9999999999999;',
   '  Test111999 = 211199999999999000.0;',
   '  TestMinus111999 = -211199999999999000.0;',
+  '  Inf = 1.0 / 0.0;',
+  '  NegInf = -1.0 / 0.0;',
+  'procedure Run(d: double); external name ''Run'';',
   'var',
   '  d: double = b;',
   'begin',
   '  d:=1.0;',
   '  d:=1.0/3.0;',
+  '  d:=1.0/(3-2-1);',
   '  d:=1/3;',
   '  d:=5.0E-324;',
   '  d:=1.7E308;',
@@ -7162,6 +7166,8 @@ begin
   '  d:=double(MinSafeIntDouble2);',
   '  d:=MaxSafeIntDouble;',
   '  d:=default(double);',
+  '  Run(Inf);',
+  '  Run(NegInf);',
   '']);
   ConvertProgram;
   CheckSource('TestDouble',
@@ -7195,11 +7201,14 @@ begin
     'this.Test999 = 2.9999999999999;',
     'this.Test111999 = 211199999999999000.0;',
     'this.TestMinus111999 = -211199999999999000.0;',
-    'this.d = 4.4;'
-    ]),
+    'this.Inf = 1.0 / 0.0;',
+    'this.NegInf = -1.0 / 0.0;',
+    'this.d = 4.4;',
+    '']),
     LinesToStr([
     '$mod.d = 1.0;',
     '$mod.d = 1.0 / 3.0;',
+    '$mod.d = 1.0 / (3 - 2 - 1);',
     '$mod.d = 1 / 3;',
     '$mod.d = 5.0E-324;',
     '$mod.d = 1.7E308;',
@@ -7232,6 +7241,8 @@ begin
     '$mod.d = -9.007199254740992E15;',
     '$mod.d = 9007199254740991;',
     '$mod.d = 0.0;',
+    'Run(1 / 0);',
+    'Run(-1 / 0);',
     '']));
 end;
 
@@ -7851,8 +7862,11 @@ begin
   '  c = string(''ä'');',
   '  d = UnicodeString(''b'');',
   '  e = UnicodeString(''ö'');',
+  '  f = low(a)+high(b);',
+  '  g: word = low(a);',
   'var',
   '  s: string = ''abc'';',
+  '  i: longint;',
   'begin',
   '  s:='''';',
   '  s:=#13#10;',
@@ -7871,6 +7885,7 @@ begin
   '  s:=concat(s);',
   '  s:=concat(s,''a'',s);',
   '  s:=#250#269;',
+  '  i:=low(s)+high(a);',
   //'  s:=#$2F804;',
   // ToDo: \uD87E\uDC04 -> \u{2F804}
   '']);
@@ -7882,7 +7897,10 @@ begin
     'this.c = "ä";',
     'this.d = "b";',
     'this.e = "ö";',
+    'this.f = 1 + this.b.length;',
+    'this.g = 1;',
     'this.s="abc";',
+    'this.i = 0;',
     '']),
     LinesToStr([
     '$mod.s="";',
@@ -7902,6 +7920,7 @@ begin
     '$mod.s = $mod.s;',
     '$mod.s = $mod.s.concat("a", $mod.s);',
     '$mod.s = "úč";',
+    '$mod.i = 1 + $mod.a.length;',
     '']));
 end;
 
@@ -18003,11 +18022,20 @@ begin
   '{$modeswitch externalclass}',
   'type',
   '  TExtA = class external name ''ExtA''',
+  '  public type',
+  '    TExtB = class external name ''ExtB''',
+  '    public type',
+  '      TExtC = class external name ''ExtC''',
+  '        constructor New;',
+  '        constructor New(i: word);',
+  '      end;',
+  '    end;',
   '    constructor Create;',
   '    constructor Create(i: longint; j: longint = 2);',
   '  end;',
   'var',
   '  A: texta;',
+  '  C: texta.textb.textc;',
   'begin',
   '  a:=texta.create;',
   '  a:=texta(texta.create);',
@@ -18021,11 +18049,15 @@ begin
   '  a:=test1.texta.create;',
   '  a:=test1.texta.create();',
   '  a:=test1.texta.create(3);',
+  '  c:=texta.textb.textc.new;',
+  '  c:=texta.textb.textc.new();',
+  '  c:=texta.textb.textc.new(4);',
   '']);
   ConvertProgram;
   CheckSource('TestExternalClass_Constructor',
     LinesToStr([ // statements
     'this.A = null;',
+    'this.C = null;',
     '']),
     LinesToStr([ // $mod.$main
     '$mod.A = new ExtA.Create();',
@@ -18038,6 +18070,9 @@ begin
     '$mod.A = new ExtA.Create();',
     '$mod.A = new ExtA.Create();',
     '$mod.A = new ExtA.Create(3,2);',
+    '$mod.C = new ExtA.ExtB.ExtC();',
+    '$mod.C = new ExtA.ExtB.ExtC();',
+    '$mod.C = new ExtA.ExtB.ExtC(4);',
     '']));
 end;
 
@@ -29256,20 +29291,20 @@ begin
   CheckSource('TestRTTI_ProcType',
     LinesToStr([ // statements
     'this.$rtti.$ProcVar("TProcA", {',
-    '  procsig: rtl.newTIProcSig(null)',
+    '  procsig: rtl.newTIProcSig([])',
     '});',
     'this.$rtti.$MethodVar("TMethodB", {',
-    '  procsig: rtl.newTIProcSig(null),',
+    '  procsig: rtl.newTIProcSig([]),',
     '  methodkind: 0',
     '});',
     'this.$rtti.$ProcVar("TProcC", {',
-    '  procsig: rtl.newTIProcSig(null, 2)',
+    '  procsig: rtl.newTIProcSig([], null, 2)',
     '});',
     'this.$rtti.$ProcVar("TProcD", {',
     '  procsig: rtl.newTIProcSig([["i", rtl.longint], ["j", rtl.string, 2], ["c", rtl.char, 1], ["d", rtl.double, 4]])',
     '});',
     'this.$rtti.$ProcVar("TProcE", {',
-    '  procsig: rtl.newTIProcSig(null, rtl.nativeint)',
+    '  procsig: rtl.newTIProcSig([], rtl.nativeint)',
     '});',
     'this.$rtti.$ProcVar("TProcF", {',
     '  procsig: rtl.newTIProcSig([["p", this.$rtti["TProcA"], 2]], rtl.nativeuint)',
@@ -29578,13 +29613,13 @@ begin
     '  this.Fly = function () {',
     '  };',
     '  var $r = this.$rtti;',
-    '  $r.addMethod("Fly", 0, null);',
+    '  $r.addMethod("Fly", 0, []);',
     '});',
     'rtl.createClass(this, "TEagle", this.TBird, function () {',
     '  this.Fly = function () {',
     '  };',
     '  var $r = this.$rtti;',
-    '  $r.addMethod("Fly", 0, null);',
+    '  $r.addMethod("Fly", 0, []);',
     '});',
     '']),
     LinesToStr([ // $mod.$main
@@ -29738,17 +29773,19 @@ procedure TTestModule.TestRTTI_Class_Method;
 begin
   WithTypeInfo:=true;
   StartProgram(false);
-  Add('type');
-  Add('  TObject = class');
-  Add('  private');
-  Add('    procedure Internal; external name ''$intern'';');
-  Add('  published');
-  Add('    procedure Click; virtual; abstract;');
-  Add('    procedure Notify(Sender: TObject); virtual; abstract;');
-  Add('    function GetNotify: boolean; external name ''GetNotify'';');
-  Add('    procedure Println(a,b: longint); varargs; virtual; abstract;');
-  Add('  end;');
-  Add('begin');
+  Add([
+  'type',
+  '  TObject = class',
+  '  private',
+  '    procedure Internal; external name ''$intern'';',
+  '  published',
+  '    procedure Click; virtual; abstract;',
+  '    procedure Notify(Sender: TObject); virtual; abstract;',
+  '    function GetNotify: boolean; external name ''GetNotify'';',
+  '    procedure Println(a,b: longint); varargs; virtual; abstract;',
+  '    function Fetch(URL: string): word; async; external name ''Fetch'';',
+  '  end;',
+  'begin']);
   ConvertProgram;
   CheckSource('TestRTTI_Class_Method',
     LinesToStr([ // statements
@@ -29758,12 +29795,11 @@ begin
     '  this.$final = function () {',
     '  };',
     '  var $r = this.$rtti;',
-    '  $r.addMethod("Click", 0, null);',
+    '  $r.addMethod("Click", 0, []);',
     '  $r.addMethod("Notify", 0, [["Sender", $r]]);',
-    '  $r.addMethod("GetNotify", 1, null, rtl.boolean,{flags: 4});',
-    '  $r.addMethod("Println", 0, [["a", rtl.longint], ["b", rtl.longint]], null, {',
-    '    flags: 2',
-    '  });',
+    '  $r.addMethod("GetNotify", 1, [], rtl.boolean, 4);',
+    '  $r.addMethod("Println", 0, [["a", rtl.longint], ["b", rtl.longint]], null, 2);',
+    '  $r.addMethod("Fetch", 1, [["URL", rtl.string]], rtl.word, 20);',
     '});',
     '']),
     LinesToStr([ // $mod.$main
@@ -30507,7 +30543,7 @@ begin
     '  this.$final = function () {',
     '  };',
     '  var $r = this.$rtti;',
-    '  $r.addMethod("DoIt", 0, null);',
+    '  $r.addMethod("DoIt", 0, []);',
     '});',
     'rtl.createClass(this, "TSky", this.TObject, function () {',
     '  this.DoIt = function () {',
@@ -30549,14 +30585,14 @@ begin
     '  this.DoIt = function () {',
     '  };',
     '  var $r = this.$rtti;',
-    '  $r.addMethod("DoIt", 0, null);',
+    '  $r.addMethod("DoIt", 0, []);',
     '});',
     'rtl.createClass(this, "TSky", this.TObject, function () {',
     '  this.DoIt = function () {',
     '    $mod.TObject.DoIt.call(this);',
     '  };',
     '  var $r = this.$rtti;',
-    '  $r.addMethod("DoIt", 0, null);',
+    '  $r.addMethod("DoIt", 0, []);',
     '});',
     '']),
     LinesToStr([ // $mod.$main
@@ -30633,7 +30669,7 @@ begin
     '});',
     'this.$rtti.$Class("TBridge");',
     'this.$rtti.$ProcVar("TProc", {',
-    '  procsig: rtl.newTIProcSig(null, this.$rtti["TBridge"])',
+    '  procsig: rtl.newTIProcSig([], this.$rtti["TBridge"])',
     '});',
     'rtl.createClass(this, "TOger", this.TObject, function () {',
     '  this.$init = function () {',
@@ -30696,7 +30732,7 @@ begin
     '  instancetype: this.$rtti["TObject"]',
     '});',
     'this.$rtti.$ProcVar("TProcA", {',
-    '  procsig: rtl.newTIProcSig(null, this.$rtti["TClass"])',
+    '  procsig: rtl.newTIProcSig([], this.$rtti["TClass"])',
     '});',
     'rtl.createClass(this, "TObject", null, function () {',
     '  this.$init = function () {',
@@ -31169,10 +31205,10 @@ begin
     '  eltype: rtl.string',
     '});',
     'this.$rtti.$ProcVar("TProc", {',
-    '  procsig: rtl.newTIProcSig(null)',
+    '  procsig: rtl.newTIProcSig([])',
     '});',
     'this.$rtti.$MethodVar("TMethod", {',
-    '  procsig: rtl.newTIProcSig(null),',
+    '  procsig: rtl.newTIProcSig([]),',
     '  methodkind: 0',
     '});',
     'this.StaticArray = rtl.arraySetLength(null,"",2);',
@@ -31457,7 +31493,7 @@ begin
     '  null,',
     '  function () {',
     '    var $r = this.$rtti;',
-    '    $r.addMethod("GetItem", 1, null, rtl.longint);',
+    '    $r.addMethod("GetItem", 1, [], rtl.longint);',
     '    $r.addMethod("SetItem", 0, [["Value", rtl.longint]]);',
     '    $r.addProperty("Item", 3, rtl.longint, "GetItem", "SetItem");',
     '  }',
@@ -31524,8 +31560,8 @@ begin
     '    this.$kind = "com";',
     '    var $r = this.$rtti;',
     '    $r.addMethod("QueryInterface", 1, [["iid", $mod.$rtti["TGuid"], 2], ["obj", null, 4]], rtl.longint);',
-    '    $r.addMethod("_AddRef", 1, null, rtl.longint);',
-    '    $r.addMethod("_Release", 1, null, rtl.longint);',
+    '    $r.addMethod("_AddRef", 1, [], rtl.longint);',
+    '    $r.addMethod("_Release", 1, [], rtl.longint);',
     '  }',
     ');',
     'rtl.createInterface(',
@@ -31536,7 +31572,7 @@ begin
     '  this.IUnknown,',
     '  function () {',
     '    var $r = this.$rtti;',
-    '    $r.addMethod("GetItem", 1, null, rtl.longint);',
+    '    $r.addMethod("GetItem", 1, [], rtl.longint);',
     '    $r.addMethod("SetItem", 0, [["Value", rtl.longint]]);',
     '    $r.addProperty("Item", 3, rtl.longint, "GetItem", "SetItem");',
     '  }',
@@ -31588,7 +31624,7 @@ begin
     '    return Result;',
     '  };',
     '  var $r = this.$rtti;',
-    '  $r.addMethod("GetItem", 1, null, rtl.longint);',
+    '  $r.addMethod("GetItem", 1, [], rtl.longint);',
     '  $r.addProperty("Item", 1, rtl.longint, "GetItem", "");',
     '});',
     'this.t = null;',
@@ -31676,8 +31712,8 @@ begin
     '  pas.system.IUnknown,',
     '  function () {',
     '    var $r = this.$rtti;',
-    '    $r.addMethod("Swoop", 1, null, pas.unit2.$rtti["TWordArray"]);',
-    '    $r.addMethod("Glide", 1, null, pas.unit2.$rtti["TArray<System.Word>"]);',
+    '    $r.addMethod("Swoop", 1, [], pas.unit2.$rtti["TWordArray"]);',
+    '    $r.addMethod("Glide", 1, [], pas.unit2.$rtti["TArray<System.Word>"]);',
     '  }',
     ');',
     'this.Fly = function () {',
@@ -31882,7 +31918,7 @@ begin
     '      attr: [$mod.TCustomAttribute, "Create$1", [14]]',
     '    }',
     '  );',
-    '  $r.addMethod("Fly", 0, null, null, {',
+    '  $r.addMethod("Fly", 0, [], null, 0, {',
     '    attr: [$mod.TCustomAttribute, "Create$1", [15]]',
     '  });',
     '});',
