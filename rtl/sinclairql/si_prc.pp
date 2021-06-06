@@ -19,6 +19,7 @@ interface
 
 implementation
 
+{$i qdosh.inc}
 {$i qdosfuncs.inc}
 
 var
@@ -79,7 +80,7 @@ asm
     move.l (a1)+,d7
     beq @noreloc
 
-{.$DEFINE PACKEDRELOCS}
+{$DEFINE PACKEDRELOCS}
 {$IFNDEF PACKEDRELOCS}
 @relocloop:
     { we read the offsets and relocate them }
@@ -107,7 +108,7 @@ asm
     add.l d1,d2
     add.l d0,(a0,d2)
     subq.l #1,d7
-    bpl @relocloop
+    bgt @relocloop
 {$ENDIF PACKEDRELOCS}
 
 @noreloc:
