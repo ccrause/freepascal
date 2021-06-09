@@ -7,11 +7,14 @@ type
   myword_eeprom = type word; section '.eeprom';
   myword_progmem = type word; section '.progmem';
 
+{$writeableconst off}
+const
+  wp1: myword_progmem = $9ABC;
+  wp2: word = $DEF0; section '.progmem';
+
 var
   we1: myword_eeprom = $1234;
   we2: word = $5678; section '.eeprom';
-  wp1: myword_progmem = $9ABC;
-  wp2: word = $DEF0; section '.progmem';
   
   b1, b2, b3, b4: byte;
 

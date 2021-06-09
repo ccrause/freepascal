@@ -3,9 +3,14 @@
 
 program t_writeln;
 
+{ This test the correct passing and memory access for normal and sectioned constants.
+  It calls the RTL writeln procedure and compare the data that ends up in the I/O buffer
+  against the expected data. }
+
 type
   FileFunc = Procedure(var t : TextRec);
 
+{$writeableconst off}
 const
   a_progmem: array[0..6] of char = 'progmem'; section '.progmem';
   a_eeprom: array[0..5] of char = 'eeprom'; section '.eeprom';

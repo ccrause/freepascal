@@ -6,7 +6,8 @@ program t_shortstring;
 type
   shortstring_flash = type shortstring; section '.progmem';
 
-var
+{$writeableconst off}
+const
   sf: shortstring_flash = 'qweryt';
   se: shortstring = '!@#$%^&*()'; section '.eeprom';
 

@@ -30,8 +30,11 @@ begin
   test := 21;
 end;
 
-var
+{$writeableconst off}
+const
   r1: trec_flash = (a: 1; b: 2; p: @settest12; d: $CAFEFACE);
+
+var
   r2: trec;
   r3: trec = (a: 3; b: 5; p: @settest21; d: $FACECAFE); section '.eeprom';
 

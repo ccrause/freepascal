@@ -1453,6 +1453,8 @@ implementation
                    stored in a different section }
                  if (vs.typ=staticvarsym) and not(is_pointer(hdef)) and (hdef.symsection<>ss_none) then
                    begin
+                     if hdef.symsection=ss_progmem then
+                       Comment(V_Error, 'Section PROGMEM is read-only and only supported for const values');
                      vs.symsection:=hdef.symsection;
                      tstaticvarsym(vs).section:=symSectionToSectionName(vs.symsection);
                      include(vs.varoptions, vo_has_section);

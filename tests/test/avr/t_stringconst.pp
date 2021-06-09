@@ -9,6 +9,10 @@ type
   pchar_progmem = type PChar; section '.progmem';
   pchar_eeprom = type PChar; section '.eeprom';
 
+var
+  x_e: char = 'E'; section '.eeprom';
+  p_e: pchar_eeprom;
+
 const
   sconstprogmem1 = '43210'; section '.progmem';
   sconstprogmem2 = '43210'; section '.progmem';
@@ -27,23 +31,10 @@ begin
     Halt(2);
 end;
 
-var
-  x_p: char = 'P'; section '.progmem';
-  p_p: pchar_progmem;
-  x_e: char = 'E'; section '.eeprom';
-  p_e: pchar_eeprom;
-
 begin
   { Check that only one copy of const is stored per section }
   checkAddressesEqualP(sconstprogmem1, sconstprogmem2);
   checkAddressesEqualE(sconsteeprom1, sconsteeprom2);
- 
-  { Check that the progmem string is stored in progmem }
-  p_p := @x_p;
-  { The 1st byte after x_p should be the first character of the const }
-  inc(p_p, 1);
-  if (p_p[0] <> '4') or (p_p[4] <> '0') then
-    halt(3);
 
   { Check that the EEPROM string is stored in EEPROM }
   p_e := @x_e;

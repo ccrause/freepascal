@@ -3,9 +3,12 @@
 
 program t_shortstringassign;
 
+{$writeableconst off}
+const
+  sf: shortstring = 'trewq'; section '.progmem';
+
 var
   se: shortstring = 'qweryt'; section '.eeprom';
-  sf: shortstring = 'trewq'; section '.progmem';
   s: shortstring = '';
 
 begin

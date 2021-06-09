@@ -489,6 +489,11 @@ implementation
              not is_valid_univ_para_type(hdef) then
             Message1(parser_e_invalid_univ_para,hdef.typename);
 
+{$ifdef avr}
+          if (hdef.symsection=ss_progmem) and (varspez in [vs_var,vs_out]) then
+            Comment(V_Error, 'Section PROGMEM is read-only and only supported for parameters passed by (const) value or constref');
+{$endif avr}
+
           for i:=0 to sc.count-1 do
             begin
               vs:=tparavarsym(sc[i]);

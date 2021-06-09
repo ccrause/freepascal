@@ -15,8 +15,11 @@ begin
     halt(2);
 end;
 
-var
+{$writeableconst off}
+const
   sp: shortstring_progmem = 'qweryt';
+
+var
   s: shortstring = '';
 
 begin

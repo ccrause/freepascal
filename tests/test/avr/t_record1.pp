@@ -13,8 +13,11 @@ type
  
   trec_flash = type trec; section '.progmem';
 
-var
+{$writeableconst off}
+const
   r1: trec_flash = (a: 1; b: 2; c: $1234; d: $BEEF0000);
+
+var
   r2: trec = (a: 3; b: 5; c: $1238; d: $BEEF0008); section '.eeprom';
 
 begin

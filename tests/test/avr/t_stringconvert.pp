@@ -3,6 +3,14 @@
 
 program t_stringconvert;
 
+{ This test checks the following:
+  1. Correct calling of overloaded procedure
+  2. Correct functionality of literalStringsInProgmem, i.e. compiler places strings in progmem when switch is active
+  3. Corrrect functionality of convertSectionedStringsToTemp,
+     i.e. compiler will load all string types (and untyped strings) into a temporary shortstring for processing,
+     except for an explicitly typed shortstring located in a section and matching a parameter signature exactly 
+  4. Correct string length is read via parameter reference }
+
 type
   shortstring_progmem = type shortstring; section '.progmem';
   ttestproctype = (tpt_shortstring, tpt_shortstring_progmem);
@@ -28,11 +36,12 @@ end;
 
 var
   s: shortstring = 'str';
-  s1: array[0..3] of char = 'str1'; section '.progmem';
-  s2: shortstring = 'str3'; section '.progmem';
 
+{$writeableconst off}
 const
+  s1: array[0..3] of char = 'str1'; section '.progmem';
   s_const = 'Constant'; section '.progmem';
+  s2: shortstring = 'str3'; section '.progmem';
 
 begin
   expectedlength := 4;
