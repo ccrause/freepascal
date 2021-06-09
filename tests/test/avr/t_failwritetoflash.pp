@@ -7,6 +7,7 @@ program t_failwritetoflash;
 type
   myword_progmem = type word; section '.progmem';
 
+// Should fail here first
 var
   wp1: myword_progmem = 1234;
   

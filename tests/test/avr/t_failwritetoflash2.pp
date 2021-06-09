@@ -4,6 +4,7 @@
 
 program t_failwritetoflash2;
 
+// Should fail here first
 var
   w: word = 1234; section '.progmem';
 
