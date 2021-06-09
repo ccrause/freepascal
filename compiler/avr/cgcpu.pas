@@ -2277,7 +2277,7 @@ unit cgcpu;
           begin
             if Ref.symsection=ss_eeprom then
               begin
-                if Ref.addressmode=AM_PREDRECEMENT then
+                if Ref.addressmode=AM_PREDECREMENT then
                   if CPUAVR_HAS_MOVW in cpu_capabilities[current_settings.cputype] then
                     list.concat(taicpu.op_reg_const(A_SBIW,Ref.base,1))
                   else
@@ -2394,7 +2394,7 @@ unit cgcpu;
 
         if Ref.symsection=ss_eeprom then
           begin
-            if Ref.addressmode=AM_PREDRECEMENT then
+            if Ref.addressmode=AM_PREDECREMENT then
               if CPUAVR_HAS_MOVW in cpu_capabilities[current_settings.cputype] then
                 list.concat(taicpu.op_reg_const(A_SBIW,Ref.base,1))
               else
