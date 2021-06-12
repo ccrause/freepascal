@@ -6,18 +6,25 @@ TestFPCSource=~/fpc/cc
 DriverCompiler=~/fpc/installs/lib/fpc/3.2.0/ppcx64
 #DriverCompiler=/home/christo/fpc/cc/compiler/ppcx64
 
-DriverFpcMake=$(TestFPCSource)/utils/fpcm/bin/x86_64-linux/fpcmake
+DriverFpcMake=$TestFPCSource/utils/fpcm/bin/x86_64-linux/fpcmake
 # or call export in terminal: export FPCFPMAKE=~/fpc/cc/utils/fpcm/bin/x86_64-linux/fpcmake 
 
 DriverOptions="-vewhi"
-TestCompiler=~/fpc/cc/compiler/avr/pp
+TestCompiler=~/fpc/cc/compiler/ppcrossavr
 TestSubArch=avr5
 # TestController=atmega328p
 TestOptions="-n @~/fpc/cc/fpc.cfg -XPavr- -Wpavrsim -vewhi"
 
+# The test suite expects the subarch RTL to be in rtl/units/avr-embedded
+# Link the specified subarch folder to rtl/units/avr-embedded
+if [ -d $TestFPCSource/rtl/units/avr-embedded ]; then
+  rm -r $TestFPCSource/rtl/units/avr-embedded
+fi
+ln -s $TestFPCSource/rtl/units/avr-embedded-$TestSubArch $TestFPCSource/rtl/units/avr-embedded
+
 cd $TestFPCSource/tests
 
-export FPCFPMAKE=$(DriverFpcMake)
+export FPCFPMAKE=$DriverFpcMake
 
 make distclean TEST_DELTEMP=1 FPC=$DriverCompiler TEST_FPC=$TestCompiler V=1 TEST_SUBARCH=$TestSubArch TEST_OPT= TEST_VERBOSE=1 FPCFPMAKE=$DriverFpcMake
 
