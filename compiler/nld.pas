@@ -846,12 +846,12 @@ implementation
         if right.resultdef.typ=procvardef then
           test_local_to_procvar(tprocvardef(right.resultdef),left.resultdef);
 
-        {$ifdef avr}
+{$ifdef avr}
         { Pointers across memory sections not allowed }
         if (right.resultdef.typ=pointerdef) and (left.resultdef.typ=pointerdef) then
           if right.resultdef.symsection<>left.resultdef.symsection then
             Comment(V_Error,'Pointers in different sections are not allowed');
-        {$endif avr}
+{$endif avr}
       end;
 
 

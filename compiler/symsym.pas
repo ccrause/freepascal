@@ -672,13 +672,13 @@ implementation
               begin
                 if sym.symsection<>ss_none then
                   begin
-                    // Check if type for this section is already registered
+                    { Check if type for this section is already registered }
                     s := sym.vardef.typename + symSectionToSectionName(sym.symsection);
                     hash.Id:=upper(s);
                     symEntry:=symtablestack.top.FindWithHash(hash);
                     if symEntry=nil then
                       begin
-                        // register new type symbol
+                        { register new type symbol }
                         hdef:=tstoreddef(sym.vardef).getcopy;
                         hdef.symsection := sym.symsection;
                         include(hdef.defoptions,df_unique);
@@ -723,7 +723,7 @@ implementation
                 symEntry:=symtablestack.top.FindWithHash(hash);
                 if symEntry=nil then
                   begin
-                    // register new type symbol
+                    { register new type symbol }
                     def:=tstoreddef(def).getcopy;
                     def.symsection:=symsection;
                     include(def.defoptions,df_unique);

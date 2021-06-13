@@ -363,8 +363,7 @@ implementation
             { don't replace encoded string constants to rawbytestring encoding.
               preserve the codepage }
             if not (is_rawbytestring(def) and (p.nodetype=stringconstn)) then
-             { this now destroys the section information... }
-              p.resultdef:=def;
+              p.resultdef:=def
           end
         else
          begin

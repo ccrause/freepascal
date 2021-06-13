@@ -526,10 +526,10 @@ implementation
                  procvardef,
                  pointerdef :
                    begin
-                     {$ifdef avr}
+{$ifdef avr}
                      if def_from.symsection<>def_to.symsection then
                        exit;
-                     {$endif avr}
+{$endif avr}
                      if cdo_explicit in cdoptions then
                       begin
                         eq:=te_convert_l1;
@@ -603,10 +603,7 @@ implementation
                       if (tstringdef(def_from).stringtype=tstringdef(def_to).stringtype) and
                         { for shortstrings also the length must match }
                          ((tstringdef(def_from).stringtype<>st_shortstring) or
-                          (
-                           (tstringdef(def_from).len=tstringdef(def_to).len)
-                           )
-                         ) and
+                          (tstringdef(def_from).len=tstringdef(def_to).len)) and
                          { for ansi- and unicodestrings also the encoding must match }
                          (not(tstringdef(def_from).stringtype in [st_ansistring,st_unicodestring]) or
                           (tstringdef(def_from).encoding=tstringdef(def_to).encoding)) then
@@ -1640,7 +1637,7 @@ implementation
                        end
                      else
                       { all pointers can be assigned from void-pointer }
-                      if (is_void(tpointerdef(def_from).pointeddef) or
+                      if is_void(tpointerdef(def_from).pointeddef or
                       { all pointers can be assigned from void-pointer or formaldef pointer, check
                         tw3777.pp if you change this }
                         (tpointerdef(def_from).pointeddef.typ=formaldef))

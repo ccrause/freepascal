@@ -242,20 +242,21 @@ implementation
           sp_widestr,
           sp_unicodestr
 {$ifdef avr}
-          , sp_conststr_progmem
-          , sp_shortstr_progmem
-          , sp_longstr_progmem
-          , sp_ansistr_progmem
-          , sp_widestr_progmem
-          , sp_unicodestr_progmem
-          , sp_conststr_eeprom
-          , sp_shortstr_eeprom
-          , sp_longstr_eeprom
-          , sp_ansistr_eeprom
-          , sp_widestr_eeprom
-          , sp_unicodestr_eeprom
+          ,
+          sp_conststr_progmem,
+          sp_shortstr_progmem,
+          sp_longstr_progmem,
+          sp_ansistr_progmem,
+          sp_widestr_progmem,
+          sp_unicodestr_progmem,
+          sp_conststr_eeprom,
+          sp_shortstr_eeprom,
+          sp_longstr_eeprom,
+          sp_ansistr_eeprom,
+          sp_widestr_eeprom,
+          sp_unicodestr_eeprom
 {$endif avr}
-          );
+        );
       begin
 {$ifdef avr}
         currentsymsection:=Self.location.reference.symsection;
@@ -372,12 +373,12 @@ implementation
                           datatcb.maybe_end_aggregate(datadef);
 {$ifdef avr}
                           if currentsymsection<>ss_none then
-                          begin
-                            current_asmdata.asmlists[al_typedconsts].concatList(
-                              datatcb.get_final_asmlist(lastlabel.lab,datadef,sec_user,symSectionToSectionName(currentsymsection),
-                              const_align(sizeof(pint)))
-                            )
-                          end
+                            begin
+                              current_asmdata.asmlists[al_typedconsts].concatList(
+                                datatcb.get_final_asmlist(lastlabel.lab,datadef,sec_user,symSectionToSectionName(currentsymsection),
+                                const_align(sizeof(pint)))
+                              )
+                            end
                           else
 {$endif avr}
                           current_asmdata.asmlists[al_typedconsts].concatList(
@@ -402,12 +403,12 @@ implementation
                           datatcb.maybe_end_aggregate(datadef);
 {$ifdef avr}
                           if currentsymsection<>ss_none then
-                          begin
-                            current_asmdata.asmlists[al_typedconsts].concatList(
-                              datatcb.get_final_asmlist(lastlabel.lab,datadef,sec_user,symSectionToSectionName(currentsymsection),
-                              const_align(sizeof(pint)))
-                            )
-                          end
+                            begin
+                              current_asmdata.asmlists[al_typedconsts].concatList(
+                                datatcb.get_final_asmlist(lastlabel.lab,datadef,sec_user,symSectionToSectionName(currentsymsection),
+                                const_align(sizeof(pint)))
+                              )
+                            end
                           else
 {$endif avr}
                           current_asmdata.asmlists[al_typedconsts].concatList(

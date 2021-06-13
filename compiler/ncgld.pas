@@ -488,10 +488,10 @@ implementation
                        if not(vo_is_weak_external in gvs.varoptions) then
                          begin
                            reference_reset_symbol(location.reference,current_asmdata.RefAsmSymbol(gvs.mangledname,AT_DATA,use_indirect_symbol(gvs)),0,location.reference.alignment,[]);
-                           {$ifdef avr}
+{$ifdef avr}
                            if gvs.symsection<>ss_none then
                              location.reference.symsection:=gvs.symsection;
-                           {$endif avr}
+{$endif avr}
                          end
                        else
                          reference_reset_symbol(location.reference,current_asmdata.WeakRefAsmSymbol(gvs.mangledname,AT_DATA),0,location.reference.alignment,[])

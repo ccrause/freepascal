@@ -652,7 +652,7 @@ implementation
         if not(assigned(result)) then
           result:=simplify(false);
 
-        {$ifdef avr}
+{$ifdef avr}
         { check if base symbol is located in a section.
           If so, use or register a new def containing a reference to the section }
         if (left.nodetype=loadn) and
@@ -668,7 +668,7 @@ implementation
           begin
             maybeRegisterNewTypeWithSection(resultdef,left.resultdef.symsection);
           end;
-        {$endif avr}
+{$endif avr}
       end;
 
 
@@ -767,14 +767,14 @@ implementation
          { is this right for object of methods ?? }
          expectloc:=LOC_REGISTER;
 
-         {$ifdef avr}
+{$ifdef avr}
          { check if base symbol is located in a section.
            If so, copy section name to result definition }
          if (left.nodetype=loadn) and
             (tloadnode(left).symtableentry.typ=staticvarsym) then
            tcpupointerdef(resultdef).symsection:=
              sectionNameToSymSection(tstaticvarsym(tloadnode(left).symtableentry).section);
-         {$endif avr}
+{$endif avr}
       end;
 
 

@@ -1557,7 +1557,7 @@ implementation
                end;
              derefn :
                begin
-                 {$ifdef avr}
+{$ifdef avr}
                  { Assignment to a dereferenced reference to a read-only section not allowed }
                  if tderefnode(p).resultdef.symsection=ss_progmem then
                    begin
@@ -1565,7 +1565,7 @@ implementation
                      if report_errors then
                        Comment(V_Error,'Write access to section .progmem not supported');
                    end;
-                 {$endif avr}
+{$endif avr}
                  { dereference -> always valid }
                  valid_for_assign:=true;
                  mayberesettypeconvs;
@@ -3014,7 +3014,7 @@ implementation
               else
               { for value and const parameters check if a integer is constant or
                 included in other integer -> equal and calc ordinal_distance }
-               if (currpara.varspez in [vs_const,vs_value]) and  // the inverse check left out constref...
+               if not(currpara.varspez in [vs_var,vs_out]) and
                   is_integer(def_from) and
                   is_integer(def_to) and
                   is_in_limit(def_from,def_to) then
@@ -3037,7 +3037,7 @@ implementation
               else
               { for value and const parameters check precision of real, give
                 penalty for loosing of precision. var and out parameters must match exactly }
-               if (currpara.varspez in [vs_value,vs_const]) and
+                if not(currpara.varspez in [vs_var,vs_out]) and
                   is_real_or_cextended(def_from) and
                   is_real_or_cextended(def_to) then
                  begin
@@ -3066,7 +3066,7 @@ implementation
               else
               { related object parameters also need to determine the distance between the current
                 object and the object we are comparing with. var and out parameters must match exactly }
-               if not(currpara.varspez in [vs_var,vs_out,vs_constref]) and   { also constref }
+               if not(currpara.varspez in [vs_var,vs_out]) and
                   (def_from.typ=objectdef) and
                   (def_to.typ=objectdef) and
                   (tobjectdef(def_from).objecttype=tobjectdef(def_to).objecttype) and
