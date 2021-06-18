@@ -22,7 +22,7 @@ var
   b1: pbyte_e;
 
 begin
-  writeTest(@tmp);     // Currently fails here, wrong overloaded proc called
+  writeTest(@tmp);
   if tmp <> 123 then
     halt(1);
 
