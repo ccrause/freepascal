@@ -1637,7 +1637,7 @@ implementation
                        end
                      else
                       { all pointers can be assigned from void-pointer }
-                      if is_void(tpointerdef(def_from).pointeddef or
+                      if (is_void(tpointerdef(def_from).pointeddef) or
                       { all pointers can be assigned from void-pointer or formaldef pointer, check
                         tw3777.pp if you change this }
                         (tpointerdef(def_from).pointeddef.typ=formaldef))
