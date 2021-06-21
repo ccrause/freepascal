@@ -128,7 +128,7 @@ implementation
 
 {$ifdef avr}
                if p.resultdef.symsection<>ss_none then
-                 hp.symsection := p.resultdef.symsection;
+                 hp.symsection:=p.resultdef.symsection;
 {$endif avr}
              end;
            realconstn :
@@ -1201,7 +1201,7 @@ begin
                    consume(_SEMICOLON);
                    if s<>'' then
                      begin
-                       symsect := sectionNameToSymSection(s);
+                       symsect:=sectionNameToSymSection(s);
                        if hdef.symsection<>symsect then
                          hdef.symsection:=symsect;
                      end;

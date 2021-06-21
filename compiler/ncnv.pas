@@ -1393,7 +1393,7 @@ implementation
         newblock : tblocknode;
         newstat  : tstatementnode;
         restemp  : ttempcreatenode;
-        procname: string;
+        procname : string;
       begin
         result:=nil;
         if (left.nodetype=stringconstn) and

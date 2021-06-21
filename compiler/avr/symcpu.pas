@@ -277,7 +277,7 @@ end;
 
 function tcpuorddef.GetTypeName: string;
 begin
-  result := inherited GetTypeName;
+  result:=inherited GetTypeName;
   case symsection of
     ss_eeprom: result:=result+'.EEPROM';
     ss_progmem: result:=result+'.PROGMEM';
@@ -302,13 +302,13 @@ end;
 
 function tcpuarraydef.getcopy: tstoreddef;
 begin
-  Result := inherited getcopy;
+  Result:=inherited getcopy;
   Result.symsection:=symsection;
 end;
 
 function tcpuarraydef.GetTypeName: string;
 begin
-  result := inherited GetTypeName;
+  result:=inherited GetTypeName;
   case symsection of
     ss_eeprom: result:=result+'.EEPROM';
     ss_progmem: result:=result+'.PROGMEM';
@@ -333,13 +333,13 @@ end;
 
 function tcpufloatdef.getcopy: tstoreddef;
 begin
-  Result := inherited getcopy;
+  Result:=inherited getcopy;
   Result.symsection:=symsection;
 end;
 
 function tcpufloatdef.GetTypeName: string;
 begin
-  result := inherited GetTypeName;
+  result:=inherited GetTypeName;
   case symsection of
     ss_eeprom: result:=result+'.EEPROM';
     ss_progmem: result:=result+'.PROGMEM';
@@ -364,13 +364,13 @@ end;
 
 function tcpurecorddef.getcopy: tstoreddef;
 begin
-  Result := inherited getcopy;
+  Result:=inherited getcopy;
   tcpurecorddef(result).symsection:=symsection;
 end;
 
 function tcpurecorddef.GetTypeName: string;
 begin
-  result := inherited GetTypeName;
+  result:=inherited GetTypeName;
   case symsection of
     ss_eeprom: result:=result+'.EEPROM';
     ss_progmem: result:=result+'.PROGMEM';

@@ -4027,7 +4027,7 @@ begin
                        ss_eeprom: writeln('.eeprom');
                        ss_progmem: writeln('.progmem');
                      else
-                       WriteWarning('Invalid AVR section type: ' + IntToStr(b));
+                       WriteWarning('Invalid AVR section type: '+IntToStr(b));
                      end;
                    end;
                end;

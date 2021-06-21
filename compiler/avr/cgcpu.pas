@@ -553,9 +553,9 @@ unit cgcpu;
           not(CPUAVR_HAS_LPMX in cpu_capabilities[current_settings.cputype])) then
        begin
          if ref.symsection=ss_eeprom then
-           ref.offset := ref.offset + embedded_controllers[current_settings.controllertype].eeprombase
+           ref.offset:=ref.offset+embedded_controllers[current_settings.controllertype].eeprombase
          else
-           ref.offset := ref.offset + embedded_controllers[current_settings.controllertype].flashbase;
+           ref.offset:=ref.offset+embedded_controllers[current_settings.controllertype].flashbase;
        end;
      end;
 
@@ -566,7 +566,7 @@ unit cgcpu;
          controllername: string;
        begin
          result:=nil;
-         if current_settings.controllertype = ct_none then
+         if current_settings.controllertype=ct_none then
            begin
              { Possibly compiling RTL controller unit, search for proc in current module }
              if searchsym_in_module(current_module,upper(procname), symbol, symtab) and (symbol.typ=procsym) then
@@ -575,7 +575,7 @@ unit cgcpu;
          else
            begin
              { Look in currently defined controller unit for matching proc }
-             controllername := embedded_controllers[current_settings.controllertype].controllerunitstr;
+             controllername:=embedded_controllers[current_settings.controllertype].controllerunitstr;
              if searchsym_in_named_module(controllername,upper(procname), symbol, symtab) and (symbol.typ=procsym) then
                result:=tprocdef(tprocsym(symbol).ProcdefList[0]);
            end;
@@ -1133,9 +1133,9 @@ unit cgcpu;
     { Returns true if dataspace address falls in I/O register range }
     function tcgavr.addr_is_io_register(const addr: integer): boolean;
     begin
-      result := (not(current_settings.cputype in [cpu_avrxmega3,cpu_avrtiny]) and (addr>31)) or
-                ((current_settings.cputype in [cpu_avrxmega3,cpu_avrtiny]) and (addr>=0)) and
-                (addr<cpuinfo.embedded_controllers[current_settings.controllertype].srambase);
+      result:=(not(current_settings.cputype in [cpu_avrxmega3,cpu_avrtiny]) and (addr>31)) or
+              ((current_settings.cputype in [cpu_avrxmega3,cpu_avrtiny]) and (addr>=0)) and
+              (addr<cpuinfo.embedded_controllers[current_settings.controllertype].srambase);
     end;
 
 
@@ -1523,7 +1523,7 @@ unit cgcpu;
                          oldoffset:=href.offset;
                          maybeAdjustReferenceOffset(href);
                          offset:=href.offset-oldoffset;
-                         offset:= 256 - (offset shr 8);
+                         offset:=256-(offset shr 8);
                          href.offset:=oldoffset;
                          href.symsection:=ss_none;
                          list.concat(taicpu.op_reg_const(A_SUBI,GetNextReg(href.base),byte(offset)));

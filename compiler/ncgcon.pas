@@ -293,9 +293,9 @@ implementation
              tmpcst:=cst_type;
              { Apologies for this ugly hack! }
              if currentsymsection=ss_progmem then
-               cst_type:=tconststringtype(ord(cst_type) + (ord(cst_conststring_progmem) - ord(cst_conststring)))
+               cst_type:=tconststringtype(ord(cst_type)+(ord(cst_conststring_progmem)-ord(cst_conststring)))
              else if currentsymsection=ss_eeprom then
-               cst_type:=tconststringtype(ord(cst_type) + (ord(cst_conststring_eeprom) - ord(cst_conststring)));
+               cst_type:=tconststringtype(ord(cst_type)+(ord(cst_conststring_eeprom)-ord(cst_conststring)));
 {$endif avr}
               pool := current_asmdata.ConstPools[PoolMap[cst_type]];
 

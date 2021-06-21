@@ -1600,13 +1600,13 @@ implementation
            srsym := tsym(systemunit.Find(upper(name)));
 {$ifdef avr}
          if not Assigned(srsym) then
-           if current_settings.controllertype = ct_none then
+           if current_settings.controllertype=ct_none then
              { Possibly compiling RTL controller unit, search for proc in current module }
              searchsym_in_module(current_module,name,srsym,symtab)
            else
              begin
                { Look in currently defined controller unit for matching proc }
-               controllername := embedded_controllers[current_settings.controllertype].controllerunitstr;
+               controllername:=embedded_controllers[current_settings.controllertype].controllerunitstr;
                searchsym_in_named_module(controllername,name,srsym,symtab);
              end;
 {$endif avr}
