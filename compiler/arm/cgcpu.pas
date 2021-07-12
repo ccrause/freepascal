@@ -3773,6 +3773,10 @@ unit cgcpu;
               end;
 
             registerarea:=0;
+            { do not save integer registers if the procedure does not return }
+            if po_noreturn in current_procinfo.procdef.procoptions then
+              regs:=[];
+
             if regs<>[] then
                begin
                  for r:=RS_R0 to RS_R15 do
@@ -3849,6 +3853,10 @@ unit cgcpu;
          stackmisalignment: pint;
          stack_parameters : Boolean;
       begin
+        { a routine not returning needs no exit code,
+          we trust this directive as arm thumb is normally used if small code shall be generated }
+        if po_noreturn in current_procinfo.procdef.procoptions then
+          exit;
         if not(nostackframe) then
           begin
             stack_parameters:=current_procinfo.procdef.stack_tainting_parameter(calleeside);
@@ -5052,6 +5060,10 @@ unit cgcpu;
          LocalSize : longint;
          stackmisalignment: pint;
       begin
+        { a routine not returning needs no exit code,
+          we trust this directive as arm thumb is normally used if small code shall be generated }
+        if po_noreturn in current_procinfo.procdef.procoptions then
+          exit;
         if not(nostackframe) then
           begin
             stackmisalignment:=0;
